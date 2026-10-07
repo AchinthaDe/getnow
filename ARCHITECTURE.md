@@ -22,7 +22,7 @@ Rule: do not scaffold folders, models or packages for a phase that is not active
 - Admins change storefront content without a deploy.
 - Consumers (Blade storefront now, React later) must not break when content changes or is missing.
 - Modular monolith. One context (`Content`) for now.
-- `main` is always working and tested. Quality gates run locally (`composer check`). No CI/CD, no Docker.
+- `main` is always working and tested. Quality gates run locally (`composer check`) and via a minimal GitHub Actions check workflow. No CD pipelines, no Docker for local development.
 
 ## 3. Stack (phases 0 to 2)
 
@@ -69,12 +69,17 @@ app/
 │   └── Admin/                  # panel `admin`
 │       ├── Resources/Content/
 │       ├── Pages/              # settings pages, custom pages
+│       ├── Schemas/            # Form and table definitions
 │       └── Widgets/
 ├── Http/
 │   └── Controllers/Api/V1/Content/
 ├── Providers/                  # includes ContentServiceProvider (registers blocks)
 └── Support/                    # small shared helpers only
-database/{migrations,factories,seeders}/
+database/
+├── factories/
+├── migrations/
+├── seeders/
+└── settings/                   # spatie/laravel-settings migrations
 docs/{adr,contracts}/           # contracts/content-api.md is the API contract
 routes/api.php
 tests/{Feature,Unit}/Content/  tests/Arch/  tests/Fixtures/contracts/
@@ -207,7 +212,7 @@ Contract rules:
 - Bigint primary keys plus a ULID `public_id` for anything exposed externally. Never expose incremental IDs.
 - Foreign keys everywhere, indexes for query paths, `CHECK` constraints for statuses and non-negative numbers.
 - Migrations are append-only once merged. Use expand/contract for destructive changes.
-- Seeders are idempotent. `ContentSeeder` reproduces the values currently hardcoded in the storefront layout so both sides match from day one.
+- Seeders are idempotent. `ContentSeeder` runs only in `local`/`testing` and reproduces the values currently hardcoded in the storefront layout. Real environments start on migration placeholders until edited via the CMS.
 - Tests run against Postgres (`phone_store_test`), never SQLite.
 
 ## 10. Security

@@ -24,6 +24,15 @@ trait FilamentSmokeTest
         Livewire::test($pageClass)->assertSuccessful();
     }
 
+    protected function assertPageRenders(string $pageClass): void
+    {
+        $this->actingAs($this->getPlatformAdmin())
+            ->get($pageClass::getUrl())
+            ->assertSuccessful();
+
+        Livewire::test($pageClass)->assertSuccessful();
+    }
+
     protected function assertCreatePageRenders(string $pageClass): void
     {
         $this->actingAs($this->getPlatformAdmin())
