@@ -17,9 +17,16 @@ class DatabaseSeeder extends Seeder
     {
         // User::factory(10)->create();
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+        // Only seed test admin in local or testing environments
+        if (app()->environment(['local', 'testing'])) {
+            User::updateOrCreate(
+                ['email' => 'admin@example.com'],
+                [
+                    'name' => 'Admin User',
+                    'password' => bcrypt('password'),
+                    'is_platform_admin' => true,
+                ]
+            );
+        }
     }
 }
