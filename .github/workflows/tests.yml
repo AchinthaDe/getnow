@@ -47,11 +47,11 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Install Node Dependencies & Build
-        run: npm ci && npm run build
-
       - name: Install Dependencies
         run: composer install --no-interaction --prefer-dist
+
+      - name: Install Node Dependencies & Build
+        run: npm ci && npm run build
 
       - name: Run CI Checks
         env:
