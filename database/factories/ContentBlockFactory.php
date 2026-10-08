@@ -1,0 +1,78 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Database\Factories;
+
+use App\Domain\Content\Enums\Placement;
+use App\Domain\Content\Enums\PublishStatus;
+use App\Domain\Content\Models\ContentBlock;
+use Illuminate\Database\Eloquent\Factories\Factory;
+
+final class ContentBlockFactory extends Factory
+{
+    protected $model = ContentBlock::class;
+
+    public function definition(): array
+    {
+        return [
+            'placement' => Placement::ANNOUNCEMENT_BAR->value,
+            'type' => 'announcement_bar',
+            'schema_version' => 1,
+            'payload' => [
+                'text' => $this->faker->sentence(),
+                'tone' => 'info',
+            ],
+            'status' => PublishStatus::DRAFT->value,
+            'is_enabled' => true,
+            'sort_order' => 0,
+            'starts_at' => null,
+            'ends_at' => null,
+            'created_by' => null,
+            'updated_by' => null,
+        ];
+    }
+
+    public function draft(): self
+    {
+        return $this->state(fn (array $attributes) => [
+            'status' => PublishStatus::DRAFT->value,
+        ]);
+    }
+
+    public function published(): self
+    {
+        return $this->state(fn (array $attributes) => [
+            'status' => PublishStatus::PUBLISHED->value,
+        ]);
+    }
+
+    public function archived(): self
+    {
+        return $this->state(fn (array $attributes) => [
+            'status' => PublishStatus::ARCHIVED->value,
+        ]);
+    }
+
+    public function enabled(): self
+    {
+        return $this->state(fn (array $attributes) => [
+            'is_enabled' => true,
+        ]);
+    }
+
+    public function disabled(): self
+    {
+        return $this->state(fn (array $attributes) => [
+            'is_enabled' => false,
+        ]);
+    }
+
+    public function scheduled(\DateTimeInterface $startsAt, ?\DateTimeInterface $endsAt = null): self
+    {
+        return $this->state(fn (array $attributes) => [
+            'starts_at' => $startsAt,
+            'ends_at' => $endsAt,
+        ]);
+    }
+}

@@ -61,20 +61,22 @@ app/
 │       ├── Data/               # DTOs (API output, action input)
 │       ├── Enums/              # Placement, MenuKey, PublishStatus, Tone
 │       ├── Events/
+│       ├── Exceptions/
 │       ├── Models/             # ContentBlock, Menu, MenuItem
 │       ├── Policies/
+│       ├── Services/
 │       └── Settings/           # StorefrontSettings
 ├── Filament/
 │   ├── Blocks/                 # Filament form schema per block type (panel-agnostic)
 │   └── Admin/                  # panel `admin`
-│       ├── Resources/Content/
+│       ├── Resources/          # eg: Resources/Content/Schemas/
 │       ├── Pages/              # settings pages, custom pages
-│       ├── Schemas/            # Form and table definitions
 │       └── Widgets/
 ├── Http/
 │   └── Controllers/Api/V1/Content/
 ├── Providers/                  # includes ContentServiceProvider (registers blocks)
 └── Support/                    # small shared helpers only
+    └── Rules/
 database/
 ├── factories/
 ├── migrations/
@@ -240,6 +242,7 @@ Contract rules:
 | D5 | Phase 1 has no images. Media library arrives with the first image block in phase 2. |
 | D6 | Phase 1 admin access is one platform-admin flag. Roles come with the retailer panel. |
 | D7 | Published content edits go live immediately in phase 1. Revisions and preview come in phase 2. |
+| D8 | MaxCount is enforced at API output limit, not publish lock. Tie-break: `sort_order ASC, starts_at DESC NULLS LAST, id DESC`. One block = one message. |
 
 Open decisions (record as ADRs in `docs/adr/` when settled):
 - React frontend shape: Inertia inside this app versus a separate SPA or SSR app. The Content API is the contract either way.
