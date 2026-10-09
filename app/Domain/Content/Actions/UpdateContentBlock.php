@@ -49,9 +49,25 @@ final class UpdateContentBlock
             $dataClass = $definition->dataClass();
             $payloadData = $dataClass::validateAndCreate($rawPayload);
 
-            $isDirty = $block->payload != $payloadData->toArray() ||
+            $oldPayload = $block->payload;
+            $newPayload = $payloadData->toArray();
+
+            $sort = function (array &$array) use (&$sort) {
+                ksort($array);
+                foreach ($array as &$value) {
+                    if (is_array($value)) {
+                        $sort($value);
+                    }
+                }
+            };
+
+            $sort($oldPayload);
+            $sort($newPayload);
+
+            $isDirty = json_encode($oldPayload) !== json_encode($newPayload) ||
                 $block->starts_at?->toDateTimeString() !== $data->starts_at?->toDateTimeString() ||
-                $block->ends_at?->toDateTimeString() !== $data->ends_at?->toDateTimeString();
+                $block->ends_at?->toDateTimeString() !== $data->ends_at?->toDateTimeString() ||
+                $block->schema_version !== $definition->schemaVersion();
 
             $block->fill([
                 'payload' => $payloadData->toArray(),

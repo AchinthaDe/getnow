@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Content\Models;
 
+use App\Domain\Content\Casts\TolerantEnum;
 use App\Domain\Content\Enums\Placement;
 use App\Domain\Content\Enums\PublishStatus;
 use Carbon\CarbonInterface;
@@ -41,7 +42,7 @@ final class ContentBlock extends Model
     protected $guarded = [];
 
     protected $casts = [
-        'placement' => Placement::class,
+        'placement' => TolerantEnum::class.':'.Placement::class,
         'status' => PublishStatus::class,
         'payload' => 'array',
         'is_enabled' => 'boolean',
