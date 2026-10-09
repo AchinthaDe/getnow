@@ -76,4 +76,36 @@ final class ContentBlockFactory extends Factory
             'ends_at' => $endsAt,
         ]);
     }
+
+    public function unknownType(): self
+    {
+        return $this->state(fn (array $attributes) => [
+            'type' => 'unknown_type_for_testing',
+        ]);
+    }
+
+    public function unsupportedVersion(): self
+    {
+        return $this->state(fn (array $attributes) => [
+            'schema_version' => 9999,
+        ]);
+    }
+
+    public function failedUpgrade(): self
+    {
+        return $this->state(fn (array $attributes) => [
+            'type' => 'announcement_bar',
+            'schema_version' => 0,
+            'payload' => ['trigger_upgrade_failure' => true],
+        ]);
+    }
+
+    public function invalidAfterUpgrade(): self
+    {
+        return $this->state(fn (array $attributes) => [
+            'type' => 'announcement_bar',
+            'schema_version' => 1,
+            'payload' => ['text' => null], // invalid
+        ]);
+    }
 }

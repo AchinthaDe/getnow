@@ -9,7 +9,7 @@ use App\Domain\Content\Settings\StorefrontSettings;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
-class UpdateStorefrontSettings
+final class UpdateStorefrontSettings
 {
     public function __construct(
         private StorefrontSettings $settings,

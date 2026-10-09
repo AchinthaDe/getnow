@@ -8,6 +8,7 @@ use App\Domain\Content\Data\BlockPayload;
 use App\Domain\Content\Exceptions\InvalidPayloadException;
 use App\Domain\Content\Exceptions\UnknownBlockTypeException;
 use App\Domain\Content\Exceptions\UnsupportedSchemaVersionException;
+use App\Domain\Content\Exceptions\UpgradeFailedException;
 use App\Domain\Content\Services\ContentBlockRegistry;
 use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Validation\ValidationException;
@@ -91,10 +92,10 @@ it('throws InvalidPayloadException if validation fails after upgrade', function 
     $action('fake', 3, ['fail' => true]);
 })->throws(InvalidPayloadException::class);
 
-it('throws InvalidPayloadException if upgrade logic fails', function () {
+it('throws UpgradeFailedException if upgrade logic fails', function () {
     $registry = new ContentBlockRegistry;
     $registry->register(new FakeBlockDefinition);
 
     $action = new GetUpgradedBlockPayload($registry);
     $action('fake', 0, []); // fromVersion 0 throws \Exception in FakeBlockDefinition
-})->throws(InvalidPayloadException::class);
+})->throws(UpgradeFailedException::class);

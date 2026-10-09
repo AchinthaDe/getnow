@@ -21,7 +21,7 @@ final class ResolveServablePayload
         private readonly GetUpgradedBlockPayload $getUpgradedBlockPayload
     ) {}
 
-    public function __invoke(ContentBlock $block): ServingHealthResult
+    public function __invoke(ContentBlock $block, bool $log = true): ServingHealthResult
     {
         try {
             $payload = ($this->getUpgradedBlockPayload)(
@@ -35,25 +35,35 @@ final class ResolveServablePayload
                 payload: $payload
             );
         } catch (UnknownBlockTypeException $e) {
-            $this->logFailure($block, ServingHealthOutcome::UnknownType);
+            if ($log) {
+                $this->logFailure($block, ServingHealthOutcome::UnknownType);
+            }
 
             return new ServingHealthResult(ServingHealthOutcome::UnknownType);
         } catch (UnsupportedSchemaVersionException $e) {
-            $this->logFailure($block, ServingHealthOutcome::UnsupportedVersion);
+            if ($log) {
+                $this->logFailure($block, ServingHealthOutcome::UnsupportedVersion);
+            }
 
             return new ServingHealthResult(ServingHealthOutcome::UnsupportedVersion);
         } catch (InvalidPayloadException $e) {
-            $this->logFailure($block, ServingHealthOutcome::InvalidAfterUpgrade);
+            if ($log) {
+                $this->logFailure($block, ServingHealthOutcome::InvalidAfterUpgrade);
+            }
 
             return new ServingHealthResult(ServingHealthOutcome::InvalidAfterUpgrade);
         } catch (UpgradeFailedException $e) {
-            $this->logFailure($block, ServingHealthOutcome::UpgradeFailed);
+            if ($log) {
+                $this->logFailure($block, ServingHealthOutcome::UpgradeFailed);
+            }
 
             return new ServingHealthResult(ServingHealthOutcome::UpgradeFailed);
         } catch (\Throwable $e) {
             // Fail closed for unexpected exceptions
             report($e);
-            $this->logFailure($block, ServingHealthOutcome::UpgradeFailed);
+            if ($log) {
+                $this->logFailure($block, ServingHealthOutcome::UpgradeFailed);
+            }
 
             return new ServingHealthResult(ServingHealthOutcome::UpgradeFailed);
         }
