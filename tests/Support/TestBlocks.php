@@ -13,6 +13,8 @@ final class TestBlocks
         /** @var BlockRegistry $registry */
         $registry = app(BlockRegistry::class);
 
-        $registry->register(new TestFailedUpgradeBlock);
+        if ($registry->get('test_failed_upgrade_block') === null) {
+            $registry->register(new TestFailedUpgradeBlock);
+        }
     }
 }

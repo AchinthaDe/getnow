@@ -9,14 +9,10 @@ use App\Domain\Content\Enums\ServingHealthOutcome;
 use App\Domain\Content\Enums\ServingStatus;
 use App\Domain\Content\Models\ContentBlock;
 use App\Domain\Content\Services\ResolveServablePayload;
+use Illuminate\Support\Facades\Cache;
 
 final class GetBlockServingStatus
 {
-    /**
-     * @var array<string, BlockServingStatusResult>
-     */
-    private array $memo = [];
-
     public function __construct(
         private readonly ResolveServablePayload $resolveServablePayload
     ) {}
@@ -27,8 +23,9 @@ final class GetBlockServingStatus
         $updatedAt = $block->updated_at !== null ? $block->updated_at->timestamp : 0;
         $payloadString = json_encode($block->payload);
         $key = sprintf(
-            '%d_%d_%s_%d_%d_%s_%d_%d',
+            'serving_status_%d_%s_%d_%s_%d_%d_%s_%d_%d',
             $block->id ?? 0,
+            $block->type,
             $updatedAt,
             $block->status ? $block->status->value : '',
             $block->is_enabled ? 1 : 0,
@@ -38,28 +35,20 @@ final class GetBlockServingStatus
             $block->ends_at !== null ? $block->ends_at->timestamp : 0
         );
 
-        if (array_key_exists($key, $this->memo)) {
-            return $this->memo[$key];
-        }
+        return Cache::store('array')->rememberForever($key, function () use ($block) {
+            if (! $block->isLive()) {
+                return new BlockServingStatusResult(ServingStatus::NotLive);
+            }
 
-        if (! $block->isLive()) {
-            $result = new BlockServingStatusResult(ServingStatus::NotLive);
-            $this->memo[$key] = $result;
+            $healthResult = ($this->resolveServablePayload)($block, false);
 
-            return $result;
-        }
+            if ($healthResult->outcome === ServingHealthOutcome::Servable) {
+                $status = ServingStatus::Live;
+            } else {
+                $status = ServingStatus::PayloadError;
+            }
 
-        $healthResult = ($this->resolveServablePayload)($block, false);
-
-        if ($healthResult->outcome === ServingHealthOutcome::Servable) {
-            $status = ServingStatus::Live;
-        } else {
-            $status = ServingStatus::PayloadError;
-        }
-
-        $result = new BlockServingStatusResult($status, $healthResult->outcome);
-        $this->memo[$key] = $result;
-
-        return $result;
+            return new BlockServingStatusResult($status, $healthResult->outcome);
+        });
     }
 }
