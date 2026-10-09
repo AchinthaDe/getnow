@@ -22,6 +22,7 @@ final class ArchiveContentBlock
 
             $oldStatus = $block->status;
             $block->status = PublishStatus::ARCHIVED;
+            $block->updated_by = $causer?->id;
             $block->save();
 
             activity('content')
@@ -31,6 +32,7 @@ final class ArchiveContentBlock
                     'old_status' => $oldStatus?->value,
                     'new_status' => PublishStatus::ARCHIVED->value,
                 ])
+                ->event('archived')
                 ->log('archived');
 
             return $block;

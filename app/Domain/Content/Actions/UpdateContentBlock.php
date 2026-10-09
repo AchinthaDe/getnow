@@ -45,9 +45,23 @@ final class UpdateContentBlock
                 throw new UnknownBlockTypeException("Block type [{$block->type}] is not registered.");
             }
 
+            if ($block->schema_version > $definition->schemaVersion()) {
+                throw new \App\Domain\Content\Exceptions\UnsupportedSchemaVersionException(
+                    "Stored schema version [{$block->schema_version}] is higher than current version [{$definition->schemaVersion()}]."
+                );
+            }
+
             /** @var class-string<BlockPayload> $dataClass */
             $dataClass = $definition->dataClass();
-            $payloadData = $dataClass::validateAndCreate($rawPayload);
+            try {
+                $payloadData = $dataClass::validateAndCreate($rawPayload);
+            } catch (ValidationException $e) {
+                $errors = [];
+                foreach ($e->errors() as $key => $messages) {
+                    $errors["payload.{$key}"] = $messages;
+                }
+                throw ValidationException::withMessages($errors);
+            }
 
             $oldPayload = $block->payload;
             $newPayload = $payloadData->toArray();
@@ -64,25 +78,58 @@ final class UpdateContentBlock
             $sort($oldPayload);
             $sort($newPayload);
 
-            $isDirty = json_encode($oldPayload) !== json_encode($newPayload) ||
-                $block->starts_at?->toDateTimeString() !== $data->starts_at?->toDateTimeString() ||
-                $block->ends_at?->toDateTimeString() !== $data->ends_at?->toDateTimeString() ||
+            $startsAt = $data->starts_at?->clone()->setTimezone('UTC');
+            $endsAt = $data->ends_at?->clone()->setTimezone('UTC');
+
+            $isDirty = json_encode($oldPayload, JSON_THROW_ON_ERROR) !== json_encode($newPayload, JSON_THROW_ON_ERROR) ||
+                $block->starts_at?->clone()->setTimezone('UTC')->format('U.u') !== $startsAt?->format('U.u') ||
+                $block->ends_at?->clone()->setTimezone('UTC')->format('U.u') !== $endsAt?->format('U.u') ||
                 $block->schema_version !== $definition->schemaVersion();
 
-            $block->fill([
-                'payload' => $payloadData->toArray(),
-                'starts_at' => $data->starts_at,
-                'ends_at' => $data->ends_at,
-            ]);
-
             if ($isDirty) {
+                $oldSchemaVersion = $block->schema_version;
+                $oldStartsAt = $block->starts_at;
+                $oldEndsAt = $block->ends_at;
+
+                $block->fill([
+                    'payload' => $payloadData->toArray(),
+                    'starts_at' => $startsAt,
+                    'ends_at' => $endsAt,
+                ]);
+
                 $block->schema_version = $definition->schemaVersion();
                 $block->updated_by = $causer?->id;
                 $block->save();
 
+                $changed = [];
+                if (json_encode($oldPayload, JSON_THROW_ON_ERROR) !== json_encode($newPayload, JSON_THROW_ON_ERROR)) {
+                    $changed[] = 'payload';
+                }
+                if ($block->starts_at?->clone()->setTimezone('UTC')->format('U.u') !== $startsAt?->format('U.u')) {
+                    $changed[] = 'starts_at';
+                }
+                if ($block->ends_at?->clone()->setTimezone('UTC')->format('U.u') !== $endsAt?->format('U.u')) {
+                    $changed[] = 'ends_at';
+                }
+                if ($oldSchemaVersion !== $definition->schemaVersion()) {
+                    $changed[] = 'schema_version';
+                }
+
                 activity('content')
                     ->performedOn($block)
                     ->causedBy($causer)
+                    ->withProperties([
+                        'old_payload' => $oldPayload,
+                        'new_payload' => $newPayload,
+                        'old_starts_at' => $oldStartsAt,
+                        'new_starts_at' => $startsAt,
+                        'old_ends_at' => $oldEndsAt,
+                        'new_ends_at' => $endsAt,
+                        'old_schema_version' => $oldSchemaVersion,
+                        'new_schema_version' => $block->schema_version,
+                        'changed' => $changed,
+                    ])
+                    ->event('updated')
                     ->log('updated');
             }
 

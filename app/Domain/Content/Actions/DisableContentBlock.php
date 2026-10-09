@@ -27,6 +27,7 @@ final class DisableContentBlock
 
             $oldEnabled = $block->is_enabled;
             $block->is_enabled = false;
+            $block->updated_by = $causer?->id;
             $block->save();
 
             activity('content')
@@ -36,6 +37,7 @@ final class DisableContentBlock
                     'old_is_enabled' => $oldEnabled,
                     'new_is_enabled' => false,
                 ])
+                ->event('disabled')
                 ->log('disabled');
 
             return $block;

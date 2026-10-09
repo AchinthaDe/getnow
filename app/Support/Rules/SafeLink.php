@@ -29,7 +29,13 @@ final class SafeLink implements ValidationRule
             return;
         }
 
-        if (str_starts_with($value, '//') || str_starts_with($value, '/\\')) {
+        if (str_contains($value, '\\')) {
+            $fail('The :attribute contains invalid characters.');
+
+            return;
+        }
+
+        if (str_starts_with($value, '//')) {
             $fail('The :attribute must be a valid path or URL.');
 
             return;

@@ -45,9 +45,21 @@ final class CreateContentBlock
 
         /** @var class-string<BlockPayload> $dataClass */
         $dataClass = $definition->dataClass();
-        $payloadData = $dataClass::validateAndCreate($rawPayload);
 
-        return DB::transaction(function () use ($data, $payloadData, $definition, $causer) {
+        try {
+            $payloadData = $dataClass::validateAndCreate($rawPayload);
+        } catch (ValidationException $e) {
+            $errors = [];
+            foreach ($e->errors() as $key => $messages) {
+                $errors["payload.{$key}"] = $messages;
+            }
+            throw ValidationException::withMessages($errors);
+        }
+
+        $startsAt = $data->starts_at?->clone()->setTimezone('UTC');
+        $endsAt = $data->ends_at?->clone()->setTimezone('UTC');
+
+        return DB::transaction(function () use ($data, $payloadData, $definition, $causer, $startsAt, $endsAt) {
             $block = new ContentBlock;
             $block->fill([
                 'placement' => $data->placement->value,
@@ -57,8 +69,8 @@ final class CreateContentBlock
                 'status' => PublishStatus::DRAFT->value,
                 'is_enabled' => true,
                 'sort_order' => 0,
-                'starts_at' => $data->starts_at,
-                'ends_at' => $data->ends_at,
+                'starts_at' => $startsAt,
+                'ends_at' => $endsAt,
                 'created_by' => $causer?->id,
                 'updated_by' => $causer?->id,
             ]);
@@ -68,6 +80,12 @@ final class CreateContentBlock
             activity('content')
                 ->performedOn($block)
                 ->causedBy($causer)
+                ->withProperties([
+                    'payload' => $payloadData->toArray(),
+                    'starts_at' => $startsAt,
+                    'ends_at' => $endsAt,
+                ])
+                ->event('created')
                 ->log('created');
 
             return $block;

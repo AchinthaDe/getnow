@@ -4,21 +4,16 @@ declare(strict_types=1);
 
 namespace App\Domain\Content\Actions;
 
-use App\Domain\Content\Contracts\BlockRegistry;
-use App\Domain\Content\Data\BlockPayload;
 use App\Domain\Content\Enums\PublishStatus;
 use App\Domain\Content\Exceptions\IllegalStateTransitionException;
-use App\Domain\Content\Exceptions\InvalidPayloadException;
-use App\Domain\Content\Exceptions\UnknownBlockTypeException;
 use App\Domain\Content\Models\ContentBlock;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
 
 final class PublishContentBlock
 {
     public function __construct(
-        private readonly BlockRegistry $registry
+        private readonly GetUpgradedBlockPayload $getUpgradedBlockPayload
     ) {}
 
     public function __invoke(int $id, ?User $causer = null): ContentBlock
@@ -34,30 +29,11 @@ final class PublishContentBlock
                 return $block;
             }
 
-            $definition = $this->registry->get($block->type);
-
-            if ($definition === null) {
-                throw new UnknownBlockTypeException("Block type [{$block->type}] is not registered.");
-            }
-
-            $schemaVersion = $block->schema_version;
-            $currentVersion = $definition->schemaVersion();
-            $payload = $block->payload;
-
-            for ($v = $schemaVersion; $v < $currentVersion; $v++) {
-                $payload = $definition->upgradePayload($v, $payload);
-            }
-
-            try {
-                /** @var class-string<BlockPayload> $dataClass */
-                $dataClass = $definition->dataClass();
-                $dataClass::validateAndCreate($payload);
-            } catch (ValidationException $e) {
-                throw new InvalidPayloadException('Cannot publish because payload validation fails: '.$e->getMessage(), 0, $e);
-            }
+            ($this->getUpgradedBlockPayload)($block->type, $block->schema_version, $block->payload);
 
             $oldStatus = $block->status;
             $block->status = PublishStatus::PUBLISHED;
+            $block->updated_by = $causer?->id;
             $block->save();
 
             activity('content')
@@ -67,6 +43,7 @@ final class PublishContentBlock
                     'old_status' => $oldStatus?->value,
                     'new_status' => PublishStatus::PUBLISHED->value,
                 ])
+                ->event('published')
                 ->log('published');
 
             return $block;

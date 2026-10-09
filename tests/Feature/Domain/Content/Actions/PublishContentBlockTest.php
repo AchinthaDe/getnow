@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
+use App\Domain\Content\Actions\GetUpgradedBlockPayload;
 use App\Domain\Content\Actions\PublishContentBlock;
-use App\Domain\Content\Contracts\BlockRegistry;
 use App\Domain\Content\Enums\PublishStatus;
 use App\Domain\Content\Exceptions\IllegalStateTransitionException;
 use App\Domain\Content\Models\ContentBlock;
 use App\Models\User;
 
 it('publishes draft block and logs activity', function () {
-    $registry = app(BlockRegistry::class);
-    $action = new PublishContentBlock($registry);
+    $getUpgradedBlockPayload = app(GetUpgradedBlockPayload::class);
+    $action = new PublishContentBlock($getUpgradedBlockPayload);
 
     $user = User::factory()->create();
     /** @var ContentBlock $block */
@@ -32,8 +32,8 @@ it('publishes draft block and logs activity', function () {
 });
 
 it('rejects archived blocks', function () {
-    $registry = app(BlockRegistry::class);
-    $action = new PublishContentBlock($registry);
+    $getUpgradedBlockPayload = app(GetUpgradedBlockPayload::class);
+    $action = new PublishContentBlock($getUpgradedBlockPayload);
 
     /** @var ContentBlock $block */
     $block = ContentBlock::factory()->archived()->create();
@@ -43,8 +43,8 @@ it('rejects archived blocks', function () {
 });
 
 it('returns immediately if already published', function () {
-    $registry = app(BlockRegistry::class);
-    $action = new PublishContentBlock($registry);
+    $getUpgradedBlockPayload = app(GetUpgradedBlockPayload::class);
+    $action = new PublishContentBlock($getUpgradedBlockPayload);
 
     /** @var ContentBlock $block */
     $block = ContentBlock::factory()->published()->create();

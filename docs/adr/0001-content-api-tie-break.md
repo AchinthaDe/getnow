@@ -17,6 +17,7 @@ Furthermore, PostgreSQL sorts `NULL` dates first by default when using `DESC`. A
    2. `starts_at` DESC NULLS LAST
    3. `id` DESC
 3. **One Block = One Message**: For the announcement bar, one block instance represents exactly one message, rather than a single block containing an array of messages.
+4. **API Prerequisite**: API output tests and contract updates are a hard prerequisite in the API step.
 
 ## Consequences
 - **Positive**: Admins can easily schedule a temporary replacement block. If it overlaps with an always-on block, the scheduled one will win while active, and the always-on one will seamlessly resume when the scheduled one expires.

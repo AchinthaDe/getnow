@@ -24,14 +24,20 @@ it('rejects http, javascript, data', function () {
         ->and(validateLink('data:text/html,<html>'))->toBeFalse();
 });
 
-it('rejects leading slashes that imply protocol relative', function () {
+it('rejects slashes and backslashes that imply protocol relative or invalid chars', function () {
     expect(validateLink('//evil.com'))->toBeFalse()
-        ->and(validateLink('/\\evil.com'))->toBeFalse();
+        ->and(validateLink('/\\evil.com'))->toBeFalse()
+        ->and(validateLink('https://evil.com/a\\b'))->toBeFalse();
 });
 
 it('rejects whitespace', function () {
     expect(validateLink('https://example.com/ foo'))->toBeFalse()
-        ->and(validateLink("https://example.com/\nfoo"))->toBeFalse();
+        ->and(validateLink("https://example.com/\nfoo"))->toBeFalse()
+        ->and(validateLink('https://example.com/a b'))->toBeFalse();
+});
+
+it('rejects urls longer than 2048 characters', function () {
+    expect(validateLink('https://example.com/'.str_repeat('a', 2049)))->toBeFalse();
 });
 
 it('rejects empty hosts', function () {

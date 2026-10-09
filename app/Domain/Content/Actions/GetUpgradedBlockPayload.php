@@ -10,6 +10,7 @@ use App\Domain\Content\Exceptions\InvalidPayloadException;
 use App\Domain\Content\Exceptions\UnknownBlockTypeException;
 use App\Domain\Content\Exceptions\UnsupportedSchemaVersionException;
 use Illuminate\Validation\ValidationException;
+use Spatie\LaravelData\Exceptions\CannotCreateData;
 
 final class GetUpgradedBlockPayload
 {
@@ -38,7 +39,11 @@ final class GetUpgradedBlockPayload
 
         // Sequential upgrade
         for ($v = $schemaVersion; $v < $currentVersion; $v++) {
-            $payload = $definition->upgradePayload($v, $payload);
+            try {
+                $payload = $definition->upgradePayload($v, $payload);
+            } catch (\Exception $e) {
+                throw new InvalidPayloadException("Upgrade logic failed from v{$v} to v".($v + 1).': '.$e->getMessage(), 0, $e);
+            }
         }
 
         try {
@@ -48,6 +53,8 @@ final class GetUpgradedBlockPayload
             return $dataClass::validateAndCreate($payload);
         } catch (ValidationException $e) {
             throw new InvalidPayloadException('Payload validation failed after upgrade: '.$e->getMessage(), 0, $e);
+        } catch (CannotCreateData $e) {
+            throw new InvalidPayloadException('Cannot create payload data after upgrade: '.$e->getMessage(), 0, $e);
         }
     }
 }

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 arch('domain code does not import filament or http')
     ->expect('App\Domain')
-    ->not->toUse(['App\Filament', 'App\Http']);
+    ->not->toUse(['App\Filament', 'App\Http', 'Filament']);
 
 arch('domain actions are final')
     ->expect('App\Domain\Content\Actions')

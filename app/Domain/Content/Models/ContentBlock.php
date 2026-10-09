@@ -46,6 +46,8 @@ final class ContentBlock extends Model
         'status' => PublishStatus::class,
         'payload' => 'array',
         'is_enabled' => 'boolean',
+        'schema_version' => 'integer',
+        'sort_order' => 'integer',
         'starts_at' => 'datetime',
         'ends_at' => 'datetime',
     ];
@@ -69,15 +71,17 @@ final class ContentBlock extends Model
      */
     public function scopeVisible(Builder $query): Builder
     {
+        $now = now();
+
         return $query->where('status', PublishStatus::PUBLISHED->value)
             ->where('is_enabled', true)
-            ->where(function (Builder $q) {
+            ->where(function (Builder $q) use ($now) {
                 $q->whereNull('starts_at')
-                    ->orWhere('starts_at', '<=', now());
+                    ->orWhere('starts_at', '<=', $now);
             })
-            ->where(function (Builder $q) {
+            ->where(function (Builder $q) use ($now) {
                 $q->whereNull('ends_at')
-                    ->orWhere('ends_at', '>', now());
+                    ->orWhere('ends_at', '>', $now);
             });
     }
 

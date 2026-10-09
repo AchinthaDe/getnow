@@ -21,6 +21,7 @@ final class ContentBlockFactory extends Factory
             'schema_version' => 1,
             'payload' => [
                 'text' => $this->faker->sentence(),
+                'link_url' => null,
                 'tone' => 'info',
             ],
             'status' => PublishStatus::DRAFT->value,

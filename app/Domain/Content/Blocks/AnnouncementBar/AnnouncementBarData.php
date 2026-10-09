@@ -37,6 +37,8 @@ final class AnnouncementBarData extends BlockPayload
             } elseif (stripos($url, 'https://') === 0) {
                 // Lowercase the scheme only
                 $payload['link_url'] = 'https://'.substr($url, 8);
+            } else {
+                $payload['link_url'] = $url;
             }
         }
 

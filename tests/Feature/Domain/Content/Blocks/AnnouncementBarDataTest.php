@@ -18,8 +18,18 @@ it('rejects empty text', function () {
         ->toThrow(ValidationException::class);
 });
 
+it('accepts 1 char text', function () {
+    $data = AnnouncementBarData::validateAndCreate(['text' => 'a', 'tone' => 'info']);
+    expect($data->text)->toBe('a');
+});
+
 it('rejects text longer than 120', function () {
     expect(fn () => AnnouncementBarData::validateAndCreate(['text' => str_repeat('a', 121), 'tone' => 'info']))
+        ->toThrow(ValidationException::class);
+});
+
+it('rejects whitespace-only text', function () {
+    expect(fn () => AnnouncementBarData::validateAndCreate(['text' => '   ', 'tone' => 'info']))
         ->toThrow(ValidationException::class);
 });
 

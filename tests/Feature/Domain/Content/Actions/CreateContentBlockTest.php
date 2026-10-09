@@ -11,7 +11,9 @@ use App\Domain\Content\Exceptions\UnknownBlockTypeException;
 use App\Domain\Content\Models\ContentBlock;
 use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use PHPUnit\Framework\Assert;
 
 it('creates block and logs activity', function () {
     $registry = app(BlockRegistry::class);
@@ -73,4 +75,61 @@ it('rejects reversed dates', function () {
 
     expect(fn () => $action($data, ['text' => 'x', 'tone' => 'info']))
         ->toThrow(ValidationException::class);
+});
+
+it('remaps payload validation errors', function () {
+    $registry = app(BlockRegistry::class);
+    $action = new CreateContentBlock($registry);
+
+    $data = new CreateContentBlockData(
+        placement: Placement::ANNOUNCEMENT_BAR,
+        type: 'announcement_bar',
+        starts_at: null,
+        ends_at: null,
+    );
+
+    try {
+        $action($data, ['text' => '', 'link_url' => 'invalid'], null);
+        Assert::fail('Expected ValidationException');
+    } catch (ValidationException $e) {
+        expect($e->errors())->toHaveKey('payload.text')
+            ->and($e->errors())->toHaveKey('payload.link_url');
+    }
+});
+
+it('normalizes tone to lowercase and scheme to lowercase in db', function () {
+    $registry = app(BlockRegistry::class);
+    $action = new CreateContentBlock($registry);
+
+    $data = new CreateContentBlockData(
+        placement: Placement::ANNOUNCEMENT_BAR,
+        type: 'announcement_bar',
+        starts_at: null,
+        ends_at: null,
+    );
+
+    $block = $action($data, ['text' => 'hello', 'link_url' => 'HTTPS://x.com/Path', 'tone' => 'info'], null);
+
+    $raw = DB::table('content_blocks')->where('id', $block->id)->first();
+    $payload = json_decode($raw->payload, true);
+
+    expect($payload['tone'])->toBe('info')
+        ->and($payload['link_url'])->toBe('https://x.com/Path');
+});
+
+it('converts timezones to UTC', function () {
+    $registry = app(BlockRegistry::class);
+    $action = new CreateContentBlock($registry);
+
+    $data = new CreateContentBlockData(
+        placement: Placement::ANNOUNCEMENT_BAR,
+        type: 'announcement_bar',
+        starts_at: Carbon::parse('2026-01-01 12:00:00', 'Asia/Colombo'),
+        ends_at: null,
+    );
+
+    $block = $action($data, ['text' => 'hello', 'tone' => 'info'], null);
+
+    $raw = DB::table('content_blocks')->where('id', $block->id)->first();
+    expect(Carbon::parse($raw->starts_at)->format('H:i:s'))->toBe('06:30:00');
 });
