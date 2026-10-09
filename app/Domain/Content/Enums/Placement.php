@@ -1,0 +1,27 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domain\Content\Enums;
+
+enum Placement: string
+{
+    case ANNOUNCEMENT_BAR = 'announcement_bar';
+
+    /**
+     * @return array<int, string>
+     */
+    public function allowedBlockTypes(): array
+    {
+        return match ($this) {
+            self::ANNOUNCEMENT_BAR => ['announcement_bar'],
+        };
+    }
+
+    public function maxCount(): int
+    {
+        return match ($this) {
+            self::ANNOUNCEMENT_BAR => 1,
+        };
+    }
+}
