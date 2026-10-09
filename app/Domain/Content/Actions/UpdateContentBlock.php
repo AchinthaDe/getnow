@@ -10,6 +10,7 @@ use App\Domain\Content\Data\UpdateContentBlockData;
 use App\Domain\Content\Enums\PublishStatus;
 use App\Domain\Content\Exceptions\IllegalStateTransitionException;
 use App\Domain\Content\Exceptions\UnknownBlockTypeException;
+use App\Domain\Content\Exceptions\UnsupportedSchemaVersionException;
 use App\Domain\Content\Models\ContentBlock;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -46,7 +47,7 @@ final class UpdateContentBlock
             }
 
             if ($block->schema_version > $definition->schemaVersion()) {
-                throw new \App\Domain\Content\Exceptions\UnsupportedSchemaVersionException(
+                throw new UnsupportedSchemaVersionException(
                     "Stored schema version [{$block->schema_version}] is higher than current version [{$definition->schemaVersion()}]."
                 );
             }
@@ -81,10 +82,21 @@ final class UpdateContentBlock
             $startsAt = $data->starts_at?->clone()->setTimezone('UTC');
             $endsAt = $data->ends_at?->clone()->setTimezone('UTC');
 
-            $isDirty = json_encode($oldPayload, JSON_THROW_ON_ERROR) !== json_encode($newPayload, JSON_THROW_ON_ERROR) ||
-                $block->starts_at?->clone()->setTimezone('UTC')->format('U.u') !== $startsAt?->format('U.u') ||
-                $block->ends_at?->clone()->setTimezone('UTC')->format('U.u') !== $endsAt?->format('U.u') ||
-                $block->schema_version !== $definition->schemaVersion();
+            $changed = [];
+            if (json_encode($oldPayload, JSON_THROW_ON_ERROR) !== json_encode($newPayload, JSON_THROW_ON_ERROR)) {
+                $changed[] = 'payload';
+            }
+            if ($block->starts_at?->clone()->setTimezone('UTC')->format('U.u') !== $startsAt?->format('U.u')) {
+                $changed[] = 'starts_at';
+            }
+            if ($block->ends_at?->clone()->setTimezone('UTC')->format('U.u') !== $endsAt?->format('U.u')) {
+                $changed[] = 'ends_at';
+            }
+            if ($block->schema_version !== $definition->schemaVersion()) {
+                $changed[] = 'schema_version';
+            }
+
+            $isDirty = $changed !== [];
 
             if ($isDirty) {
                 $oldSchemaVersion = $block->schema_version;
@@ -100,20 +112,6 @@ final class UpdateContentBlock
                 $block->schema_version = $definition->schemaVersion();
                 $block->updated_by = $causer?->id;
                 $block->save();
-
-                $changed = [];
-                if (json_encode($oldPayload, JSON_THROW_ON_ERROR) !== json_encode($newPayload, JSON_THROW_ON_ERROR)) {
-                    $changed[] = 'payload';
-                }
-                if ($block->starts_at?->clone()->setTimezone('UTC')->format('U.u') !== $startsAt?->format('U.u')) {
-                    $changed[] = 'starts_at';
-                }
-                if ($block->ends_at?->clone()->setTimezone('UTC')->format('U.u') !== $endsAt?->format('U.u')) {
-                    $changed[] = 'ends_at';
-                }
-                if ($oldSchemaVersion !== $definition->schemaVersion()) {
-                    $changed[] = 'schema_version';
-                }
 
                 activity('content')
                     ->performedOn($block)

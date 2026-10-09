@@ -37,3 +37,28 @@ it('returns immediately if already archived', function () {
         'description' => 'archived',
     ]);
 });
+
+it('archives an unknown type block successfully', function () {
+    $action = new ArchiveContentBlock;
+    /** @var ContentBlock $block */
+    $block = ContentBlock::factory()->create([
+        'type' => 'some_unknown_type',
+        'schema_version' => 1,
+    ]);
+
+    $archived = $action($block->id);
+
+    expect($archived->status)->toBe(PublishStatus::ARCHIVED);
+});
+
+it('archives a block with invalid payload successfully', function () {
+    $action = new ArchiveContentBlock;
+    /** @var ContentBlock $block */
+    $block = ContentBlock::factory()->create([
+        'payload' => ['text' => ''], // invalid empty text
+    ]);
+
+    $archived = $action($block->id);
+
+    expect($archived->status)->toBe(PublishStatus::ARCHIVED);
+});

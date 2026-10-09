@@ -5,7 +5,7 @@ declare(strict_types=1);
 use App\Domain\Content\Blocks\AnnouncementBar\AnnouncementBarData;
 use Illuminate\Validation\ValidationException;
 
-it('accepts valid data', function () {
+it('accepts 120 char text', function () {
     $data = AnnouncementBarData::validateAndCreate([
         'text' => str_repeat('a', 120),
         'tone' => 'info',
