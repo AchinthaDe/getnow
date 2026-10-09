@@ -3,12 +3,15 @@
 declare(strict_types=1);
 
 use App\Domain\Content\Actions\PublishContentBlock;
+use App\Domain\Content\Data\ServingHealthResult;
 use App\Domain\Content\Enums\PublishStatus;
+use App\Domain\Content\Enums\ServingHealthOutcome;
 use App\Domain\Content\Exceptions\IllegalStateTransitionException;
 use App\Domain\Content\Exceptions\UnservablePayloadException;
 use App\Domain\Content\Models\ContentBlock;
 use App\Domain\Content\Services\ResolveServablePayload;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 
 it('publishes draft block and logs activity', function () {
     $resolveServablePayload = app(ResolveServablePayload::class);
@@ -105,4 +108,23 @@ it('throws UnservablePayloadException if payload is invalid', function () {
 
     expect(fn () => $action($block->id))
         ->toThrow(UnservablePayloadException::class);
+});
+
+it('resolves payload inside a database transaction with a locked model', function () {
+    /** @var ContentBlock $block */
+    $block = ContentBlock::factory()->draft()->create();
+
+    $resolver = Mockery::mock(ResolveServablePayload::class);
+    $resolver->shouldReceive('__invoke')
+        ->once()
+        ->andReturnUsing(function (ContentBlock $resolvedBlock) use ($block) {
+            expect(DB::transactionLevel())->toBeGreaterThan(0)
+                ->and($resolvedBlock->id)->toBe($block->id);
+
+            return new ServingHealthResult(ServingHealthOutcome::Servable, null);
+        });
+    app()->instance(ResolveServablePayload::class, $resolver);
+
+    $action = app(PublishContentBlock::class);
+    $action($block->id);
 });

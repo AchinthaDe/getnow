@@ -1,6 +1,7 @@
 <?php
 
 use App\Domain\Content\Actions\UpdateContentBlock;
+use App\Domain\Content\Blocks\AnnouncementBar\AnnouncementBarData;
 use App\Domain\Content\Contracts\BlockDefinition;
 use App\Domain\Content\Contracts\BlockRegistry;
 use App\Domain\Content\Data\BlockPayload;
@@ -52,8 +53,11 @@ it('updates schema_version properly during UpdateContentBlock', function () {
             });
         }
 
+        public int $upgradeCalls = 0;
+
         public function upgradePayload(int $fromVersion, array $payload): array
         {
+            $this->upgradeCalls++;
             if ($fromVersion === 1) {
                 $payload['upgraded'] = true;
             }
@@ -92,10 +96,75 @@ it('updates schema_version properly during UpdateContentBlock', function () {
 
     // 5. Assert stored schema_version equals the definition's current version
     $block->refresh();
-    expect($block->schema_version)->toBe(2);
+    expect($block->schema_version)->toBe(2)
+        ->and($block->payload)->toEqual($upgradedArray);
 
     // 6. Assert resolving again does not upgrade twice
     // We can spy on the upgrader or just ensure it resolves fine
     $result2 = app(ResolveServablePayload::class)($block);
-    expect($result2->isServable())->toBeTrue();
+    expect($result2->isServable())->toBeTrue()
+        ->and($def->upgradeCalls)->toBe(1); // One upgrade during the first resolve, ZERO on the second
+});
+
+it('updates schema_version properly using real validation during UpdateContentBlock', function () {
+    $def = new class implements BlockDefinition
+    {
+        public function typeKey(): string
+        {
+            return 'test_validating_upgrade_block';
+        }
+
+        public function schemaVersion(): int
+        {
+            return 2;
+        }
+
+        public function dataClass(): string
+        {
+            return AnnouncementBarData::class;
+        }
+
+        public int $upgradeCalls = 0;
+
+        public function upgradePayload(int $fromVersion, array $payload): array
+        {
+            $this->upgradeCalls++;
+            if ($fromVersion === 1) {
+                // Must return a shape valid for AnnouncementBarData
+                $payload['text'] = 'Valid Upgraded Text';
+                $payload['tone'] = 'info';
+                $payload['link_url'] = null;
+            }
+
+            return $payload;
+        }
+    };
+
+    app(BlockRegistry::class)->register($def);
+
+    /** @var ContentBlock $block */
+    $block = ContentBlock::factory()->create([
+        'type' => 'test_validating_upgrade_block',
+        'schema_version' => 1,
+        'payload' => ['old_garbage' => true],
+    ]);
+
+    $user = User::factory()->create();
+
+    $result = app(ResolveServablePayload::class)($block);
+    expect($result->isServable())->toBeTrue();
+    $upgradedArray = $result->payload->toArray();
+    expect($upgradedArray)->toHaveKey('text', 'Valid Upgraded Text');
+
+    $dto = new UpdateContentBlockData(
+        starts_at: $block->starts_at,
+        ends_at: $block->ends_at
+    );
+
+    $action = app(UpdateContentBlock::class);
+    $action($block->id, $dto, $upgradedArray, $user);
+
+    $block->refresh();
+    expect($block->schema_version)->toBe(2)
+        ->and($block->payload)->toEqual($upgradedArray);
 });
