@@ -12,9 +12,9 @@ use App\Domain\Content\Contracts\BlockRegistry;
 use App\Domain\Content\Data\CreateContentBlockData;
 use App\Domain\Content\Data\UpdateContentBlockData;
 use App\Domain\Content\Enums\Placement;
-use App\Domain\Content\Enums\PublishStatus;
 use App\Domain\Content\Models\ContentBlock;
 use Illuminate\Support\Facades\App;
+use Spatie\Activitylog\Models\Activity;
 
 dataset('actions', [
     'create' => [
@@ -29,60 +29,65 @@ dataset('actions', [
             );
             $action($data, ['text' => 'new', 'tone' => 'info'], null);
         },
-        'created'
+        'created',
     ],
     'update' => [
         function () {
             $registry = app(BlockRegistry::class);
             $action = new UpdateContentBlock($registry);
+            /** @var ContentBlock $block */
             $block = ContentBlock::factory()->create(['payload' => ['text' => 'old', 'tone' => 'info']]);
             $data = new UpdateContentBlockData(starts_at: null, ends_at: null);
             $action($block->id, $data, ['text' => 'new', 'tone' => 'info'], null);
         },
-        'updated'
+        'updated',
     ],
     'publish' => [
         function () {
             $action = App::make(PublishContentBlock::class);
+            /** @var ContentBlock $block */
             $block = ContentBlock::factory()->draft()->create(['payload' => ['text' => 'valid', 'tone' => 'info']]);
             $action($block->id, null);
         },
-        'published'
+        'published',
     ],
     'archive' => [
         function () {
             $action = new ArchiveContentBlock;
+            /** @var ContentBlock $block */
             $block = ContentBlock::factory()->create();
             $action($block->id, null);
         },
-        'archived'
+        'archived',
     ],
     'enable' => [
         function () {
             $action = new EnableContentBlock;
+            /** @var ContentBlock $block */
             $block = ContentBlock::factory()->disabled()->create();
             $action($block->id, null);
         },
-        'enabled'
+        'enabled',
     ],
     'disable' => [
         function () {
             $action = new DisableContentBlock;
+            /** @var ContentBlock $block */
             $block = ContentBlock::factory()->create(['is_enabled' => true]);
             $action($block->id, null);
         },
-        'disabled'
+        'disabled',
     ],
 ]);
 
 it('writes exactly one activity log with null causer for real changes', function (Closure $runAction, string $expectedEvent) {
-    $initialCount = \Spatie\Activitylog\Models\Activity::count();
-    
+    $initialCount = Activity::count();
+
     $runAction();
-    
-    expect(\Spatie\Activitylog\Models\Activity::count())->toBe($initialCount + 1);
-    
-    $log = \Spatie\Activitylog\Models\Activity::latest('id')->first();
+
+    expect(Activity::count())->toBe($initialCount + 1);
+
+    $log = Activity::latest('id')->first();
     expect($log->event)->toBe($expectedEvent)
         ->and($log->causer_id)->toBeNull();
 })->with('actions');

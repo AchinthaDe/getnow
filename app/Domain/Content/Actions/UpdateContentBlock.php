@@ -27,13 +27,16 @@ final class UpdateContentBlock
      */
     public function __invoke(int $id, UpdateContentBlockData $data, array $rawPayload, ?User $causer = null): ContentBlock
     {
-        if ($data->starts_at !== null && $data->ends_at !== null && $data->ends_at->lte($data->starts_at)) {
+        $startsAt = $data->starts_at?->clone()->setTimezone('UTC')->startOfSecond();
+        $endsAt = $data->ends_at?->clone()->setTimezone('UTC')->startOfSecond();
+
+        if ($startsAt !== null && $endsAt !== null && $endsAt->lte($startsAt)) {
             throw ValidationException::withMessages([
                 'ends_at' => 'The ends at date must be after the starts at date.',
             ]);
         }
 
-        return DB::transaction(function () use ($id, $data, $rawPayload, $causer) {
+        return DB::transaction(function () use ($id, $rawPayload, $causer, $startsAt, $endsAt) {
             $block = ContentBlock::where('id', $id)->lockForUpdate()->firstOrFail();
 
             if ($block->status === PublishStatus::ARCHIVED) {
@@ -79,17 +82,14 @@ final class UpdateContentBlock
             $sort($oldPayload);
             $sort($newPayload);
 
-            $startsAt = $data->starts_at?->clone()->setTimezone('UTC');
-            $endsAt = $data->ends_at?->clone()->setTimezone('UTC');
-
             $changed = [];
             if (json_encode($oldPayload, JSON_THROW_ON_ERROR) !== json_encode($newPayload, JSON_THROW_ON_ERROR)) {
                 $changed[] = 'payload';
             }
-            if ($block->starts_at?->clone()->setTimezone('UTC')->format('U.u') !== $startsAt?->format('U.u')) {
+            if ($block->starts_at?->clone()->setTimezone('UTC')->format('U') !== $startsAt?->format('U')) {
                 $changed[] = 'starts_at';
             }
-            if ($block->ends_at?->clone()->setTimezone('UTC')->format('U.u') !== $endsAt?->format('U.u')) {
+            if ($block->ends_at?->clone()->setTimezone('UTC')->format('U') !== $endsAt?->format('U')) {
                 $changed[] = 'ends_at';
             }
             if ($block->schema_version !== $definition->schemaVersion()) {

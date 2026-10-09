@@ -9,6 +9,7 @@ use App\Domain\Content\Contracts\BlockRegistry;
 use App\Domain\Content\Data\UpdateContentBlockData;
 use App\Domain\Content\Exceptions\IllegalStateTransitionException;
 use App\Domain\Content\Exceptions\UnknownBlockTypeException;
+use App\Domain\Content\Exceptions\UnsupportedSchemaVersionException;
 use App\Domain\Content\Models\ContentBlock;
 use App\Domain\Content\Services\ContentBlockRegistry;
 use App\Models\User;
@@ -16,6 +17,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Mockery\MockInterface;
+use Spatie\Activitylog\Models\Activity;
 
 it('updates block and logs activity', function () {
     $registry = app(BlockRegistry::class);
@@ -166,8 +168,9 @@ it('writes nothing if identical data resubmitted but jsonb order differs', funct
     $action = new UpdateContentBlock($registry);
 
     // Create via factory first to get defaults
+    $seededUpdatedAt = now()->subDay();
     /** @var ContentBlock $block */
-    $block = ContentBlock::factory()->create(['updated_by' => null, 'updated_at' => now()->subDay()]);
+    $block = ContentBlock::factory()->create(['updated_by' => null, 'updated_at' => $seededUpdatedAt]);
 
     // Overwrite payload using raw DB with reversed keys
     DB::update(
@@ -185,7 +188,8 @@ it('writes nothing if identical data resubmitted but jsonb order differs', funct
     );
 
     $block->refresh();
-    expect($block->updated_by)->toBeNull();
+    expect($block->updated_by)->toBeNull()
+        ->and($block->updated_at->timestamp)->toBe($seededUpdatedAt->timestamp);
     \Pest\Laravel\assertDatabaseMissing('activity_log', [
         'subject_id' => $block->id,
     ]);
@@ -203,15 +207,15 @@ it('converts timezones to UTC during update and detects dirtiness properly', fun
     ]);
     $updatedAt = $block->updated_at;
 
-    // Resubmit same instant in different timezone (but a different instant than originally stored)
+    // Resubmit same instant in different timezone with microseconds (which should be truncated)
     Carbon::setTestNow(now()->addSecond());
     $data = new UpdateContentBlockData(
-        starts_at: Carbon::parse('2026-01-01 10:00:00', 'Asia/Colombo'), // 04:30 UTC
+        starts_at: Carbon::parse('2026-01-01 10:00:00.999999', 'Asia/Colombo'), // 04:30 UTC
         ends_at: null,
     );
     $action($block->id, $data, ['text' => 'hello', 'link_url' => null, 'tone' => 'info'], null);
 
-    $rawStartsAtEpoch = DB::selectOne("SELECT extract(epoch from starts_at) as epoch FROM content_blocks WHERE id = ?", [$block->id])->epoch;
+    $rawStartsAtEpoch = DB::selectOne('SELECT extract(epoch from starts_at) as epoch FROM content_blocks WHERE id = ?', [$block->id])->epoch;
     expect($rawStartsAtEpoch)->toEqual(Carbon::parse('2026-01-01 04:30:00', 'UTC')->timestamp);
 
     $block->refresh();
@@ -225,7 +229,7 @@ it('converts timezones to UTC during update and detects dirtiness properly', fun
     expect($block->refresh()->updated_at->timestamp)->toBe($updatedAt->timestamp);
 
     // Verify only one activity log was written for this block
-    expect(\Spatie\Activitylog\Models\Activity::where('subject_id', $block->id)->count())->toBe(1);
+    expect(Activity::where('subject_id', $block->id)->count())->toBe(1);
 
     // Resubmit DIFFERENT instant
     Carbon::setTestNow(now()->addSecond());
@@ -262,7 +266,7 @@ it('throws UnsupportedSchemaVersionException if stored version is higher than co
     $data = new UpdateContentBlockData(null, null);
 
     expect(fn () => $action($block->id, $data, ['text' => 'new'], null))
-        ->toThrow(\App\Domain\Content\Exceptions\UnsupportedSchemaVersionException::class);
+        ->toThrow(UnsupportedSchemaVersionException::class);
 });
 
 it('remaps payload validation errors correctly', function () {
@@ -274,17 +278,23 @@ it('remaps payload validation errors correctly', function () {
 
     $data = new UpdateContentBlockData(null, null);
 
+    $e = null;
     try {
         $action($block->id, $data, ['text' => '', 'tone' => 'info']);
-    } catch (ValidationException $e) {
-        expect($e->errors())->toHaveKey('payload.text');
+    } catch (ValidationException $caught) {
+        $e = $caught;
     }
+    expect($e)->toBeInstanceOf(ValidationException::class)
+        ->and($e->errors())->toHaveKey('payload.text');
 
+    $e2 = null;
     try {
         $action($block->id, $data, ['text' => 'hello', 'link_url' => 'javascript:alert(1)', 'tone' => 'info']);
-    } catch (ValidationException $e) {
-        expect($e->errors())->toHaveKey('payload.link_url');
+    } catch (ValidationException $caught) {
+        $e2 = $caught;
     }
+    expect($e2)->toBeInstanceOf(ValidationException::class)
+        ->and($e2->errors())->toHaveKey('payload.link_url');
 });
 
 it('logs specific changed properties', function () {
@@ -293,17 +303,19 @@ it('logs specific changed properties', function () {
     $user = User::factory()->create();
 
     // 1. Payload only
+    /** @var ContentBlock $block */
     $block = ContentBlock::factory()->create(['payload' => AnnouncementBarData::validateAndCreate(['text' => 'old', 'tone' => 'info'])->toArray(), 'starts_at' => null, 'ends_at' => null]);
     $data = new UpdateContentBlockData(null, null);
     $action($block->id, $data, ['text' => 'new', 'tone' => 'info'], $user);
-    $log = \Spatie\Activitylog\Models\Activity::where('subject_id', $block->id)->latest('id')->first();
+    $log = Activity::where('subject_id', $block->id)->latest('id')->first();
     expect($log->properties['changed'])->toBe(['payload']);
 
     // 2. Starts_at only
+    /** @var ContentBlock $block2 */
     $block2 = ContentBlock::factory()->create(['payload' => AnnouncementBarData::validateAndCreate(['text' => 'same', 'tone' => 'info'])->toArray(), 'starts_at' => null, 'ends_at' => null]);
     $data2 = new UpdateContentBlockData(Carbon::now(), null);
     $action($block2->id, $data2, ['text' => 'same', 'tone' => 'info'], $user);
-    $log2 = \Spatie\Activitylog\Models\Activity::where('subject_id', $block2->id)->latest('id')->first();
+    $log2 = Activity::where('subject_id', $block2->id)->latest('id')->first();
     expect($log2->properties['changed'])->toBe(['starts_at']);
 
     // 3. Schema version
@@ -315,9 +327,10 @@ it('logs specific changed properties', function () {
     $definition->shouldReceive('dataClass')->andReturn(AnnouncementBarData::class);
     $registry->register($definition);
 
+    /** @var ContentBlock $block3 */
     $block3 = ContentBlock::factory()->create(['type' => 'stale_log_block', 'payload' => AnnouncementBarData::validateAndCreate(['text' => 'same', 'tone' => 'info'])->toArray(), 'schema_version' => 1]);
     $data3 = new UpdateContentBlockData(null, null);
     $action($block3->id, $data3, ['text' => 'same', 'tone' => 'info'], $user);
-    $log3 = \Spatie\Activitylog\Models\Activity::where('subject_id', $block3->id)->latest('id')->first();
+    $log3 = Activity::where('subject_id', $block3->id)->latest('id')->first();
     expect($log3->properties['changed'])->toBe(['schema_version']);
 });

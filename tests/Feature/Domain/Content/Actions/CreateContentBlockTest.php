@@ -13,7 +13,6 @@ use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
-use PHPUnit\Framework\Assert;
 
 it('creates block and logs activity', function () {
     $registry = app(BlockRegistry::class);
@@ -88,13 +87,15 @@ it('remaps payload validation errors', function () {
         ends_at: null,
     );
 
+    $e = null;
     try {
         $action($data, ['text' => '', 'link_url' => 'invalid'], null);
-        Assert::fail('Expected ValidationException');
-    } catch (ValidationException $e) {
-        expect($e->errors())->toHaveKey('payload.text')
-            ->and($e->errors())->toHaveKey('payload.link_url');
+    } catch (ValidationException $caught) {
+        $e = $caught;
     }
+    expect($e)->toBeInstanceOf(ValidationException::class)
+        ->and($e->errors())->toHaveKey('payload.text')
+        ->and($e->errors())->toHaveKey('payload.link_url');
 });
 
 it('normalizes tone to lowercase and scheme to lowercase in db', function () {

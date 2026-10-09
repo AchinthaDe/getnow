@@ -6,11 +6,11 @@ use App\Domain\Content\Actions\GetUpgradedBlockPayload;
 use App\Domain\Content\Actions\PublishContentBlock;
 use App\Domain\Content\Enums\PublishStatus;
 use App\Domain\Content\Exceptions\IllegalStateTransitionException;
-use App\Domain\Content\Models\ContentBlock;
-use App\Models\User;
+use App\Domain\Content\Exceptions\InvalidPayloadException;
 use App\Domain\Content\Exceptions\UnknownBlockTypeException;
 use App\Domain\Content\Exceptions\UnsupportedSchemaVersionException;
-use App\Domain\Content\Exceptions\InvalidPayloadException;
+use App\Domain\Content\Models\ContentBlock;
+use App\Models\User;
 
 it('publishes draft block and logs activity', function () {
     $getUpgradedBlockPayload = app(GetUpgradedBlockPayload::class);

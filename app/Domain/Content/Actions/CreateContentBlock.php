@@ -37,7 +37,10 @@ final class CreateContentBlock
             ]);
         }
 
-        if ($data->starts_at !== null && $data->ends_at !== null && $data->ends_at->lte($data->starts_at)) {
+        $startsAt = $data->starts_at?->clone()->setTimezone('UTC')->startOfSecond();
+        $endsAt = $data->ends_at?->clone()->setTimezone('UTC')->startOfSecond();
+
+        if ($startsAt !== null && $endsAt !== null && $endsAt->lte($startsAt)) {
             throw ValidationException::withMessages([
                 'ends_at' => 'The ends at date must be after the starts at date.',
             ]);
@@ -55,9 +58,6 @@ final class CreateContentBlock
             }
             throw ValidationException::withMessages($errors);
         }
-
-        $startsAt = $data->starts_at?->clone()->setTimezone('UTC');
-        $endsAt = $data->ends_at?->clone()->setTimezone('UTC');
 
         return DB::transaction(function () use ($data, $payloadData, $definition, $causer, $startsAt, $endsAt) {
             $block = new ContentBlock;
