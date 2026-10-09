@@ -13,14 +13,16 @@
 ## Paths and Namespaces
 
 All Filament code resides strictly under `App\Filament\Admin\...`:
-- `app/Filament/Admin/Resources/ContentBlockResource.php`
-- `app/Filament/Admin/Resources/ContentBlockResource/Pages/ListContentBlocks.php`
-- `app/Filament/Admin/Resources/ContentBlockResource/Pages/CreateContentBlock.php`
-- `app/Filament/Admin/Resources/ContentBlockResource/Pages/EditContentBlock.php`
-- `app/Filament/Admin/Resources/ContentBlockResource/Pages/ViewContentBlock.php`
-- `app/Filament/Admin/Resources/ContentBlockResource/Schemas/ContentBlockForm.php`
-- `app/Filament/Admin/Resources/ContentBlockResource/Tables/ContentBlockTable.php`
-- `app/Filament/Admin/Blocks/BlockFormRegistry.php`
+- Resource: `App\Filament\Admin\Resources\ContentBlockResource` (`app/Filament/Admin/Resources/ContentBlockResource.php`)
+- Pages: 
+  - `App\Filament\Admin\Resources\ContentBlockResource\Pages\ListContentBlocks` (`app/Filament/Admin/Resources/ContentBlockResource/Pages/ListContentBlocks.php`)
+  - `App\Filament\Admin\Resources\ContentBlockResource\Pages\CreateContentBlock` (`app/Filament/Admin/Resources/ContentBlockResource/Pages/CreateContentBlock.php`)
+  - `App\Filament\Admin\Resources\ContentBlockResource\Pages\EditContentBlock` (`app/Filament/Admin/Resources/ContentBlockResource/Pages/EditContentBlock.php`)
+  - `App\Filament\Admin\Resources\ContentBlockResource\Pages\ViewContentBlock` (`app/Filament/Admin/Resources/ContentBlockResource/Pages/ViewContentBlock.php`)
+- Form: `App\Filament\Admin\Schemas\ContentBlockForm` (`app/Filament/Admin/Schemas/ContentBlockForm.php`)
+- Table: `App\Filament\Admin\Tables\ContentBlockTable` (`app/Filament/Admin/Tables/ContentBlockTable.php`)
+- badge column: will be added to the `ContentBlockTable`.
+- BlockFormRegistry: `App\Filament\Admin\Services\BlockFormRegistry` (`app/Filament/Admin/Services/BlockFormRegistry.php`)
 
 ## Filament UI & Hydration Specifics
 
