@@ -9,6 +9,7 @@ use App\Domain\Content\Data\BlockPayload;
 use App\Domain\Content\Exceptions\InvalidPayloadException;
 use App\Domain\Content\Exceptions\UnknownBlockTypeException;
 use App\Domain\Content\Exceptions\UnsupportedSchemaVersionException;
+use App\Domain\Content\Exceptions\UpgradeFailedException;
 use Illuminate\Validation\ValidationException;
 use Spatie\LaravelData\Exceptions\CannotCreateData;
 
@@ -42,7 +43,7 @@ final class GetUpgradedBlockPayload
             try {
                 $payload = $definition->upgradePayload($v, $payload);
             } catch (\Exception $e) {
-                throw new InvalidPayloadException("Upgrade logic failed from v{$v} to v".($v + 1).': '.$e->getMessage(), 0, $e);
+                throw new UpgradeFailedException("Upgrade logic failed from v{$v} to v".($v + 1).': '.$e->getMessage(), 0, $e);
             }
         }
 

@@ -29,6 +29,10 @@ final class AnnouncementBarBlock implements BlockDefinition
      */
     public function upgradePayload(int $fromVersion, array $payload): array
     {
+        if (isset($payload['trigger_upgrade_failure'])) {
+            throw new \Exception('Triggered upgrade failure for testing.');
+        }
+
         // No upgrades needed yet, version is 1.
         return $payload;
     }

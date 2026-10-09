@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
+use App\Domain\Content\Contracts\BlockRegistry;
 use App\Domain\Content\Enums\Placement;
 use App\Domain\Content\Enums\PublishStatus;
 use App\Domain\Content\Models\ContentBlock;
@@ -74,6 +75,42 @@ final class ContentBlockFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'starts_at' => $startsAt,
             'ends_at' => $endsAt,
+        ]);
+    }
+
+    public function unknownType(): self
+    {
+        return $this->state(fn (array $attributes) => [
+            'type' => 'unknown_type_for_testing',
+        ]);
+    }
+
+    public function unsupportedVersion(): self
+    {
+        return $this->state(fn (array $attributes) => [
+            'schema_version' => 9999,
+        ]);
+    }
+
+    public function failedUpgrade(): self
+    {
+        if (app(BlockRegistry::class)->get('test_failed_upgrade_block') === null) {
+            throw new \LogicException('The test_failed_upgrade_block definition is not registered. Call \Tests\Support\TestBlocks::register() in your test setup.');
+        }
+
+        return $this->state(fn (array $attributes) => [
+            'type' => 'test_failed_upgrade_block',
+            'schema_version' => 1,
+            'payload' => ['trigger_upgrade_failure' => true],
+        ]);
+    }
+
+    public function invalidAfterUpgrade(): self
+    {
+        return $this->state(fn (array $attributes) => [
+            'type' => 'announcement_bar',
+            'schema_version' => 1,
+            'payload' => ['text' => null], // invalid
         ]);
     }
 }

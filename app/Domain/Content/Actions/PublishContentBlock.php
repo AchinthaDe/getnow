@@ -6,14 +6,16 @@ namespace App\Domain\Content\Actions;
 
 use App\Domain\Content\Enums\PublishStatus;
 use App\Domain\Content\Exceptions\IllegalStateTransitionException;
+use App\Domain\Content\Exceptions\UnservablePayloadException;
 use App\Domain\Content\Models\ContentBlock;
+use App\Domain\Content\Services\ResolveServablePayload;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
 final class PublishContentBlock
 {
     public function __construct(
-        private readonly GetUpgradedBlockPayload $getUpgradedBlockPayload
+        private readonly ResolveServablePayload $resolveServablePayload
     ) {}
 
     public function __invoke(int $id, ?User $causer = null): ContentBlock
@@ -29,7 +31,10 @@ final class PublishContentBlock
                 return $block;
             }
 
-            ($this->getUpgradedBlockPayload)($block->type, $block->schema_version, $block->payload);
+            $health = ($this->resolveServablePayload)($block);
+            if (! $health->isServable()) {
+                throw new UnservablePayloadException($health->outcome);
+            }
 
             $oldStatus = $block->status;
             $block->status = PublishStatus::PUBLISHED;

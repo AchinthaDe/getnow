@@ -2,24 +2,25 @@
 
 declare(strict_types=1);
 
-use App\Domain\Content\Actions\GetUpgradedBlockPayload;
 use App\Domain\Content\Actions\PublishContentBlock;
+use App\Domain\Content\Data\ServingHealthResult;
 use App\Domain\Content\Enums\PublishStatus;
+use App\Domain\Content\Enums\ServingHealthOutcome;
 use App\Domain\Content\Exceptions\IllegalStateTransitionException;
-use App\Domain\Content\Exceptions\InvalidPayloadException;
-use App\Domain\Content\Exceptions\UnknownBlockTypeException;
-use App\Domain\Content\Exceptions\UnsupportedSchemaVersionException;
+use App\Domain\Content\Exceptions\UnservablePayloadException;
 use App\Domain\Content\Models\ContentBlock;
+use App\Domain\Content\Services\ResolveServablePayload;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 
 it('publishes draft block and logs activity', function () {
-    $getUpgradedBlockPayload = app(GetUpgradedBlockPayload::class);
-    $action = new PublishContentBlock($getUpgradedBlockPayload);
+    $resolveServablePayload = app(ResolveServablePayload::class);
+    $action = new PublishContentBlock($resolveServablePayload);
 
     $user = User::factory()->create();
     /** @var ContentBlock $block */
     $block = ContentBlock::factory()->draft()->create([
-        'payload' => ['text' => 'valid', 'tone' => 'info'],
+        'payload' => ['text' => 'valid', 'tone' => 'info', 'link' => '/'],
     ]);
 
     $published = $action($block->id, $user);
@@ -35,8 +36,8 @@ it('publishes draft block and logs activity', function () {
 });
 
 it('rejects archived blocks', function () {
-    $getUpgradedBlockPayload = app(GetUpgradedBlockPayload::class);
-    $action = new PublishContentBlock($getUpgradedBlockPayload);
+    $resolveServablePayload = app(ResolveServablePayload::class);
+    $action = new PublishContentBlock($resolveServablePayload);
 
     /** @var ContentBlock $block */
     $block = ContentBlock::factory()->archived()->create();
@@ -46,8 +47,8 @@ it('rejects archived blocks', function () {
 });
 
 it('returns immediately if already published', function () {
-    $getUpgradedBlockPayload = app(GetUpgradedBlockPayload::class);
-    $action = new PublishContentBlock($getUpgradedBlockPayload);
+    $resolveServablePayload = app(ResolveServablePayload::class);
+    $action = new PublishContentBlock($resolveServablePayload);
 
     /** @var ContentBlock $block */
     $block = ContentBlock::factory()->published()->create();
@@ -65,40 +66,40 @@ it('returns immediately if already published', function () {
     ]);
 });
 
-it('throws UnsupportedSchemaVersionException if stored version is above current and leaves row draft', function () {
-    $getUpgradedBlockPayload = app(GetUpgradedBlockPayload::class);
-    $action = new PublishContentBlock($getUpgradedBlockPayload);
+it('throws UnservablePayloadException if stored version is above current and leaves row draft', function () {
+    $resolveServablePayload = app(ResolveServablePayload::class);
+    $action = new PublishContentBlock($resolveServablePayload);
 
     /** @var ContentBlock $block */
     $block = ContentBlock::factory()->draft()->create([
         'schema_version' => 999,
-        'payload' => ['text' => 'valid', 'tone' => 'info'],
+        'payload' => ['text' => 'valid', 'tone' => 'info', 'link' => '/'],
     ]);
 
     expect(fn () => $action($block->id))
-        ->toThrow(UnsupportedSchemaVersionException::class);
+        ->toThrow(UnservablePayloadException::class);
 
     expect($block->refresh()->status)->toBe(PublishStatus::DRAFT);
 });
 
-it('throws UnknownBlockTypeException if type is unregistered', function () {
-    $getUpgradedBlockPayload = app(GetUpgradedBlockPayload::class);
-    $action = new PublishContentBlock($getUpgradedBlockPayload);
+it('throws UnservablePayloadException if type is unregistered', function () {
+    $resolveServablePayload = app(ResolveServablePayload::class);
+    $action = new PublishContentBlock($resolveServablePayload);
 
     /** @var ContentBlock $block */
     $block = ContentBlock::factory()->draft()->create([
         'type' => 'some_unknown_type',
         'schema_version' => 1,
-        'payload' => ['text' => 'valid', 'tone' => 'info'],
+        'payload' => ['text' => 'valid', 'tone' => 'info', 'link' => '/'],
     ]);
 
     expect(fn () => $action($block->id))
-        ->toThrow(UnknownBlockTypeException::class);
+        ->toThrow(UnservablePayloadException::class);
 });
 
-it('throws InvalidPayloadException if payload is invalid', function () {
-    $getUpgradedBlockPayload = app(GetUpgradedBlockPayload::class);
-    $action = new PublishContentBlock($getUpgradedBlockPayload);
+it('throws UnservablePayloadException if payload is invalid', function () {
+    $resolveServablePayload = app(ResolveServablePayload::class);
+    $action = new PublishContentBlock($resolveServablePayload);
 
     /** @var ContentBlock $block */
     $block = ContentBlock::factory()->draft()->create([
@@ -106,5 +107,24 @@ it('throws InvalidPayloadException if payload is invalid', function () {
     ]);
 
     expect(fn () => $action($block->id))
-        ->toThrow(InvalidPayloadException::class);
+        ->toThrow(UnservablePayloadException::class);
+});
+
+it('resolves payload inside a database transaction with a locked model', function () {
+    /** @var ContentBlock $block */
+    $block = ContentBlock::factory()->draft()->create();
+
+    $resolver = Mockery::mock(ResolveServablePayload::class);
+    $resolver->shouldReceive('__invoke')
+        ->once()
+        ->andReturnUsing(function (ContentBlock $resolvedBlock) use ($block) {
+            expect(DB::transactionLevel())->toBeGreaterThan(0)
+                ->and($resolvedBlock->id)->toBe($block->id);
+
+            return new ServingHealthResult(ServingHealthOutcome::Servable, null);
+        });
+    app()->instance(ResolveServablePayload::class, $resolver);
+
+    $action = app(PublishContentBlock::class);
+    $action($block->id);
 });

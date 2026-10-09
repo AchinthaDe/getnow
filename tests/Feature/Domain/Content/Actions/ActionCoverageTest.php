@@ -62,7 +62,7 @@ dataset('actions', [
     ],
     'enable' => [
         function () {
-            $action = new EnableContentBlock;
+            $action = App::make(EnableContentBlock::class);
             /** @var ContentBlock $block */
             $block = ContentBlock::factory()->disabled()->create();
             $action($block->id, null);

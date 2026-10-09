@@ -3,9 +3,13 @@
 declare(strict_types=1);
 
 use App\Domain\Content\Actions\EnableContentBlock;
+use App\Domain\Content\Data\ServingHealthResult;
+use App\Domain\Content\Enums\ServingHealthOutcome;
 use App\Domain\Content\Exceptions\IllegalStateTransitionException;
 use App\Domain\Content\Models\ContentBlock;
+use App\Domain\Content\Services\ResolveServablePayload;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Spatie\Activitylog\Models\Activity;
 
 it('enables a block and logs activity with properties', function () {
@@ -53,3 +57,22 @@ it('throws if attempting to enable an archived block', function () {
     $block = ContentBlock::factory()->archived()->create();
     app(EnableContentBlock::class)($block->id);
 })->throws(IllegalStateTransitionException::class);
+
+it('resolves payload inside a database transaction with a locked model', function () {
+    /** @var ContentBlock $block */
+    $block = ContentBlock::factory()->disabled()->create();
+
+    $resolver = Mockery::mock(ResolveServablePayload::class);
+    $resolver->shouldReceive('__invoke')
+        ->once()
+        ->andReturnUsing(function (ContentBlock $resolvedBlock) use ($block) {
+            expect(DB::transactionLevel())->toBeGreaterThan(0)
+                ->and($resolvedBlock->id)->toBe($block->id);
+
+            return new ServingHealthResult(ServingHealthOutcome::Servable, null);
+        });
+    app()->instance(ResolveServablePayload::class, $resolver);
+
+    $action = app(EnableContentBlock::class);
+    $action($block->id);
+});

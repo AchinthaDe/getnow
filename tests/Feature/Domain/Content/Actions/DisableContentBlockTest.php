@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Domain\Content\Actions\DisableContentBlock;
 use App\Domain\Content\Exceptions\IllegalStateTransitionException;
 use App\Domain\Content\Models\ContentBlock;
+use App\Domain\Content\Services\ResolveServablePayload;
 use App\Models\User;
 use Spatie\Activitylog\Models\Activity;
 
@@ -53,3 +54,16 @@ it('throws if attempting to disable an archived block', function () {
     $block = ContentBlock::factory()->archived()->create();
     app(DisableContentBlock::class)($block->id);
 })->throws(IllegalStateTransitionException::class);
+
+it('does not call the resolver during Disable', function () {
+    /** @var ContentBlock $block */
+    $block = ContentBlock::factory()->enabled()->create();
+
+    app()->bind(ResolveServablePayload::class, function () {
+        throw new Exception('Resolver should not be called');
+    });
+
+    $action = app(DisableContentBlock::class);
+    $action($block->id);
+    expect(true)->toBeTrue();
+});
