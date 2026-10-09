@@ -54,9 +54,14 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail, Pas
         ];
     }
 
-    public function canAccessPanel(Panel $panel): bool
+    public function isAdmin(): bool
     {
         return $this->is_platform_admin;
+    }
+
+    public function canAccessPanel(Panel $panel): bool
+    {
+        return $this->isAdmin();
     }
 
     /**

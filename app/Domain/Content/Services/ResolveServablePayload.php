@@ -15,7 +15,7 @@ use App\Domain\Content\Models\ContentBlock;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
-final class ResolveServablePayload
+class ResolveServablePayload
 {
     public function __construct(
         private readonly GetUpgradedBlockPayload $getUpgradedBlockPayload

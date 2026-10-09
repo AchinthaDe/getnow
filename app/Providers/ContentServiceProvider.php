@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Domain\Content\Actions\GetBlockServingStatus;
 use App\Domain\Content\Blocks\AnnouncementBar\AnnouncementBarBlock;
 use App\Domain\Content\Contracts\BlockRegistry;
 use App\Domain\Content\Services\ContentBlockRegistry;
@@ -14,6 +15,7 @@ class ContentServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(BlockRegistry::class, ContentBlockRegistry::class);
+        $this->app->scoped(GetBlockServingStatus::class);
     }
 
     public function boot(): void
