@@ -21,7 +21,10 @@ final class ArchiveContentBlock
             }
 
             $oldStatus = $block->status;
+            $oldEnabled = $block->is_enabled;
+
             $block->status = PublishStatus::ARCHIVED;
+            $block->is_enabled = false;
             $block->updated_by = $causer?->id;
             $block->save();
 
@@ -31,6 +34,8 @@ final class ArchiveContentBlock
                 ->withProperties([
                     'old_status' => $oldStatus?->value,
                     'new_status' => PublishStatus::ARCHIVED->value,
+                    'old_is_enabled' => $oldEnabled,
+                    'new_is_enabled' => false,
                 ])
                 ->event('archived')
                 ->log('archived');
