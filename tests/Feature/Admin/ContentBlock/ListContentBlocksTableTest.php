@@ -260,3 +260,19 @@ it('allows user to sort by another column', function () {
         ->sortTable('placement', 'desc')
         ->assertCanSeeTableRecords([$block2, $block1], inOrder: true); // Z comes before A
 });
+
+it('shows ContentBlockResource in navigation for admin and hides it for non-admin', function () {
+    /** @var User $admin */
+    $admin = User::factory()->platformAdmin()->create();
+
+    /** @var User $user */
+    $user = User::factory()->create();
+
+    $url = ContentBlockResource::getUrl('index');
+
+    \Pest\Laravel\actingAs($admin)->get('/admin')
+        ->assertSee($url);
+
+    \Pest\Laravel\actingAs($user)->get('/admin')
+        ->assertStatus(403);
+});
