@@ -96,6 +96,20 @@ it('clearing the hide_archived filter shows archived blocks', function () {
         ->assertCanSeeTableRecords([$archived]);
 });
 
+it('shows archived blocks when status filter is set to archived even if hide_archived is active', function () {
+    /** @var User $admin */
+    $admin = User::factory()->platformAdmin()->create();
+
+    $archived = ContentBlock::factory()->archived()->create();
+
+    Livewire::actingAs($admin)
+        ->test(ListContentBlocks::class)
+        ->assertCanNotSeeTableRecords([$archived])
+        // Keep hide_archived active (default), but explicitly set status filter to 'archived'
+        ->set('tableFilters.status.value', 'archived')
+        ->assertCanSeeTableRecords([$archived]);
+});
+
 it('shows Not live and never calls resolver for broken out-of-window block', function () {
     /** @var User $admin */
     $admin = User::factory()->platformAdmin()->create();
