@@ -9,40 +9,54 @@
 - `git status` shows `nothing to commit, working tree clean`.
 - `git log --oneline -10`:
 ```
-7841bc7 fix(content): resolve ui step 2 verify blockers
+0f98a6e test(content): add strict types to ServingHealthIntegrityTest
+43de6b2 chore(docs): restore ui_step_1_report.md
+a5c3d61 test(content): add navigation visibility test
+58aedd8 test(content): add hide_archived interaction test
+90909f8 chore(content): move AdminTimezoneResolver binding to AdminPanelProvider
+ae5b7c7 fix(content): resolve ui step 2 verify blockers
 262d9be chore: add ADMIN_TIMEZONE to .env.example
 9b0d736 feat(content): scaffold Filament Resource and Table for Content Blocks
 a5d89ce feat(content): implement ui prerequisites and test updates
 494c028 Merge pull request #3 from AchinthaDe/feat/content-blocks-backend
-ddfb7f2 feat(content): implement ui prerequisites and test updates
-eaefedb test(content): add serving health test coverage
-8fbcb88 feat(content): integrate serving health into content actions
-2972a13 feat(content): implement serving health domain layer
-e2962b7 docs(content): add adrs for content block serving health and concurrency
 ```
 
-- `git diff --stat 9b0d736` (Changes since first implementation commit):
+- `git diff --stat a5d89ce..HEAD` (Changes since first implementation commit):
 ```
- .env.example                                       |  1 +
- .../Tables/ContentBlockTable.php                   | 19 ++++-
- .../Admin/Services/AdminTimezoneResolver.php       | 12 +--
- app/Providers/ContentServiceProvider.php           |  2 +
- docs/blueprints/ui_step_2_report.md                | 94 ++++++++++++++++++++++
- .../ContentBlock/ListContentBlocksTableTest.php    | 76 ++++++++++++++---
- .../Content/Actions/GetBlockServingStatusTest.php  | 14 ++++
- .../Content/Policies/ContentBlockPolicyTest.php    |  6 ++
- .../Admin/Services/AdminTimezoneResolverTest.php   | 12 +--
- 9 files changed, 207 insertions(+), 29 deletions(-)
+ .env.example                                       |   1 +
+ .../Content/Actions/GetBlockServingStatus.php      |  41 +--
+ app/Domain/Content/Policies/ContentBlockPolicy.php |  70 +++++
+ .../Admin/Pages/ManageStorefrontSettings.php       |   4 +-
+ .../Admin/Resources/ContentBlockResource.php       |  41 +++
+ .../Pages/ListContentBlocks.php                    |  18 ++
+ .../Tables/ContentBlockTable.php                   | 139 +++++++++
+ .../Admin/Schemas/StorefrontSettingsForm.php       |   2 +-
+ .../Admin/Services/AdminTimezoneResolver.php       |  38 +++
+ app/Providers/ContentServiceProvider.php           |   5 +
+ app/Providers/Filament/AdminPanelProvider.php      |   7 +
+ config/admin.php                                   |   7 +
+ docs/blueprints/step_2b.md                         |  15 +-
+ docs/blueprints/ui_step_2_plan.md                  | 102 +++++++
+ docs/blueprints/ui_step_2_report.md                | 186 ++++++++++++
+ .../ContentBlock/ListContentBlocksTableTest.php    | 322 +++++++++++++++++++++
+ .../Content/Actions/GetBlockServingStatusTest.php  |  29 ++
+ .../Content/Policies/ContentBlockPolicyTest.php    |  66 +++++
+ .../Domain/Content/ServingHealthIntegrityTest.php  |   1 +
+ tests/Support/TestBlocks.php                       |   4 +-
+ tests/Unit/Admin/ContentBlockTableColorTest.php    |  17 ++
+ .../Admin/Services/AdminTimezoneResolverTest.php   |  32 ++
+ 22 files changed, 1111 insertions(+), 36 deletions(-)
 ```
 
 **Composer Check:**
 - `Pint`: passed.
 - `PHPStan`: passed (Level 9).
-- `Pest`: `Tests: 193 passed (481 assertions)`. 
-  - Baseline was 174 tests. We now have 193 (+19).
+- `Pest`: `{"tool":"pest","result":"passed","tests":207,"passed":207,"assertions":504,"duration_ms":37172}`.
+  - Baseline was 174 tests. We now have 207 tests.
   - New Test Files:
     - `tests/Feature/Admin/ContentBlock/ListContentBlocksTableTest.php`
     - `tests/Feature/Domain/Content/Policies/ContentBlockPolicyTest.php`
+    - `tests/Unit/Admin/ContentBlockTableColorTest.php`
     - `tests/Unit/Filament/Admin/Services/AdminTimezoneResolverTest.php`
 - `git grep -n "phpstan-ignore" -- app tests` returns nothing.
 - `git diff` of `phpstan-baseline.neon` is unchanged.

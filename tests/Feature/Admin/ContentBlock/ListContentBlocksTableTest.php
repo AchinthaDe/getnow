@@ -48,14 +48,14 @@ it('allows admins to view the list page and renders table correctly', function (
         ->assertOk();
 });
 
-it('registers the resource in the panel navigation', function () {
+it('shows ContentBlockResource index url in navigation for admin', function () {
     /** @var User $admin */
     $admin = User::factory()->platformAdmin()->create();
 
     actingAs($admin)
         ->get(route('filament.admin.pages.dashboard'))
         ->assertOk()
-        ->assertSee(ContentBlockResource::getModelLabel());
+        ->assertSee(ContentBlockResource::getUrl('index'));
 });
 
 it('does not crash when an unknown block type is encountered', function () {
