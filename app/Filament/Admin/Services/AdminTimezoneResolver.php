@@ -8,18 +8,18 @@ use Illuminate\Support\Facades\Log;
 
 final class AdminTimezoneResolver
 {
-    private static bool $hasLogged = false;
+    private bool $hasLogged = false;
 
-    public static function resolve(?string $timezone): string
+    public function resolve(?string $timezone): string
     {
         if (empty($timezone)) {
             $timezone = 'UTC';
         }
 
         if (! in_array($timezone, timezone_identifiers_list(), true)) {
-            if (! self::$hasLogged) {
+            if (! $this->hasLogged) {
                 Log::warning("Invalid ADMIN_TIMEZONE '{$timezone}' provided. Falling back to UTC.");
-                self::$hasLogged = true;
+                $this->hasLogged = true;
             }
 
             return 'UTC';
@@ -31,8 +31,8 @@ final class AdminTimezoneResolver
     /**
      * Resets the logged state. Useful for testing.
      */
-    public static function resetLoggedState(): void
+    public function resetLoggedState(): void
     {
-        self::$hasLogged = false;
+        $this->hasLogged = false;
     }
 }

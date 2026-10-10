@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 use App\Domain\Content\Models\ContentBlock;
 use App\Domain\Content\Policies\ContentBlockPolicy;
+use App\Filament\Admin\Resources\ContentBlockResource;
 use App\Models\User;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 
 it('is registered for ContentBlock', function () {
@@ -43,6 +45,10 @@ it('denies non-admin everywhere', function () {
         ->and($policy->restoreAny($user))->toBeFalse()
         ->and($policy->forceDelete($user, $block))->toBeFalse()
         ->and($policy->forceDeleteAny($user))->toBeFalse();
+
+    Auth::login($user);
+    expect(ContentBlockResource::canViewAny())->toBeFalse()
+        ->and(ContentBlockResource::canCreate())->toBeFalse();
 });
 
 it('denies delete, restore, and force delete even for admins', function () {

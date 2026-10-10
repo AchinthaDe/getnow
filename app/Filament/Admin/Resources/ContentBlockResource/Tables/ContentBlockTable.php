@@ -6,6 +6,7 @@ namespace App\Filament\Admin\Resources\ContentBlockResource\Tables;
 
 use App\Domain\Content\Actions\GetBlockServingStatus;
 use App\Domain\Content\Contracts\BlockRegistry;
+use App\Domain\Content\Enums\PublishStatus;
 use App\Domain\Content\Enums\ServingStatus;
 use App\Domain\Content\Models\ContentBlock;
 use App\Filament\Admin\Services\AdminTimezoneResolver;
@@ -13,17 +14,19 @@ use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Livewire\Component;
 
 final class ContentBlockTable
 {
     public static function table(Table $table): Table
     {
-        $timezone = AdminTimezoneResolver::resolve(config('admin.timezone', 'UTC'));
+        $timezone = app(AdminTimezoneResolver::class)->resolve(config('admin.timezone', 'UTC'));
 
         return $table
-            ->modifyQueryUsing(fn (Builder $query) => $query->orderBy('placement')->orderBy('sort_order'))
+            ->defaultSort(fn (Builder $query) => $query->orderBy('placement')->orderBy('sort_order'))
             ->paginated([10, 25, 50])
             ->columns([
                 TextColumn::make('placement')
@@ -49,7 +52,7 @@ final class ContentBlockTable
                 TextColumn::make('status')
                     ->label('Status')
                     ->badge()
-                    ->color(fn ($state) => match ($state?->value) {
+                    ->color(fn (?PublishStatus $state) => match ($state?->value) {
                         'published' => 'success',
                         'draft' => 'gray',
                         'archived' => 'warning',
@@ -90,7 +93,12 @@ final class ContentBlockTable
             ->filters([
                 Filter::make('hide_archived')
                     ->label('Hide Archived')
-                    ->query(fn (Builder $query) => $query->where('status', '!=', 'archived'))
+                    ->query(function (Builder $query, Component $livewire) {
+                        $status = data_get($livewire, 'tableFilters.status.value');
+                        if ($status !== 'archived') {
+                            $query->where('status', '!=', 'archived');
+                        }
+                    })
                     ->default(true),
 
                 SelectFilter::make('placement')
@@ -104,6 +112,9 @@ final class ContentBlockTable
                         'published' => 'Published',
                         'archived' => 'Archived',
                     ]),
+
+                TernaryFilter::make('is_enabled')
+                    ->label('Enabled'),
             ])
             ->actions([])
             ->bulkActions([]);

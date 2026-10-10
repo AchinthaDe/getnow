@@ -47,6 +47,16 @@ it('allows admins to view the list page and renders table correctly', function (
         ->assertOk();
 });
 
+it('registers the resource in the panel navigation', function () {
+    /** @var User $admin */
+    $admin = User::factory()->platformAdmin()->create();
+
+    actingAs($admin)
+        ->get(route('filament.admin.pages.dashboard'))
+        ->assertOk()
+        ->assertSee(ContentBlockResource::getModelLabel());
+});
+
 it('does not crash when an unknown block type is encountered', function () {
     /** @var User $admin */
     $admin = User::factory()->platformAdmin()->create();
@@ -160,25 +170,31 @@ it('prevents N+1 queries when loading the table', function () {
     /** @var User $admin */
     $admin = User::factory()->platformAdmin()->create();
 
-    ContentBlock::factory()->count(10)->published()->create();
-
-    // Livewire and Filament initial load requires some queries (session, user, component state)
-    // Here we strictly assert that querying 10 blocks doesn't do 10 extra queries.
-    // We expect a fixed small number of queries (e.g. less than 15 total).
-
-    // We can use pest's DB query count assertion if available, or just manually count:
-    $queries = 0;
-    DB::listen(function () use (&$queries) {
-        $queries++;
+    $queryCount = 0;
+    DB::listen(function () use (&$queryCount) {
+        $queryCount++;
     });
 
-    Livewire::actingAs($admin)->test(ListContentBlocks::class);
+    // Run for 10 rows
+    ContentBlock::factory()->count(10)->published()->create();
 
-    // Initial load typically takes ~5-8 queries. If N+1, it would be 10+.
-    expect($queries)->toBeLessThanOrEqual(15);
+    $queryCount = 0; // Reset counter
+    Livewire::actingAs($admin)->test(ListContentBlocks::class);
+    $queries10 = $queryCount;
+
+    // Run for 20 rows
+    ContentBlock::query()->delete(); // Clear
+    ContentBlock::factory()->count(20)->published()->create();
+
+    $queryCount = 0; // Reset counter
+    Livewire::actingAs($admin)->test(ListContentBlocks::class);
+    $queries20 = $queryCount;
+
+    // Queries should be identical regardless of row count
+    expect($queries20)->toBe($queries10);
 });
 
-it('respects timezone configuration in labels and formatted outputs', function () {
+it('respects timezone configuration in labels and formatted outputs without modifying database', function () {
     /** @var User $admin */
     $admin = User::factory()->platformAdmin()->create();
 
@@ -186,11 +202,47 @@ it('respects timezone configuration in labels and formatted outputs', function (
 
     // Create a block that starts at a specific UTC time
     $startsAt = Carbon::parse('2026-01-01 12:00:00', 'UTC');
+    /** @var ContentBlock $block */
     $block = ContentBlock::factory()->draft()->scheduled($startsAt, null)->create();
 
     $component = Livewire::actingAs($admin)->test(ListContentBlocks::class);
 
-    // Filament table should format this datetime based on Asia/Colombo (+05:30)
-    // 12:00:00 UTC = 17:30:00 Colombo
+    // Assert labels
     $component->assertSee('Starts at (Asia/Colombo)');
+
+    // The database value must still be UTC 12:00:00
+    $block->refresh();
+    expect($block->starts_at->format('H:i:s'))->toBe('12:00:00');
+
+    // In Filament, dateTime() outputs using the app locale by default.
+    // +05:30 means 17:30:00.
+    // We just assert the formatted state matches the expected string.
+    $expectedRender = $startsAt->timezone('Asia/Colombo')->format('M j, Y H:i:s');
+    $component->assertTableColumnFormattedStateSet('starts_at', $expectedRender, record: $block);
+});
+
+it('sorts by placement then sort_order by default', function () {
+    /** @var User $admin */
+    $admin = User::factory()->platformAdmin()->create();
+
+    $block1 = ContentBlock::factory()->create(['placement' => 'Z', 'sort_order' => 1]);
+    $block2 = ContentBlock::factory()->create(['placement' => 'A', 'sort_order' => 2]);
+    $block3 = ContentBlock::factory()->create(['placement' => 'A', 'sort_order' => 1]);
+
+    Livewire::actingAs($admin)
+        ->test(ListContentBlocks::class)
+        ->assertCanSeeTableRecords([$block3, $block2, $block1], inOrder: true);
+});
+
+it('allows user to sort by another column', function () {
+    /** @var User $admin */
+    $admin = User::factory()->platformAdmin()->create();
+
+    $block1 = ContentBlock::factory()->create(['placement' => 'A', 'status' => 'published']);
+    $block2 = ContentBlock::factory()->create(['placement' => 'Z', 'status' => 'draft']);
+
+    Livewire::actingAs($admin)
+        ->test(ListContentBlocks::class)
+        ->sortTable('placement', 'desc')
+        ->assertCanSeeTableRecords([$block2, $block1], inOrder: true); // Z comes before A
 });
