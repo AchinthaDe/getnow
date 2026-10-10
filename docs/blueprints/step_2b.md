@@ -1,4 +1,4 @@
-# Phase 1 Step 2b - UI Step 1 (Prerequisites)
+# Phase 1 Step 2b - UI Step 2 (Table & Prerequisites)
 
 ## Build Order
 
@@ -13,20 +13,25 @@
 ## Paths and Namespaces
 
 All Filament code resides strictly under `App\Filament\Admin\...`:
-- `app/Filament/Admin/Resources/ContentBlockResource.php`
-- `app/Filament/Admin/Resources/ContentBlockResource/Pages/ListContentBlocks.php`
-- `app/Filament/Admin/Resources/ContentBlockResource/Pages/CreateContentBlock.php`
-- `app/Filament/Admin/Resources/ContentBlockResource/Pages/EditContentBlock.php`
-- `app/Filament/Admin/Resources/ContentBlockResource/Pages/ViewContentBlock.php`
-- `app/Filament/Admin/Resources/ContentBlockResource/Schemas/ContentBlockForm.php`
-- `app/Filament/Admin/Resources/ContentBlockResource/Tables/ContentBlockTable.php`
-- `app/Filament/Admin/Blocks/BlockFormRegistry.php`
+- Resource: `App\Filament\Admin\Resources\ContentBlockResource` (`app/Filament/Admin/Resources/ContentBlockResource.php`)
+- Pages: 
+  - `App\Filament\Admin\Resources\ContentBlockResource\Pages\ListContentBlocks` (`app/Filament/Admin/Resources/ContentBlockResource/Pages/ListContentBlocks.php`)
+  - `App\Filament\Admin\Resources\ContentBlockResource\Pages\CreateContentBlock` (`app/Filament/Admin/Resources/ContentBlockResource/Pages/CreateContentBlock.php`)
+  - `App\Filament\Admin\Resources\ContentBlockResource\Pages\EditContentBlock` (`app/Filament/Admin/Resources/ContentBlockResource/Pages/EditContentBlock.php`)
+  - `App\Filament\Admin\Resources\ContentBlockResource\Pages\ViewContentBlock` (`app/Filament/Admin/Resources/ContentBlockResource/Pages/ViewContentBlock.php`)
+- Form: `App\Filament\Admin\Resources\ContentBlockResource\Schemas\ContentBlockForm` (`app/Filament/Admin/Resources/ContentBlockResource/Schemas/ContentBlockForm.php`)
+- Table: `App\Filament\Admin\Resources\ContentBlockResource\Tables\ContentBlockTable` (`app/Filament/Admin/Resources/ContentBlockResource/Tables/ContentBlockTable.php`)
+- badge column: will be added to the `ContentBlockTable`.
+- BlockFormRegistry: `App\Filament\Blocks\BlockFormRegistry` (`app/Filament/Blocks/BlockFormRegistry.php`)
+- AdminTimezoneResolver: `App\Filament\Admin\Services\AdminTimezoneResolver` (`app/Filament/Admin/Services/AdminTimezoneResolver.php`)
 
 ## Filament UI & Hydration Specifics
 
 - **Form Hydration**: Form state hydration must convert the Servable `BlockPayload` into an array specifically matching the form schema structure.
-- **GetBlockServingStatus Memoization**: Memo cache keyed dynamically on `id + updated_at + status + is_enabled`. Invalidation/resolver execution must only trigger if `isLive()` returns true (with `log: false` passed to the resolver).
-- **UI Text Updates**:
+- **GetBlockServingStatus Memoization**: Memo cache uses Laravel's `Cache::store('array')` (or per-request caching) to prevent leaks across tests/workers. The key must dynamically hash: `id + type + updated_at + status + is_enabled + schema_version + payload hash + starts_at + ends_at`. Invalidation/resolver execution must only trigger if `isLive()` returns true (with `log: false` passed to the resolver).
+- **UI Text & Table Updates**:
+  - The Resource uses `$navigationGroup = 'Content'`.
+  - The List table filters out `archived` blocks by default.
   - View page redirect notification in `mount()` triggers a warning.
   - Display a distinct warning notice if an admin edits a currently LIVE block.
   - Use `cancel()` instead of "halts" for the Publish/Enable action test line.

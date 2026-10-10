@@ -162,6 +162,21 @@ it('resolves freshly if status changes without updated_at changing', function ()
     expect($action($block)->status)->toBe(ServingStatus::Live);
 });
 
+it('resolves freshly if type changes without updated_at changing', function () {
+    Carbon::setTestNow(Carbon::parse('2026-01-01 10:00:00'));
+    /** @var ContentBlock $block */
+    $block = ContentBlock::factory()->published()->create();
+    $action = app(GetBlockServingStatus::class);
+
+    expect($action($block)->status)->toBe(ServingStatus::Live);
+
+    $block->type = 'unknown_type_for_testing';
+    $block->updateQuietly(); // updated_at doesn't change
+
+    // We changed type but not updated_at, should refresh and say PayloadError
+    expect($action($block)->status)->toBe(ServingStatus::PayloadError);
+});
+
 it('resolves freshly if is_enabled changes without updated_at changing', function () {
     Carbon::setTestNow(Carbon::parse('2026-01-01 10:00:00'));
     /** @var ContentBlock $block */
@@ -213,4 +228,18 @@ it('resolves freshly if starts_at or ends_at changes without updated_at changing
 
     // Should resolve freshly and see it's NotLive again
     expect($action($block)->status)->toBe(ServingStatus::NotLive);
+});
+
+it('resolves freshly if schema_version changes without updated_at changing', function () {
+    Carbon::setTestNow(Carbon::parse('2026-01-01 10:00:00'));
+    /** @var ContentBlock $block */
+    $block = ContentBlock::factory()->published()->create();
+    $action = app(GetBlockServingStatus::class);
+
+    expect($action($block)->status)->toBe(ServingStatus::Live);
+
+    $block->schema_version = 999;
+    $block->updateQuietly(); // updated_at doesn't change
+
+    expect($action($block)->status)->toBe(ServingStatus::PayloadError);
 });
