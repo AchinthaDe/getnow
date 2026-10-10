@@ -15,6 +15,16 @@ This document is the source of truth for structure and boundaries. If code and t
 | 2 Pages and media | Pages made of blocks, image blocks (hero), revisions and preview | Planned |
 | Later (order TBD) | Accounts, Catalog, Retail (retailer panel), Sales, Negotiation, Procurement, Payments, Disputes, React storefront | Not started |
 
+### Phase 1 progress
+- [x] Step 2a (content block domain, actions, serving health)
+- [x] UI Step 1 (prerequisites)
+- [x] UI Step 2 (policy, timezone config, read-only list + badges)
+- [ ] UI Step 3 (BlockFormRegistry, Create/Edit forms)
+- [ ] UI Step 4 (View page, header/row actions)
+- [ ] Menus
+- [ ] Content API v1
+- [ ] Seed data
+
 Rule: do not scaffold folders, models or packages for a phase that is not active.
 
 ## 2. Goals and constraints
@@ -67,9 +77,9 @@ app/
 │       ├── Services/
 │       └── Settings/           # StorefrontSettings
 ├── Filament/
-│   ├── Blocks/                 # Filament form schema per block type (panel-agnostic)
+│   ├── Blocks/                 # BlockFormRegistry, plus form schemas per block type
 │   └── Admin/                  # panel `admin`
-│       ├── Resources/          # eg: Resources/Content/Schemas/
+│       ├── Resources/          # eg: Resources/ContentBlockResource/{Pages,Schemas,Tables}
 │       ├── Pages/              # settings pages, custom pages
 │       └── Widgets/
 ├── Http/
@@ -176,7 +186,7 @@ Settings and activity log tables come from their packages. Phase 1 content is pl
           "id": "01J...",
           "type": "announcement_bar",
           "version": 1,
-          "data": { "messages": [{ "text": "string" }], "tone": "info" }
+          "data": { "text": "string", "link_url": null, "tone": "info" }
         }
       ]
     },
@@ -202,7 +212,7 @@ Contract rules:
 
 ## 8. Filament conventions
 
-- Panel `admin` at `/admin`. Resources are grouped by context under `app/Filament/Admin/Resources/<Context>/`.
+- Panel `admin` at `/admin`. Resources are grouped under `app/Filament/Admin/Resources/<Model>Resource/`.
 - Form and table definitions live in their own schema classes. Block form schemas live in `app/Filament/Blocks/` so a future retailer panel can reuse them.
 - Create, update, delete and bulk operations call Actions. Status is never a free form field. Use dedicated actions such as Publish, Archive, Enable and Disable.
 - Authorization uses Policies. Content policies extend `BaseContentPolicy`. Phase 1 admin access is a single `is_platform_admin` flag checked in `canAccessPanel`. Roles and permissions arrive with the retailer panel.
@@ -243,6 +253,7 @@ Contract rules:
 | D6 | Phase 1 admin access is one platform-admin flag. Roles come with the retailer panel. |
 | D7 | Published content edits go live immediately in phase 1. Revisions and preview come in phase 2. |
 | D8 | MaxCount is enforced at API output limit, not publish lock. Tie-break: `sort_order ASC, starts_at DESC NULLS LAST, id DESC`. One block = one message. |
+| D9 | Concurrency & Locks: Content blocks use last-write-wins for payloads, pessimistic locking for state transitions. |
 
 Open decisions (record as ADRs in `docs/adr/` when settled):
 - React frontend shape: Inertia inside this app versus a separate SPA or SSR app. The Content API is the contract either way.

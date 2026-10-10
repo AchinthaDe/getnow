@@ -8,7 +8,7 @@ Accepted
 ## Context
 Multiple administrators might attempt to edit the same content block concurrently, or one admin might publish a block while another admin is modifying its payload. We need a concurrency strategy to prevent unpredictable data states.
 
-As documented in `ARCHITECTURE.md` (D7: Concurrency & Locks), the broader system strategy handles concurrency using different approaches based on the domain.
+As documented in `ARCHITECTURE.md` (D9: Concurrency & Locks), the broader system strategy handles concurrency using different approaches based on the domain.
 
 ## Decision
 1. **Last-Write-Wins:** For Content Blocks, we adopt a strict "last-write-wins" strategy. Whichever transaction commits last will overwrite the previous state.

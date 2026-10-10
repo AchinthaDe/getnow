@@ -1,4 +1,4 @@
-# Phase 1 Step 2b - UI Step 2 (Table & Prerequisites)
+# Phase 1 Step 2b - UI Blueprint
 
 ## Build Order
 
@@ -18,8 +18,7 @@ All Filament code resides strictly under `App\Filament\Admin\...`:
   - `App\Filament\Admin\Resources\ContentBlockResource\Pages\ListContentBlocks` (`app/Filament/Admin/Resources/ContentBlockResource/Pages/ListContentBlocks.php`)
   - `App\Filament\Admin\Resources\ContentBlockResource\Pages\CreateContentBlock` (`app/Filament/Admin/Resources/ContentBlockResource/Pages/CreateContentBlock.php`)
   - `App\Filament\Admin\Resources\ContentBlockResource\Pages\EditContentBlock` (`app/Filament/Admin/Resources/ContentBlockResource/Pages/EditContentBlock.php`)
-  - `App\Filament\Admin\Resources\ContentBlockResource\Pages\ViewContentBlock` (`app/Filament/Admin/Resources/ContentBlockResource/Pages/ViewContentBlock.php`)
-- Form: `App\Filament\Admin\Resources\ContentBlockResource\Schemas\ContentBlockForm` (`app/Filament/Admin/Resources/ContentBlockResource/Schemas/ContentBlockForm.php`)
+  - `App\Filament\Admin\Resources\ContentBlockResource\Pages\ViewContentBlock` (`app/Filament/Admin/Resources/ContentBlockResource/Pages\ViewContentBlock.php`)
 - Table: `App\Filament\Admin\Resources\ContentBlockResource\Tables\ContentBlockTable` (`app/Filament/Admin/Resources/ContentBlockResource/Tables/ContentBlockTable.php`)
 - badge column: will be added to the `ContentBlockTable`.
 - BlockFormRegistry: `App\Filament\Blocks\BlockFormRegistry` (`app/Filament/Blocks/BlockFormRegistry.php`)
@@ -28,7 +27,6 @@ All Filament code resides strictly under `App\Filament\Admin\...`:
 ## Filament UI & Hydration Specifics
 
 - **Form Hydration**: Form state hydration must convert the Servable `BlockPayload` into an array specifically matching the form schema structure.
-- **GetBlockServingStatus Memoization**: Memo cache uses Laravel's `Cache::store('array')` (or per-request caching) to prevent leaks across tests/workers. The key must dynamically hash: `id + type + updated_at + status + is_enabled + schema_version + payload hash + starts_at + ends_at`. Invalidation/resolver execution must only trigger if `isLive()` returns true (with `log: false` passed to the resolver).
 - **UI Text & Table Updates**:
   - The Resource uses `$navigationGroup = 'Content'`.
   - The List table filters out `archived` blocks by default.
@@ -47,3 +45,7 @@ All Filament code resides strictly under `App\Filament\Admin\...`:
 - Use a spy to ensure the Infolist view *never* invokes the upgrader.
 - Assert that an invalid `ADMIN_TIMEZONE` silently falls back to UTC and logs a warning.
 - The `/edit` direct-URL redirect MUST be tested separately for `archived`, `unknown-type`, and `failed-upgrade` blocks, asserting the proper notification triggers for each case.
+
+## Known follow-ups
+- ADR 0002: The Payload error badge should show the reason category in a tooltip.
+- ADR 0001: The admin UI list needs clarity (tooltips or computed indicators) that "Live" is not the same as "shown" when a placement cap applies.
