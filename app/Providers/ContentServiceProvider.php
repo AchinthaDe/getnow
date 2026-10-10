@@ -10,7 +10,6 @@ use App\Domain\Content\Contracts\BlockRegistry;
 use App\Domain\Content\Models\ContentBlock;
 use App\Domain\Content\Policies\ContentBlockPolicy;
 use App\Domain\Content\Services\ContentBlockRegistry;
-use App\Filament\Admin\Services\AdminTimezoneResolver;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
@@ -20,7 +19,6 @@ class ContentServiceProvider extends ServiceProvider
     {
         $this->app->singleton(BlockRegistry::class, ContentBlockRegistry::class);
         $this->app->scoped(GetBlockServingStatus::class);
-        $this->app->singleton(AdminTimezoneResolver::class);
     }
 
     public function boot(): void
