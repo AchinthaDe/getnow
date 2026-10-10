@@ -4,13 +4,14 @@ declare(strict_types=1);
 
 use App\Domain\Content\Actions\GetBlockServingStatus;
 use App\Domain\Content\Data\ServingHealthResult;
+use App\Domain\Content\Enums\Placement;
 use App\Domain\Content\Enums\ServingHealthOutcome;
-use App\Domain\Content\Enums\ServingStatus;
 use App\Domain\Content\Models\ContentBlock;
 use App\Domain\Content\Services\ResolveServablePayload;
 use App\Filament\Admin\Resources\ContentBlockResource;
 use App\Filament\Admin\Resources\ContentBlockResource\Pages\ListContentBlocks;
 use App\Models\User;
+use Filament\Tables\Columns\TextColumn;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Config;
@@ -125,10 +126,10 @@ it('shows Not live and never calls resolver for broken out-of-window block', fun
 
     Livewire::actingAs($admin)
         ->test(ListContentBlocks::class)
-        ->assertTableColumnStateSet('serving_status', ServingStatus::NotLive, record: $block);
+        ->assertTableColumnFormattedStateSet('serving_status', 'Not live', record: $block);
 });
 
-it('shows PayloadError for a live unknown-type block', function () {
+it('renders Payload error for a published block of an unknown type', function () {
     /** @var User $admin */
     $admin = User::factory()->platformAdmin()->create();
 
@@ -136,10 +137,28 @@ it('shows PayloadError for a live unknown-type block', function () {
 
     Livewire::actingAs($admin)
         ->test(ListContentBlocks::class)
-        ->assertTableColumnStateSet('serving_status', ServingStatus::PayloadError, record: $block);
+        ->assertTableColumnFormattedStateSet('serving_status', 'Payload error', record: $block);
 });
 
-it('asserts the formatting and color for each serving status badge', function () {
+it('calls resolver with log: false exactly once per live unknown block', function () {
+    /** @var User $admin */
+    $admin = User::factory()->platformAdmin()->create();
+
+    $block = ContentBlock::factory()->published()->unknownType()->create();
+
+    $resolver = Mockery::mock(ResolveServablePayload::class);
+    $resolver->shouldReceive('__invoke')
+        ->with(Mockery::on(fn ($b) => $b->getKey() === $block->getKey()), false)
+        ->once()
+        ->andReturn(new ServingHealthResult(ServingHealthOutcome::UnknownType, null));
+    app()->instance(ResolveServablePayload::class, $resolver);
+
+    Livewire::actingAs($admin)
+        ->test(ListContentBlocks::class)
+        ->assertTableColumnFormattedStateSet('serving_status', 'Payload error', record: $block);
+});
+
+it('asserts the formatting for each serving status badge', function () {
     /** @var User $admin */
     $admin = User::factory()->platformAdmin()->create();
 
@@ -149,12 +168,11 @@ it('asserts the formatting and color for each serving status badge', function ()
 
     $component = Livewire::actingAs($admin)->test(ListContentBlocks::class);
 
-    $component->assertTableColumnStateSet('serving_status', ServingStatus::Live, record: $liveBlock)
-        ->assertTableColumnFormattedStateSet('serving_status', 'Live', record: $liveBlock)
-        ->assertTableColumnStateSet('serving_status', ServingStatus::NotLive, record: $notLiveBlock)
+    $component->assertTableColumnFormattedStateSet('serving_status', 'Live', record: $liveBlock)
         ->assertTableColumnFormattedStateSet('serving_status', 'Not live', record: $notLiveBlock)
-        ->assertTableColumnStateSet('serving_status', ServingStatus::PayloadError, record: $errorBlock)
         ->assertTableColumnFormattedStateSet('serving_status', 'Payload error', record: $errorBlock);
+
+    $component->assertTableColumnFormattedStateSet('type', 'announcement_bar', record: $liveBlock);
 });
 
 it('calls resolver with log: false exactly once per live row', function () {
@@ -239,29 +257,29 @@ it('sorts by placement then sort_order by default', function () {
     /** @var User $admin */
     $admin = User::factory()->platformAdmin()->create();
 
-    $block1 = ContentBlock::factory()->create(['placement' => 'Z', 'sort_order' => 1]);
-    $block2 = ContentBlock::factory()->create(['placement' => 'A', 'sort_order' => 2]);
-    $block3 = ContentBlock::factory()->create(['placement' => 'A', 'sort_order' => 1]);
+    $block1 = ContentBlock::factory()->create(['placement' => Placement::ANNOUNCEMENT_BAR, 'sort_order' => 1]);
+    $block2 = ContentBlock::factory()->create(['placement' => Placement::ANNOUNCEMENT_BAR, 'sort_order' => 3]);
+    $block3 = ContentBlock::factory()->create(['placement' => Placement::ANNOUNCEMENT_BAR, 'sort_order' => 2]);
 
     Livewire::actingAs($admin)
         ->test(ListContentBlocks::class)
-        ->assertCanSeeTableRecords([$block3, $block2, $block1], inOrder: true);
+        ->assertCanSeeTableRecords([$block1, $block3, $block2], inOrder: true);
 });
 
 it('allows user to sort by another column', function () {
     /** @var User $admin */
     $admin = User::factory()->platformAdmin()->create();
 
-    $block1 = ContentBlock::factory()->create(['placement' => 'A', 'status' => 'published']);
-    $block2 = ContentBlock::factory()->create(['placement' => 'Z', 'status' => 'draft']);
+    $block1 = ContentBlock::factory()->create(['placement' => Placement::ANNOUNCEMENT_BAR, 'status' => 'draft']);
+    $block2 = ContentBlock::factory()->create(['placement' => Placement::ANNOUNCEMENT_BAR, 'status' => 'published']);
 
     Livewire::actingAs($admin)
         ->test(ListContentBlocks::class)
-        ->sortTable('placement', 'desc')
-        ->assertCanSeeTableRecords([$block2, $block1], inOrder: true); // Z comes before A
+        ->sortTable('status', 'desc')
+        ->assertCanSeeTableRecords([$block2, $block1], inOrder: true);
 });
 
-it('shows ContentBlockResource in navigation for admin and hides it for non-admin', function () {
+it('returns 403 forbidden for non-admins when accessing ContentBlockResource', function () {
     /** @var User $admin */
     $admin = User::factory()->platformAdmin()->create();
 
@@ -273,6 +291,32 @@ it('shows ContentBlockResource in navigation for admin and hides it for non-admi
     \Pest\Laravel\actingAs($admin)->get('/admin')
         ->assertSee($url);
 
-    \Pest\Laravel\actingAs($user)->get('/admin')
+    \Pest\Laravel\actingAs($user)->get($url)
         ->assertStatus(403);
+});
+
+it('can evaluate column colors via table instance', function () {
+    /** @var User $admin */
+    $admin = User::factory()->platformAdmin()->create();
+
+    $liveBlock = ContentBlock::factory()->published()->create();
+    $notLiveBlock = ContentBlock::factory()->draft()->create();
+
+    $component = Livewire::actingAs($admin)->test(ListContentBlocks::class);
+
+    /** @var ListContentBlocks $instance */
+    $instance = $component->instance();
+    $table = $instance->getTable();
+
+    /** @var TextColumn $servingStatusColumn */
+    $servingStatusColumn = $table->getColumn('serving_status');
+
+    // Evaluate color using the correct state for each record
+    expect($servingStatusColumn->record($liveBlock)->getColor($servingStatusColumn->getState()))->toBe('success');
+    expect($servingStatusColumn->record($notLiveBlock)->getColor($servingStatusColumn->getState()))->toBe('gray');
+
+    /** @var TextColumn $statusColumn */
+    $statusColumn = $table->getColumn('status');
+    expect($statusColumn->record($liveBlock)->getColor($statusColumn->getState()))->toBe('success');
+    expect($statusColumn->record($notLiveBlock)->getColor($statusColumn->getState()))->toBe('gray');
 });

@@ -12,9 +12,9 @@ use Filament\Facades\Filament;
 use Filament\Pages\SettingsPage;
 use Filament\Schemas\Schema;
 
-class ManageStorefrontSettings extends SettingsPage
+final class ManageStorefrontSettings extends SettingsPage
 {
-    public static function getNavigationGroup(): ?string
+    public static function getNavigationGroup(): string
     {
         return 'Content';
     }

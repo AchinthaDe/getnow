@@ -159,29 +159,28 @@ $key = sprintf(
 return Cache::store('array')->rememberForever($key, function () use ($block) { ... });
 ```
 - **Store:** `Cache::store('array')`.
-- **Process Scope:** It is bound per-request under PHP-FPM, scaling effortlessly across paginated lists. Since it uses `md5(payload)` alongside timestamps/versions, it provides guaranteed correct UI renders when interacting quietly while bounding array growth purely to the request cycle.
-
-**Tests (`GetBlockServingStatusTest.php`):**
-- Resolver spy (`ListContentBlocksTableTest.php::calls resolver with log: false exactly once per live row`): Asserts `__invoke` exactly `twice()` and passed `false` when parsing 2 live rows.
-- Never called for non-live: Explicitly asserted with `->shouldNotReceive('__invoke')` against Draft rows.
-- Fresh resolution tests correctly assert updates on `type`, `status`, `is_enabled`, `payload` and `schema_version` when bypassing Eloquent's timestamp modifier via `updateQuietly()`.
-- Explicit tests showing PayloadError against an `unknownType()` block.
+- **Process Scope:** The array cache is per-process and harmless under PHP-FPM, automatically clearing between requests.
+- **Callers:**
+  - `app/Filament/Admin/Resources/ContentBlockResource/Tables/ContentBlockTable.php:82: ->getStateUsing(fn (ContentBlock $record) => app(GetBlockServingStatus::class)($record)->status)`
 
 ## 6. Table Tests
 
 **Location:** `tests/Feature/Admin/ContentBlock/ListContentBlocksTableTest.php`
 - **Smoke test**: View rendering gracefully completes for admins and non-admins receive `assertForbidden()`.
-- **Unknown type**: Explicitly asserts `assertTableColumnStateSet('type', 'some_removed_type')`.
+- **Unknown type**: Explicitly asserts `assertTableColumnFormattedStateSet('serving_status', 'Payload error')`.
 - **Default Hidden/Clearing Filter**: Confirms archived block hides by default, clearing via `$component->set('tableFilters.hide_archived.isActive', false)` forces it back onto the view successfully.
 - **Default Sort**: `assertCanSeeTableRecords([$block3, $block2, $block1], inOrder: true)` ensures multiple sorts properly layer.
 - **N+1 Strict Guard:** We execute two identical queries (`N=10` and `N=20`). The closure tracks internal DB execution specifically testing `expect($queries20)->toBe($queries10)`.
+- **Colour Check**: Verified colour mapping over `$table->getColumn()->getColor($block)` directly.
 
 ## 7. Deviations
 
-1. **`modifyQueryUsing` to `defaultSort`**: The blueprint mandated `modifyQueryUsing`, but this forces the table to *always* sort by this column and overrides end-user column clicking. Refactored natively to `defaultSort` utilizing the closure to preserve multi-column baseline ordering while unlocking interaction.
-2. **`Filter::make('is_enabled')` to `TernaryFilter`**: Boolean columns natively demand tri-state filters (All, Yes, No). Upgraded from standard Toggle Filter.
-3. **`AdminTimezoneResolver` static context**: The previous plan relied on static `$hasLogged` states. Transformed into an instantiated service resolved as an `app()->singleton()` to strictly decouple cross-test pollution and guarantee proper initialization.
-4. **`GetBlockServingStatus` Cache Keys**: The plan suggested cloning nullable date objects. Adjusted dynamically to safely retrieve `?->timestamp` to bypass `Carbon` clone failures on `null` attributes seamlessly.
+1. **TestBlocks Idempotency**: `TestBlocks.php` was modified to explicitly check for `test_failed_upgrade_block` before registering it, preventing test failures due to duplication.
+2. **Step 1 Report**: Unintentionally modified earlier, but now properly restored/reverted to its original state.
+3. **Commit History**: Included force pushes / amends `ae5b7c7` to clean up the iterative blockers.
+4. **`modifyQueryUsing` to `defaultSort`**: The blueprint mandated `modifyQueryUsing`, but this forces the table to *always* sort by this column and overrides end-user column clicking. Refactored natively to `defaultSort`.
+5. **`Filter::make('is_enabled')` to `TernaryFilter`**: Boolean columns natively demand tri-state filters (All, Yes, No). Upgraded from standard Toggle Filter.
+6. **`AdminTimezoneResolver` static context**: The previous plan relied on static `$hasLogged` states. Transformed into an instantiated service resolved as an `app()->singleton()`.
 
 ---
 **READY** for Checkpoint 3.

@@ -21,6 +21,32 @@ use Livewire\Component;
 
 final class ContentBlockTable
 {
+    public static function servingStatusColor(?ServingStatus $state): string
+    {
+        if ($state === null) {
+            return 'gray';
+        }
+
+        return match ($state) {
+            ServingStatus::Live => 'success',
+            ServingStatus::NotLive => 'gray',
+            ServingStatus::PayloadError => 'danger',
+        };
+    }
+
+    public static function publishStatusColor(?PublishStatus $state): string
+    {
+        if ($state === null) {
+            return 'gray';
+        }
+
+        return match ($state) {
+            PublishStatus::PUBLISHED => 'success',
+            PublishStatus::DRAFT => 'gray',
+            PublishStatus::ARCHIVED => 'warning',
+        };
+    }
+
     public static function table(Table $table): Table
     {
         $timezone = app(AdminTimezoneResolver::class)->resolve(config('admin.timezone', 'UTC'));
@@ -52,12 +78,8 @@ final class ContentBlockTable
                 TextColumn::make('status')
                     ->label('Status')
                     ->badge()
-                    ->color(fn (?PublishStatus $state) => match ($state?->value) {
-                        'published' => 'success',
-                        'draft' => 'gray',
-                        'archived' => 'warning',
-                        default => 'gray',
-                    }),
+                    ->color(fn (?PublishStatus $state) => self::publishStatusColor($state))
+                    ->sortable(),
 
                 IconColumn::make('is_enabled')
                     ->label('Enabled')
@@ -81,12 +103,7 @@ final class ContentBlockTable
                     ->getStateUsing(fn (ContentBlock $record) => app(GetBlockServingStatus::class)($record)->status)
                     ->badge()
                     ->formatStateUsing(fn (?ServingStatus $state) => $state?->label())
-                    ->color(fn (?ServingStatus $state) => match ($state) {
-                        ServingStatus::Live => 'success',
-                        ServingStatus::NotLive => 'gray',
-                        ServingStatus::PayloadError => 'danger',
-                        default => 'gray',
-                    })
+                    ->color(fn (?ServingStatus $state) => self::servingStatusColor($state))
                     ->sortable(false)
                     ->searchable(false),
             ])

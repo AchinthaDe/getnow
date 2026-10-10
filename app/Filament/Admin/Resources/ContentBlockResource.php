@@ -12,7 +12,7 @@ use Filament\Resources\Resource;
 use Filament\Tables\Table;
 use UnitEnum;
 
-class ContentBlockResource extends Resource
+final class ContentBlockResource extends Resource
 {
     protected static ?string $model = ContentBlock::class;
 

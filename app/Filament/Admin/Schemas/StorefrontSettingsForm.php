@@ -9,7 +9,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Component;
 
-class StorefrontSettingsForm
+final class StorefrontSettingsForm
 {
     /**
      * @return array<int, Component>
