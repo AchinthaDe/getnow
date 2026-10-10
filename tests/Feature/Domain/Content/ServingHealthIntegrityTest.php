@@ -1,5 +1,6 @@
 <?php
 
+declare(strict_types=1);
 use App\Domain\Content\Actions\UpdateContentBlock;
 use App\Domain\Content\Blocks\AnnouncementBar\AnnouncementBarData;
 use App\Domain\Content\Contracts\BlockDefinition;
