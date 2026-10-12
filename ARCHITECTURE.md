@@ -19,7 +19,7 @@ This document is the source of truth for structure and boundaries. If code and t
 - [x] Step 2a (content block domain, actions, serving health)
 - [x] UI Step 1 (prerequisites)
 - [x] UI Step 2 (policy, timezone config, read-only list + badges)
-- [ ] UI Step 3 (BlockFormRegistry, Create/Edit forms)
+- [x] UI Step 3 (BlockFormRegistry, Create/Edit forms)
 - [ ] UI Step 4 (View page, header/row actions)
 - [ ] Menus
 - [ ] Content API v1

@@ -123,3 +123,10 @@ Before declaring any task done, `composer check` must pass and you must have rea
 - [ ] Migrations are backward compatible
 - [ ] `ARCHITECTURE.md`, `docs/contracts/content-api.md`, `.env.example` updated where relevant
 - [ ] Nothing outside the active phase was added
+
+## Step protocol
+
+- Work only from an approved plan identified by step ID and version. No approved plan, no code.
+- If the plan is wrong or incomplete, stop and write a Change Request. Never deviate silently.
+- A step ends with an IMPLEMENTATION REPORT containing raw, unedited command output. Summaries are not evidence.
+- Do not mark a step done. Only the reviewer accepts it.
