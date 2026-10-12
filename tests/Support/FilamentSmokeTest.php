@@ -48,7 +48,11 @@ trait FilamentSmokeTest
             ->get($pageClass::getUrl(['record' => $record]))
             ->assertSuccessful();
 
-        Livewire::test($pageClass, ['record' => $record->getRouteKey()])
+        /** @var class-string<\Filament\Resources\Resource> $resource */
+        $resource = $pageClass::getResource();
+        $routeKeyName = $resource::getRecordRouteKeyName() ?? $record->getRouteKeyName();
+
+        Livewire::test($pageClass, ['record' => $record->getAttribute($routeKeyName)])
             ->assertSuccessful();
     }
 }
