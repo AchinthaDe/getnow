@@ -91,10 +91,12 @@ final class ContentBlockForm
             Callout::make('Published block')
                 ->description('Changes made to this block will go live immediately on the storefront.')
                 ->warning()
+                ->columnSpanFull()
                 ->visible(fn (?ContentBlock $record, string $operation): bool => $operation === 'edit' && $record?->status === PublishStatus::PUBLISHED),
 
             Group::make()
                 ->statePath('payload')
+                ->columnSpanFull()
                 ->schema(function (Get $get, ?ContentBlock $record, string $operation): array {
                     $type = $operation === 'create' ? $get('type') : $record?->type;
 

@@ -18,19 +18,24 @@ use Illuminate\Support\Facades\Config;
 use Livewire\Livewire;
 use Spatie\Activitylog\Models\Activity;
 use Tests\Support\FilamentSmokeTest;
+use Tests\TestCase;
 
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\get;
 
-uses(FilamentSmokeTest::class);
+class ContentBlockEditSmokeTest extends TestCase
+{
+    use FilamentSmokeTest;
 
-it('renders list and edit pages for platform admin via smoke test', function () {
-    /** @var ContentBlock $block */
-    $block = ContentBlock::factory()->create();
+    public function test_renders_list_and_edit_pages_for_platform_admin_via_smoke_test(): void
+    {
+        /** @var ContentBlock $block */
+        $block = ContentBlock::factory()->create();
 
-    $this->assertListPageRenders(ListContentBlocks::class);
-    $this->assertEditPageRenders(EditContentBlock::class, $block);
-});
+        $this->assertListPageRenders(ListContentBlocks::class);
+        $this->assertEditPageRenders(EditContentBlock::class, $block);
+    }
+}
 
 it('updates payload through action and logs activity with changed payload', function () {
     /** @var User $admin */

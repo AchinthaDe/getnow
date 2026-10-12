@@ -17,15 +17,20 @@ use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 use Spatie\Activitylog\Models\Activity;
 use Tests\Support\FilamentSmokeTest;
+use Tests\TestCase;
 
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\get;
 
-uses(FilamentSmokeTest::class);
+class ContentBlockCreateSmokeTest extends TestCase
+{
+    use FilamentSmokeTest;
 
-it('renders create page for platform admin via smoke test', function () {
-    $this->assertCreatePageRenders(CreateContentBlock::class);
-});
+    public function test_renders_create_page_for_platform_admin_via_smoke_test(): void
+    {
+        $this->assertCreatePageRenders(CreateContentBlock::class);
+    }
+}
 
 it('creates draft content block with causer and logs activity', function () {
     /** @var User $admin */
