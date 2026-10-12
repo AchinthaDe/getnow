@@ -14,8 +14,10 @@ use Spatie\LaravelData\Attributes\Validation\Rule;
 
 final class AnnouncementBarData extends BlockPayload
 {
+    public const int TEXT_MAX_LENGTH = 120;
+
     public function __construct(
-        #[Min(1), Max(120), Rule(new NoHtml)]
+        #[Min(1), Max(self::TEXT_MAX_LENGTH), Rule(new NoHtml)]
         public string $text,
 
         #[Rule(new SafeLink)]

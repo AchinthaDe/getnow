@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domain\Content\Policies;
 
+use App\Domain\Content\Enums\PublishStatus;
+use App\Domain\Content\Models\ContentBlock;
 use App\Models\User;
 
 final class ContentBlockPolicy extends BaseContentPolicy
@@ -25,6 +27,10 @@ final class ContentBlockPolicy extends BaseContentPolicy
 
     public function update(User $user, mixed $model): bool
     {
+        if ($model instanceof ContentBlock && $model->status === PublishStatus::ARCHIVED) {
+            return false;
+        }
+
         return $user->isAdmin();
     }
 

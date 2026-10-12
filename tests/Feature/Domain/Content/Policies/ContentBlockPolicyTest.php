@@ -64,3 +64,21 @@ it('denies delete, restore, and force delete even for admins', function () {
         ->and($policy->forceDelete($admin, $block))->toBeFalse()
         ->and($policy->forceDeleteAny($admin))->toBeFalse();
 });
+
+it('denies update on archived content block even for platform admin', function () {
+    /** @var User $admin */
+    $admin = User::factory()->platformAdmin()->create();
+    $archivedBlock = ContentBlock::factory()->archived()->create();
+    $policy = new ContentBlockPolicy;
+
+    expect($policy->update($admin, $archivedBlock))->toBeFalse();
+});
+
+it('allows update on published content block for platform admin', function () {
+    /** @var User $admin */
+    $admin = User::factory()->platformAdmin()->create();
+    $publishedBlock = ContentBlock::factory()->published()->create();
+    $policy = new ContentBlockPolicy;
+
+    expect($policy->update($admin, $publishedBlock))->toBeTrue();
+});
