@@ -4,13 +4,49 @@ declare(strict_types=1);
 
 namespace App\Filament\Admin\Resources\ContentBlockResource\Pages\Concerns;
 
+use App\Domain\Content\Data\CreateContentBlockData;
 use App\Domain\Content\Data\UpdateContentBlockData;
+use App\Domain\Content\Enums\Placement;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Validation\ValidationException;
 
 trait InteractsWithContentBlockActions
 {
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array{0: CreateContentBlockData, 1: array<string, mixed>}
+     *
+     * @throws ValidationException
+     */
+    protected function prepareCreateData(array $data): array
+    {
+        $placementVal = $data['placement'] ?? null;
+        $placement = is_string($placementVal) ? Placement::tryFrom($placementVal) : null;
+
+        if ($placement === null) {
+            $this->throwRemappedValidationException(
+                ValidationException::withMessages([
+                    'placement' => 'The selected placement is invalid.',
+                ])
+            );
+        }
+
+        $startsAt = $this->parseScheduleDatetime($data['starts_at'] ?? null);
+        $endsAt = $this->parseScheduleDatetime($data['ends_at'] ?? null);
+
+        $actionData = new CreateContentBlockData(
+            placement: $placement,
+            type: (string) ($data['type'] ?? ''),
+            starts_at: $startsAt,
+            ends_at: $endsAt,
+        );
+
+        $rawPayload = is_array($data['payload'] ?? null) ? $data['payload'] : [];
+
+        return [$actionData, $rawPayload];
+    }
+
     /**
      * @param  array<string, mixed>  $data
      * @return array{0: UpdateContentBlockData, 1: array<string, mixed>}

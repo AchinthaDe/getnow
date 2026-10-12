@@ -66,6 +66,7 @@ final class ContentBlockResource extends Resource
     {
         return [
             'index' => Pages\ListContentBlocks::route('/'),
+            'create' => Pages\CreateContentBlock::route('/create'),
             'edit' => Pages\EditContentBlock::route('/{record}/edit'),
         ];
     }
