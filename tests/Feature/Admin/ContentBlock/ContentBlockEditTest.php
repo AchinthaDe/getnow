@@ -180,7 +180,7 @@ it('handles hydration failure and redirects to index with notification', functio
 
     Livewire::test(EditContentBlock::class, ['record' => $block->public_id])
         ->assertRedirect(ContentBlockResource::getUrl('index'))
-        ->assertNotified();
+        ->assertNotified('Cannot edit content block');
 })->with([
     'unknownType',
     'unsupportedVersion',
@@ -351,9 +351,9 @@ it('displays raw stored placement if placement enum is null', function () {
     /** @var User $admin */
     $admin = User::factory()->platformAdmin()->create();
     /** @var ContentBlock $block */
-    $block = ContentBlock::factory()->create();
-
-    $block->forceFill(['placement' => 'legacy_custom_placement'])->save();
+    $block = ContentBlock::factory()->create([
+        'placement' => 'legacy_custom_placement',
+    ]);
 
     actingAs($admin);
 

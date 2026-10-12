@@ -2,8 +2,10 @@
 
 declare(strict_types=1);
 
+use App\Domain\Content\Actions\CreateContentBlock as CreateContentBlockAction;
 use App\Domain\Content\Enums\Placement;
 use App\Domain\Content\Enums\PublishStatus;
+use App\Domain\Content\Exceptions\UnknownBlockTypeException;
 use App\Domain\Content\Models\ContentBlock;
 use App\Filament\Admin\Resources\ContentBlockResource;
 use App\Filament\Admin\Resources\ContentBlockResource\Pages\Concerns\InteractsWithContentBlockActions;
@@ -306,3 +308,31 @@ it('discards undeclared payload keys submitted during create', function () {
     expect($block->payload)->not->toHaveKey('undeclared_key');
 });
 
+it('catches UnknownBlockTypeException in handleRecordCreation, notifies user and creates no block', function () {
+    /** @var User $admin */
+    $admin = User::factory()->platformAdmin()->create();
+
+    actingAs($admin);
+
+    app()->bind(CreateContentBlockAction::class, fn () => new class
+    {
+        public function __invoke(): never
+        {
+            throw new UnknownBlockTypeException('Unregistered block type');
+        }
+    });
+
+    $count = ContentBlock::count();
+
+    Livewire::test(CreateContentBlock::class)
+        ->fillForm([
+            'placement' => 'announcement_bar',
+            'type' => 'announcement_bar',
+            'payload.text' => 'Attempted text',
+            'payload.tone' => 'info',
+        ])
+        ->call('create')
+        ->assertNotified('Invalid Block Type');
+
+    expect(ContentBlock::count())->toBe($count);
+});
