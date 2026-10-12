@@ -14,22 +14,15 @@ use App\Filament\Admin\Resources\ContentBlockResource\Pages\EditContentBlock;
 use App\Filament\Admin\Resources\ContentBlockResource\Pages\ListContentBlocks;
 use App\Models\User;
 use Carbon\Carbon;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Config;
 use Livewire\Livewire;
 use Spatie\Activitylog\Models\Activity;
 use Tests\Support\FilamentSmokeTest;
-use Tests\Support\TestBlocks;
 
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\get;
 
 uses(FilamentSmokeTest::class);
-uses(RefreshDatabase::class);
-
-beforeEach(function () {
-    TestBlocks::register();
-});
 
 it('renders list and edit pages for platform admin via smoke test', function () {
     /** @var ContentBlock $block */

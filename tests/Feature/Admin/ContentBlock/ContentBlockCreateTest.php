@@ -10,23 +10,16 @@ use App\Filament\Admin\Resources\ContentBlockResource\Pages\Concerns\InteractsWi
 use App\Filament\Admin\Resources\ContentBlockResource\Pages\CreateContentBlock;
 use App\Filament\Admin\Resources\ContentBlockResource\Pages\ListContentBlocks;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 use Spatie\Activitylog\Models\Activity;
 use Tests\Support\FilamentSmokeTest;
-use Tests\Support\TestBlocks;
 
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\get;
 
 uses(FilamentSmokeTest::class);
-uses(RefreshDatabase::class);
-
-beforeEach(function () {
-    TestBlocks::register();
-});
 
 it('renders create page for platform admin via smoke test', function () {
     $this->assertCreatePageRenders(CreateContentBlock::class);
