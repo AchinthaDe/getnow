@@ -24,6 +24,7 @@ use Tests\Support\TestBlocks;
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\get;
 
+uses(FilamentSmokeTest::class);
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
@@ -34,8 +35,8 @@ it('renders list and edit pages for platform admin via smoke test', function () 
     /** @var ContentBlock $block */
     $block = ContentBlock::factory()->create();
 
-    FilamentSmokeTest::assertListPageRenders(ListContentBlocks::class);
-    FilamentSmokeTest::assertEditPageRenders(EditContentBlock::class, $block);
+    $this->assertListPageRenders(ListContentBlocks::class);
+    $this->assertEditPageRenders(EditContentBlock::class, $block);
 });
 
 it('updates payload through action and logs activity with changed payload', function () {

@@ -21,6 +21,7 @@ use Tests\Support\TestBlocks;
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\get;
 
+uses(FilamentSmokeTest::class);
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
@@ -28,7 +29,7 @@ beforeEach(function () {
 });
 
 it('renders create page for platform admin via smoke test', function () {
-    FilamentSmokeTest::assertCreatePageRenders(CreateContentBlock::class);
+    $this->assertCreatePageRenders(CreateContentBlock::class);
 });
 
 it('creates draft content block with causer and logs activity', function () {
@@ -311,3 +312,4 @@ it('discards undeclared payload keys submitted during create', function () {
 
     expect($block->payload)->not->toHaveKey('undeclared_key');
 });
+

@@ -8,53 +8,43 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Livewire\Livewire;
 
-use function Pest\Laravel\actingAs;
-
 trait FilamentSmokeTest
 {
-    public static function getPlatformAdmin(): User
+    protected function getPlatformAdmin(): User
     {
         return User::factory()->platformAdmin()->create();
     }
 
-    public static function assertListPageRenders(string $pageClass): void
+    protected function assertListPageRenders(string $pageClass): void
     {
-        $admin = static::getPlatformAdmin();
-
-        actingAs($admin)
+        $this->actingAs($this->getPlatformAdmin())
             ->get($pageClass::getUrl())
             ->assertSuccessful();
 
-        Livewire::actingAs($admin)->test($pageClass)->assertSuccessful();
+        Livewire::test($pageClass)->assertSuccessful();
     }
 
-    public static function assertPageRenders(string $pageClass): void
+    protected function assertPageRenders(string $pageClass): void
     {
-        $admin = static::getPlatformAdmin();
-
-        actingAs($admin)
+        $this->actingAs($this->getPlatformAdmin())
             ->get($pageClass::getUrl())
             ->assertSuccessful();
 
-        Livewire::actingAs($admin)->test($pageClass)->assertSuccessful();
+        Livewire::test($pageClass)->assertSuccessful();
     }
 
-    public static function assertCreatePageRenders(string $pageClass): void
+    protected function assertCreatePageRenders(string $pageClass): void
     {
-        $admin = static::getPlatformAdmin();
-
-        actingAs($admin)
+        $this->actingAs($this->getPlatformAdmin())
             ->get($pageClass::getUrl())
             ->assertSuccessful();
 
-        Livewire::actingAs($admin)->test($pageClass)->assertSuccessful();
+        Livewire::test($pageClass)->assertSuccessful();
     }
 
-    public static function assertEditPageRenders(string $pageClass, Model $record): void
+    protected function assertEditPageRenders(string $pageClass, Model $record): void
     {
-        $admin = static::getPlatformAdmin();
-
-        actingAs($admin)
+        $this->actingAs($this->getPlatformAdmin())
             ->get($pageClass::getUrl(['record' => $record]))
             ->assertSuccessful();
 
@@ -62,7 +52,7 @@ trait FilamentSmokeTest
         $resource = $pageClass::getResource();
         $routeKeyName = $resource::getRecordRouteKeyName() ?? $record->getRouteKeyName();
 
-        Livewire::actingAs($admin)->test($pageClass, ['record' => $record->getAttribute($routeKeyName)])
+        Livewire::test($pageClass, ['record' => $record->getAttribute($routeKeyName)])
             ->assertSuccessful();
     }
 }
