@@ -10,6 +10,7 @@ use App\Domain\Content\Enums\PublishStatus;
 use App\Domain\Content\Enums\ServingStatus;
 use App\Domain\Content\Models\ContentBlock;
 use App\Filament\Admin\Services\AdminTimezoneResolver;
+use Filament\Actions\EditAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
@@ -133,7 +134,9 @@ final class ContentBlockTable
                 TernaryFilter::make('is_enabled')
                     ->label('Enabled'),
             ])
-            ->actions([])
+            ->recordActions([
+                EditAction::make(),
+            ])
             ->bulkActions([]);
     }
 }
