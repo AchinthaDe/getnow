@@ -11,6 +11,7 @@ use App\Domain\Content\Exceptions\UnsupportedSchemaVersionException;
 use App\Domain\Content\Exceptions\UpgradeFailedException;
 use App\Domain\Content\Models\ContentBlock;
 use App\Filament\Admin\Resources\ContentBlockResource;
+use App\Filament\Admin\Resources\ContentBlockResource\Actions\ContentBlockTransitionActions;
 use App\Filament\Admin\Resources\ContentBlockResource\Schemas\ContentBlockMetadataSchema;
 use App\Filament\Blocks\BlockFormRegistry;
 use Filament\Actions\EditAction;
@@ -28,6 +29,10 @@ final class ViewContentBlock extends ViewRecord
     {
         return [
             EditAction::make(),
+            ContentBlockTransitionActions::publish(),
+            ContentBlockTransitionActions::enable(),
+            ContentBlockTransitionActions::disable(),
+            ContentBlockTransitionActions::archive(),
         ];
     }
 
