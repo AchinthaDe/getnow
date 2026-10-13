@@ -380,3 +380,19 @@ it('resolves edit route with public_id and returns 404 for numeric id', function
     get('/admin/content-blocks/'.$block->id.'/edit')
         ->assertNotFound();
 });
+
+it('exposes no header actions on edit page and registers index create edit and view routes', function () {
+    expect(ContentBlockResource::getPages())->toHaveKeys(['index', 'create', 'edit', 'view']);
+
+    /** @var User $admin */
+    $admin = User::factory()->platformAdmin()->create();
+    /** @var ContentBlock $block */
+    $block = ContentBlock::factory()->create();
+
+    actingAs($admin);
+
+    $component = Livewire::test(EditContentBlock::class, ['record' => $block->public_id]);
+    /** @var EditContentBlock $instance */
+    $instance = $component->instance();
+    expect($instance->getCachedHeaderActions())->toBeEmpty();
+});

@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Domain\Content\Actions\GetBlockServingStatus;
 use App\Domain\Content\Data\ServingHealthResult;
 use App\Domain\Content\Enums\Placement;
+use App\Domain\Content\Enums\PublishStatus;
 use App\Domain\Content\Enums\ServingHealthOutcome;
 use App\Domain\Content\Models\ContentBlock;
 use App\Domain\Content\Services\ResolveServablePayload;
@@ -319,4 +320,75 @@ it('can evaluate column colors via table instance', function () {
     $statusColumn = $table->getColumn('status');
     expect($statusColumn->record($liveBlock)->getColor($statusColumn->getState()))->toBe('success');
     expect($statusColumn->record($notLiveBlock)->getColor($statusColumn->getState()))->toBe('gray');
+});
+
+it('configures row click url to view page', function () {
+    /** @var User $admin */
+    $admin = User::factory()->platformAdmin()->create();
+
+    /** @var ContentBlock $block */
+    $block = ContentBlock::factory()->published()->create();
+
+    $component = Livewire::actingAs($admin)->test(ListContentBlocks::class);
+
+    /** @var ListContentBlocks $instance */
+    $instance = $component->instance();
+    $table = $instance->getTable();
+
+    expect($table->getRecordUrl($block))->toBe(ContentBlockResource::getUrl('view', ['record' => $block]));
+});
+
+it('renders view action for draft published and archived rows', function () {
+    /** @var User $admin */
+    $admin = User::factory()->platformAdmin()->create();
+
+    /** @var ContentBlock $draft */
+    $draft = ContentBlock::factory()->draft()->create();
+    /** @var ContentBlock $published */
+    $published = ContentBlock::factory()->published()->create();
+    /** @var ContentBlock $archived */
+    $archived = ContentBlock::factory()->archived()->create();
+
+    $component = Livewire::actingAs($admin)->test(ListContentBlocks::class)
+        ->set('tableFilters.hide_archived.isActive', false);
+
+    $component->assertTableActionExists('view', record: $draft)
+        ->assertTableActionVisible('view', record: $draft)
+        ->assertTableActionExists('view', record: $published)
+        ->assertTableActionVisible('view', record: $published)
+        ->assertTableActionExists('view', record: $archived)
+        ->assertTableActionVisible('view', record: $archived);
+});
+
+it('hides edit action for archived rows', function () {
+    /** @var User $admin */
+    $admin = User::factory()->platformAdmin()->create();
+
+    /** @var ContentBlock $draft */
+    $draft = ContentBlock::factory()->draft()->create();
+    /** @var ContentBlock $archived */
+    $archived = ContentBlock::factory()->archived()->create();
+
+    $component = Livewire::actingAs($admin)->test(ListContentBlocks::class)
+        ->set('tableFilters.hide_archived.isActive', false);
+
+    $component->assertTableActionVisible('edit', record: $draft)
+        ->assertTableActionHidden('edit', record: $archived);
+});
+
+it('executes transition actions and updates table state reactively', function () {
+    /** @var User $admin */
+    $admin = User::factory()->platformAdmin()->create();
+
+    /** @var ContentBlock $block */
+    $block = ContentBlock::factory()->draft()->create();
+
+    Livewire::actingAs($admin)
+        ->test(ListContentBlocks::class)
+        ->callTableAction('publish', record: $block)
+        ->assertHasNoTableActionErrors()
+        ->assertTableColumnStateSet('status', PublishStatus::PUBLISHED, record: $block);
+
+    $block->refresh();
+    expect($block->status)->toBe(PublishStatus::PUBLISHED);
 });

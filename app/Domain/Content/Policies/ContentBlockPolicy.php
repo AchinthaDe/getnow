@@ -73,4 +73,24 @@ final class ContentBlockPolicy extends BaseContentPolicy
     {
         return $user->isAdmin();
     }
+
+    public function publish(User $user, mixed $model): bool
+    {
+        return $user->isAdmin();
+    }
+
+    public function archive(User $user, mixed $model): bool
+    {
+        return $user->isAdmin();
+    }
+
+    public function enable(User $user, mixed $model): bool
+    {
+        return $user->isAdmin();
+    }
+
+    public function disable(User $user, mixed $model): bool
+    {
+        return $user->isAdmin();
+    }
 }

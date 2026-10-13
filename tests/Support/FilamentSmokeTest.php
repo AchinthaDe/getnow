@@ -55,4 +55,24 @@ trait FilamentSmokeTest
         Livewire::test($pageClass, ['record' => $record->getAttribute($routeKeyName)])
             ->assertSuccessful();
     }
+
+    protected function assertViewPageRenders(string $pageClass, Model $record): void
+    {
+        $admin = $this->getPlatformAdmin();
+
+        $url = $pageClass::getUrl(['record' => $record]);
+        expect($url)->toContain((string) $record->getAttribute('public_id'));
+
+        $this->actingAs($admin)
+            ->get($url)
+            ->assertSuccessful();
+
+        /** @var class-string<\Filament\Resources\Resource> $resource */
+        $resource = $pageClass::getResource();
+        $routeKeyName = $resource::getRecordRouteKeyName() ?? $record->getRouteKeyName();
+
+        Livewire::actingAs($admin)
+            ->test($pageClass, ['record' => $record->getAttribute($routeKeyName)])
+            ->assertSuccessful();
+    }
 }

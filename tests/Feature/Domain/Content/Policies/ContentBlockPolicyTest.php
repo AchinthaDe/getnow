@@ -82,3 +82,21 @@ it('allows update on published content block for platform admin', function () {
 
     expect($policy->update($admin, $publishedBlock))->toBeTrue();
 });
+
+it('allows admin to transition blocks and denies non admin with zero state logic', function () {
+    /** @var User $admin */
+    $admin = User::factory()->platformAdmin()->create();
+    /** @var User $user */
+    $user = User::factory()->create();
+    $archivedBlock = ContentBlock::factory()->archived()->create();
+    $policy = new ContentBlockPolicy;
+
+    expect($policy->publish($admin, $archivedBlock))->toBeTrue()
+        ->and($policy->archive($admin, $archivedBlock))->toBeTrue()
+        ->and($policy->enable($admin, $archivedBlock))->toBeTrue()
+        ->and($policy->disable($admin, $archivedBlock))->toBeTrue()
+        ->and($policy->publish($user, $archivedBlock))->toBeFalse()
+        ->and($policy->archive($user, $archivedBlock))->toBeFalse()
+        ->and($policy->enable($user, $archivedBlock))->toBeFalse()
+        ->and($policy->disable($user, $archivedBlock))->toBeFalse();
+});
