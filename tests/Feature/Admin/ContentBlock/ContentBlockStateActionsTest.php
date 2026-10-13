@@ -78,63 +78,7 @@ it('aborts with 403 when non-admin executes transition action directly', functio
     expect(Activity::forSubject($block)->count())->toBe(0);
 });
 
-// AC-8 & m2: Visibility matrix dataset test
-it('renders visible actions matching exact matrix across all statuses and enabled states', function (
-    PublishStatus $status,
-    bool $isEnabled,
-    array $visibleActions,
-    array $hiddenActions
-) {
-    /** @var User $admin */
-    $admin = User::factory()->platformAdmin()->create();
-
-    /** @var ContentBlock $block */
-    $block = ContentBlock::factory()->create([
-        'status' => $status,
-        'is_enabled' => $isEnabled,
-    ]);
-
-    // Header actions on View page
-    $view = Livewire::actingAs($admin)
-        ->test(ViewContentBlock::class, ['record' => $block->public_id]);
-
-    foreach ($visibleActions as $action) {
-        $view->assertActionVisible($action);
-    }
-    foreach ($hiddenActions as $action) {
-        $view->assertActionHidden($action);
-    }
-
-    // Table row actions on List page
-    $list = Livewire::actingAs($admin)
-        ->test(ListContentBlocks::class)
-        ->set('tableFilters.hide_archived.isActive', false);
-
-    foreach ($visibleActions as $action) {
-        $list->assertTableActionVisible($action, record: $block);
-    }
-    foreach ($hiddenActions as $action) {
-        $list->assertTableActionHidden($action, record: $block);
-    }
-
-    // m2: Verify no visible action would throw IllegalStateTransitionException
-    foreach ($visibleActions as $action) {
-        if ($action === 'edit') {
-            continue;
-        }
-
-        $freshBlock = $block->fresh();
-        assert($freshBlock instanceof ContentBlock);
-
-        match ($action) {
-            'publish' => app(PublishContentBlock::class)((int) $freshBlock->id, $admin),
-            'archive' => app(ArchiveContentBlock::class)((int) $freshBlock->id, $admin),
-            'enable' => app(EnableContentBlock::class)((int) $freshBlock->id, $admin),
-            'disable' => app(DisableContentBlock::class)((int) $freshBlock->id, $admin),
-            default => null,
-        };
-    }
-})->with([
+dataset('stateLegalityMatrix', [
     'draft + enabled' => [
         PublishStatus::DRAFT,
         true,
@@ -172,6 +116,96 @@ it('renders visible actions matching exact matrix across all statuses and enable
         ['edit', 'publish', 'archive', 'enable', 'disable'],
     ],
 ]);
+
+// AC-8: Visibility matrix dataset test for View header actions
+it('renders visible header actions matching exact matrix across all statuses and enabled states on view page', function (
+    PublishStatus $status,
+    bool $isEnabled,
+    array $visibleActions,
+    array $hiddenActions
+) {
+    /** @var User $admin */
+    $admin = User::factory()->platformAdmin()->create();
+
+    /** @var ContentBlock $block */
+    $block = ContentBlock::factory()->create([
+        'status' => $status,
+        'is_enabled' => $isEnabled,
+    ]);
+
+    $view = Livewire::actingAs($admin)
+        ->test(ViewContentBlock::class, ['record' => $block->public_id]);
+
+    foreach ($visibleActions as $action) {
+        $view->assertActionVisible($action);
+    }
+    foreach ($hiddenActions as $action) {
+        $view->assertActionHidden($action);
+    }
+})->with('stateLegalityMatrix');
+
+// AC-8: Visibility matrix dataset test for List table row actions
+it('renders visible table row actions matching exact matrix across all statuses and enabled states on list page', function (
+    PublishStatus $status,
+    bool $isEnabled,
+    array $visibleActions,
+    array $hiddenActions
+) {
+    /** @var User $admin */
+    $admin = User::factory()->platformAdmin()->create();
+
+    /** @var ContentBlock $block */
+    $block = ContentBlock::factory()->create([
+        'status' => $status,
+        'is_enabled' => $isEnabled,
+    ]);
+
+    $list = Livewire::actingAs($admin)
+        ->test(ListContentBlocks::class)
+        ->set('tableFilters.hide_archived.isActive', false);
+
+    foreach ($visibleActions as $action) {
+        $list->assertTableActionVisible($action, record: $block);
+    }
+    foreach ($hiddenActions as $action) {
+        $list->assertTableActionHidden($action, record: $block);
+    }
+})->with('stateLegalityMatrix');
+
+// m2: Verify no visible action would throw IllegalStateTransitionException
+it('verifies no visible transition action throws IllegalStateTransitionException', function (
+    PublishStatus $status,
+    bool $isEnabled,
+    array $visibleActions
+) {
+    /** @var User $admin */
+    $admin = User::factory()->platformAdmin()->create();
+
+    /** @var ContentBlock $block */
+    $block = ContentBlock::factory()->create([
+        'status' => $status,
+        'is_enabled' => $isEnabled,
+    ]);
+
+    foreach ($visibleActions as $action) {
+        if ($action === 'edit') {
+            continue;
+        }
+
+        $freshBlock = $block->fresh();
+        assert($freshBlock instanceof ContentBlock);
+
+        match ($action) {
+            'publish' => app(PublishContentBlock::class)((int) $freshBlock->id, $admin),
+            'archive' => app(ArchiveContentBlock::class)((int) $freshBlock->id, $admin),
+            'enable' => app(EnableContentBlock::class)((int) $freshBlock->id, $admin),
+            'disable' => app(DisableContentBlock::class)((int) $freshBlock->id, $admin),
+            default => null,
+        };
+    }
+
+    expect(true)->toBeTrue();
+})->with('stateLegalityMatrix');
 
 it('forbids non-admin from list and view routes', function () {
     /** @var User $user */
@@ -343,8 +377,8 @@ it('archives block from view header and table row and updates visible actions', 
     ]);
 });
 
-// AC-12: Enable and Disable transitions, plus table row execution on broken payloads
-it('enables and disables published block and succeeds on table row for broken payload', function () {
+// AC-12: Enable and Disable transitions on View header
+it('enables and disables published block from view header', function () {
     /** @var User $admin */
     $admin = User::factory()->platformAdmin()->create();
 
@@ -395,6 +429,12 @@ it('enables and disables published block and succeeds on table row for broken pa
 
     $view->assertActionVisible('disable')
         ->assertActionHidden('enable');
+});
+
+// AC-12: Archive and Disable on table row for broken payload (brief trap 5)
+it('archives and disables broken payload block from table row without hydration', function () {
+    /** @var User $admin */
+    $admin = User::factory()->platformAdmin()->create();
 
     // Broken payload table row archive
     /** @var ContentBlock $brokenDraft */
@@ -473,6 +513,37 @@ it('probes modal race condition when record archived concurrently', function () 
     $block->refresh();
     expect($block->status)->toBe(PublishStatus::ARCHIVED);
     expect(Activity::forSubject($block)->where('event', 'published')->count())->toBe(0);
+});
+
+it('probes tab B disable click after tab A archives block', function () {
+    /** @var User $admin */
+    $admin = User::factory()->platformAdmin()->create();
+
+    /** @var ContentBlock $block */
+    $block = ContentBlock::factory()->published()->enabled()->create();
+
+    $tabB = Livewire::actingAs($admin)
+        ->test(ViewContentBlock::class, ['record' => $block->public_id]);
+
+    // Tab A concurrently archives
+    DB::table('content_blocks')->where('id', $block->id)->update([
+        'status' => 'archived',
+        'is_enabled' => false,
+    ]);
+
+    $tabB->callAction('disable')
+        ->assertSuccessful()
+        ->assertActionHidden('disable')
+        ->assertActionHidden('enable')
+        ->assertActionHidden('publish')
+        ->assertActionHidden('archive')
+        ->assertActionHidden('edit');
+
+    // And verify the database state remains unchanged by tab B:
+    $block->refresh();
+    expect($block->status)->toBe(PublishStatus::ARCHIVED);
+    expect($block->is_enabled)->toBeFalse();
+    expect(Activity::forSubject($block)->where('event', 'disabled')->count())->toBe(0);
 });
 
 it('succeeds idempotently without duplicate activity log when concurrent transition occurs', function () {
