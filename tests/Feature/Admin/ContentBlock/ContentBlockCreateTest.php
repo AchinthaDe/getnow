@@ -241,7 +241,7 @@ it('denies non-admin from creating content blocks', function () {
 });
 
 it('registers exact resource routes and exposes create action on list page', function () {
-    expect(array_keys(ContentBlockResource::getPages()))->toEqualCanonicalizing(['index', 'create', 'edit']);
+    expect(array_keys(ContentBlockResource::getPages()))->toEqualCanonicalizing(['index', 'create', 'edit', 'view']);
 
     /** @var User $admin */
     $admin = User::factory()->platformAdmin()->create();
