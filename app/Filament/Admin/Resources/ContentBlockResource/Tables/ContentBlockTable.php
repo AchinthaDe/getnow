@@ -9,8 +9,12 @@ use App\Domain\Content\Contracts\BlockRegistry;
 use App\Domain\Content\Enums\PublishStatus;
 use App\Domain\Content\Enums\ServingStatus;
 use App\Domain\Content\Models\ContentBlock;
+use App\Filament\Admin\Resources\ContentBlockResource;
+use App\Filament\Admin\Resources\ContentBlockResource\Actions\ContentBlockTransitionActions;
 use App\Filament\Admin\Services\AdminTimezoneResolver;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
@@ -135,8 +139,16 @@ final class ContentBlockTable
                     ->label('Enabled'),
             ])
             ->recordActions([
+                ViewAction::make(),
                 EditAction::make(),
+                ActionGroup::make([
+                    ContentBlockTransitionActions::publish(),
+                    ContentBlockTransitionActions::enable(),
+                    ContentBlockTransitionActions::disable(),
+                    ContentBlockTransitionActions::archive(),
+                ]),
             ])
+            ->recordUrl(fn (ContentBlock $record): string => ContentBlockResource::getUrl('view', ['record' => $record]))
             ->bulkActions([]);
     }
 }
