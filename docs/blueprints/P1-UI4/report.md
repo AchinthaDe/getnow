@@ -2,8 +2,8 @@
 
 **Step ID:** P1-UI4  
 **Status:** Complete  
-**Base Commit:** `a632274945d8b28cf33fb5e527d739818ea1b08b`  
-**Head Commit:** `89ad7669cbbd802823860a9fd265e4941db0f42d`  
+**Base Commit:** `a632274c69f9627c5f18f3b37a1bbc9d0ab2e4c2`  
+**Head Commit:** `f4781f15eda8c6879d58166761a05f614eedd60a`  
 **Commits:**
 1. `f6b9782` feat(content): add publish, archive, enable and disable policy abilities
 2. `b893057` feat(testing): add assertViewPageRenders method to FilamentSmokeTest
@@ -12,6 +12,9 @@
 5. `a7ed85c` feat(filament): add view row action, grouped transition actions and row click to content block table
 6. `4f3a0a5` test(filament): add state transition feature tests
 7. `89ad766` docs(architecture): tick UI step 4 and document resource actions subfolder
+8. `f9cb5b5` docs(blueprints): add P1-UI4 blueprint and report with file reconciliation, architecture diff and A3 fallback
+9. `372ac3c` fix(filament): resolve verify r1 findings F1-F4 in state actions tests and report
+10. `f4781f1` docs(blueprints): update P1-UI4 report for verify r2 findings F5-F8
 
 ---
 
@@ -26,7 +29,7 @@
 | **AC-5** | `view` ability allowed for platform admin (including archived), denied for non-admin (403). | `ContentBlockPolicy.php:24-27`, `ViewContentBlock.php` | `ContentBlockPolicyTest.php:28` (`it allows admin to view archived blocks and denies non admin`), `ContentBlockViewTest.php:148` (`it forbids non admin from viewing block`) | **PASSED** |
 | **AC-6** | List table has View row action for every status. Smoke test loads View page. Row click opens View (OD-4). | `ContentBlockTable.php:142,152`, `FilamentSmokeTest.php:49-69` | `ContentBlockViewTest.php:27` (`ContentBlockViewSmokeTest::test_renders_view_page_for_platform_admin_via_smoke_test`), `ListContentBlocksTableTest.php:325` (`it configures row click url to view page`), `line 340` (`it renders view action for draft published and archived rows`) | **PASSED** |
 | **AC-7** | Abilities `publish`, `archive`, `enable`, `disable` on `ContentBlockPolicy`: true for platform admin, false for non-admin. Zero state logic. | `ContentBlockPolicy.php:77-95` | `ContentBlockPolicyTest.php:84` (`it allows admin to transition blocks and denies non admin with zero state logic`) | **PASSED** |
-| **AC-8** | Visible actions on View header and table row match Section 7.1 matrix. Hidden from non-admin. No visible action throws IllegalStateTransitionException (m2). | `ContentBlockTransitionActions.php:75,99,123,143`, `ContentBlockTable.php:144-150` | `ContentBlockStateActionsTest.php:78` (`it renders visible actions matching exact matrix across all statuses and enabled states`), `line 191` (`it forbids non-admin from list and view routes`) | **PASSED** |
+| **AC-8** | Visible actions on View header and table row match Section 7.1 matrix. Hidden from non-admin. No visible action throws IllegalStateTransitionException (m2). | `ContentBlockTransitionActions.php:75,99,123,143`, `ContentBlockTable.php:144-150` | `ContentBlockStateActionsTest.php:122` (`it renders visible header actions matching exact matrix across all statuses and enabled states on view page`), `line 148` (`it renders visible table row actions matching exact matrix across all statuses and enabled states on list page`), `line 191` (`it forbids non-admin from list and view routes`) | **PASSED** |
 | **AC-9** | Publish transitions draft block, writes activity entry with causer, shows success notification, asks confirmation. Page updates without reload (m3). | `ContentBlockTransitionActions.php:64-86`, `ContentBlockTable.php:145` | `ContentBlockStateActionsTest.php:208` (`it publishes draft block from view header and table row with confirmation modal and activity log`) | **PASSED** |
 | **AC-10** | Publish and Enable on unservable payload leave state unchanged, write zero activity log, show danger notification with fixed copy. | `ContentBlockTransitionActions.php:37-45` | `ContentBlockStateActionsTest.php:267` (`it rejects publish and enable on unservable block payload without writing activity log`) | **PASSED** |
 | **AC-11** | Archive calls Action once on both surfaces, sets archived and disabled, writes activity log with causer. Actions update to archived set. | `ContentBlockTransitionActions.php:88-110`, `ContentBlockTable.php:148` | `ContentBlockStateActionsTest.php:298` (`it archives block from view header and table row and updates visible actions`) | **PASSED** |
@@ -35,9 +38,9 @@
 
 ---
 
-## 2. Raw Git Diff Status (`a632274...HEAD`)
+## 2. Raw Git Diff Status (`origin/main...HEAD`)
 
-**Command:** `git diff --name-status a632274...HEAD`
+**Command:** `git diff --name-status origin/main...HEAD`
 ```
 M	ARCHITECTURE.md
 M	app/Domain/Content/Policies/ContentBlockPolicy.php
@@ -46,6 +49,9 @@ A	app/Filament/Admin/Resources/ContentBlockResource/Actions/ContentBlockTransiti
 A	app/Filament/Admin/Resources/ContentBlockResource/Pages/ViewContentBlock.php
 A	app/Filament/Admin/Resources/ContentBlockResource/Schemas/ContentBlockMetadataSchema.php
 M	app/Filament/Admin/Resources/ContentBlockResource/Tables/ContentBlockTable.php
+A	docs/blueprints/P1-UI4/brief.md
+A	docs/blueprints/P1-UI4/plan.md
+A	docs/blueprints/P1-UI4/report.md
 M	tests/Feature/Admin/ContentBlock/ContentBlockCreateTest.php
 M	tests/Feature/Admin/ContentBlock/ContentBlockEditTest.php
 A	tests/Feature/Admin/ContentBlock/ContentBlockStateActionsTest.php
@@ -54,7 +60,30 @@ M	tests/Feature/Admin/ContentBlock/ListContentBlocksTableTest.php
 M	tests/Feature/Domain/Content/Policies/ContentBlockPolicyTest.php
 M	tests/Support/FilamentSmokeTest.php
 ```
-*Total:* Exactly **14 files** (below the 15-file ceiling).
+*Total codebase files:* Exactly **14 files** (below the 15-file ceiling).  
+*Blueprint documentation files:* Exactly 3 markdown files under `docs/blueprints/P1-UI4/` (`brief.md`, `plan.md`, `report.md`). Blueprint docs do not count against the 15-file codebase manifest.
+
+**Command:** `git diff origin/main...HEAD --stat`
+```
+ ARCHITECTURE.md                                    |    5 +-
+ app/Domain/Content/Policies/ContentBlockPolicy.php |   20 +
+ .../Admin/Resources/ContentBlockResource.php       |    1 +
+ .../Actions/ContentBlockTransitionActions.php      |  155 ++
+ .../Pages/ViewContentBlock.php                     |   89 ++
+ .../Schemas/ContentBlockMetadataSchema.php         |  150 ++
+ .../Tables/ContentBlockTable.php                   |   12 +
+ docs/blueprints/P1-UI4/brief.md                    |  167 +++
+ docs/blueprints/P1-UI4/plan.md                     | 1530 ++++++++++++++++++++
+ docs/blueprints/P1-UI4/report.md                   |  448 ++++++
+ .../Admin/ContentBlock/ContentBlockCreateTest.php  |    2 +-
+ .../Admin/ContentBlock/ContentBlockEditTest.php    |   16 +
+ .../ContentBlock/ContentBlockStateActionsTest.php  |  610 ++++++++
+ .../Admin/ContentBlock/ContentBlockViewTest.php    |  160 ++
+ .../ContentBlock/ListContentBlocksTableTest.php    |   72 +
+ .../Content/Policies/ContentBlockPolicyTest.php    |   18 +
+ tests/Support/FilamentSmokeTest.php                |   20 +
+ 17 files changed, 3472 insertions(+), 3 deletions(-)
+```
 
 ### File Reconciliation Table
 
@@ -204,22 +233,28 @@ index aed00af..feedd9d 100644
 
 ## 5. Mutation Spot-Checks
 
-### MUT-1: Removed `$user->isAdmin()` from `ContentBlockPolicy::publish()`
+### MUT-1: Platform-admin check in `ContentBlockPolicy::publish()` (Grant Everyone mutant: `return true;`)
 **Command:** `vendor/bin/pest tests/Feature/Domain/Content/Policies/ContentBlockPolicyTest.php tests/Feature/Admin/ContentBlock/ContentBlockStateActionsTest.php`
 ```
-{"tool":"pest","result":"failed","tests":39,"passed":30,"assertions":255,"duration_ms":6030,"failed":9,"failures":[{"test":"P\\Tests\\Feature\\Domain\\Content\\Policies\\ContentBlockPolicyTest::__pest_evaluable_it_allows_admin_to_transition_blocks_and_denies_non_admin_with_zero_state_logic","file":"\\dev\\getnow-cms\\tests\\Feature\\Domain\\Content\\Policies\\ContentBlockPolicyTest.php","line":94,"message":"Failed asserting that false is true.","trace":["C:\\dev\\getnow-cms\\tests\\Feature\\Domain\\Content\\Policies\\ContentBlockPolicyTest.php:94"]},{"test":"P\\Tests\\Feature\\Admin\\ContentBlock\\ContentBlockStateActionsTest::__pest_evaluable_it_renders_visible_header_actions_matching_exact_matrix_across_all_statuses_and_enabled_states_on_view_page with data set \"dataset \"draft + enabled\"\"","file":"\\dev\\getnow-cms\\vendor\\filament\\actions\\src\\Testing\\TestsActions.php","line":162,"message":"Failed asserting that an action with name [publish] is visible on the [App\\Filament\\Admin\\Resources\\ContentBlockResource\\Pages\\ViewContentBlock] component.\nFailed asserting that false is true.","trace":["C:\\dev\\getnow-cms\\vendor\\filament\\actions\\src\\Testing\\TestsActions.php:162","C:\\dev\\getnow-cms\\tests\\Feature\\Admin\\ContentBlock\\ContentBlockStateActionsTest.php:140"]},{"test":"P\\Tests\\Feature\\Admin\\ContentBlock\\ContentBlockStateActionsTest::__pest_evaluable_it_renders_visible_table_row_actions_matching_exact_matrix_across_all_statuses_and_enabled_states_on_list_page with data set \"dataset \"draft + enabled\"\"","file":"\\dev\\getnow-cms\\vendor\\filament\\actions\\src\\Testing\\TestsActions.php","line":162,"message":"Failed asserting that an action with name [publish] is visible on the [App\\Filament\\Admin\\Resources\\ContentBlockResource\\Pages\\ListContentBlocks] component.\nFailed asserting that false is true.","trace":["C:\\dev\\getnow-cms\\vendor\\filament\\actions\\src\\Testing\\TestsActions.php:162","C:\\dev\\getnow-cms\\tests\\Feature\\Admin\\ContentBlock\\ContentBlockStateActionsTest.php:168"]}]}
+{"tool":"pest","result":"failed","tests":39,"passed":36,"assertions":325,"duration_ms":6294,"failed":3,"failures":[{"test":"P\\Tests\\Feature\\Domain\\Content\\Policies\\ContentBlockPolicyTest::__pest_evaluable_it_allows_admin_to_transition_blocks_and_denies_non_admin_with_zero_state_logic","file":"\\dev\\getnow-cms\\tests\\Feature\\Domain\\Content\\Policies\\ContentBlockPolicyTest.php","line":98,"message":"Failed asserting that true is false.","trace":["C:\\dev\\getnow-cms\\tests\\Feature\\Domain\\Content\\Policies\\ContentBlockPolicyTest.php:98"]},{"test":"P\\Tests\\Feature\\Admin\\ContentBlock\\ContentBlockStateActionsTest::__pest_evaluable_it_hides_all_transition_actions_from_non_admins","file":"\\dev\\getnow-cms\\tests\\Feature\\Admin\\ContentBlock\\ContentBlockStateActionsTest.php","line":51,"message":"Failed asserting that false is true.","trace":["C:\\dev\\getnow-cms\\tests\\Feature\\Admin\\ContentBlock\\ContentBlockStateActionsTest.php:51"]},{"test":"P\\Tests\\Feature\\Admin\\ContentBlock\\ContentBlockStateActionsTest::__pest_evaluable_it_aborts_with_403_when_non_admin_executes_transition_action_directly","file":"\\dev\\getnow-cms\\tests\\Feature\\Admin\\ContentBlock\\ContentBlockStateActionsTest.php","line":74,"message":"Failed asserting that false is true.","trace":["C:\\dev\\getnow-cms\\tests\\Feature\\Admin\\ContentBlock\\ContentBlockStateActionsTest.php:74"]}]}
 ```
 *Restoration:* `git checkout app/Domain/Content/Policies/ContentBlockPolicy.php`  
-*Diff verification:* `git diff app/Domain/Content/Policies/ContentBlockPolicy.php` -> `[Empty - 0 files touched / clean]`
+**Command:** `git status --short`
+```
+[Empty - clean]
+```
 
 ### MUT-2: Dropped status condition from Publish visibility in `ContentBlockTransitionActions.php`
 **Command:** `vendor/bin/pest tests/Feature/Admin/ContentBlock/ContentBlockStateActionsTest.php`
 ```
-{"tool":"pest","result":"failed","tests":25,"passed":13,"assertions":209,"duration_ms":4860,"failed":12,"failures":[{"test":"P\\Tests\\Feature\\Admin\\ContentBlock\\ContentBlockStateActionsTest::__pest_evaluable_it_renders_visible_header_actions_matching_exact_matrix_across_all_statuses_and_enabled_states_on_view_page with data set \"dataset \"published + enabled\"\"","file":"\\dev\\getnow-cms\\vendor\\filament\\actions\\src\\Testing\\TestsActions.php","line":162,"message":"Failed asserting that an action with name [publish] is hidden on the [App\\Filament\\Admin\\Resources\\ContentBlockResource\\Pages\\ViewContentBlock] component.\nFailed asserting that false is true.","trace":["C:\\dev\\getnow-cms\\vendor\\filament\\actions\\src\\Testing\\TestsActions.php:162","C:\\dev\\getnow-cms\\tests\\Feature\\Admin\\ContentBlock\\ContentBlockStateActionsTest.php:143"]},{"test":"P\\Tests\\Feature\\Admin\\ContentBlock\\ContentBlockStateActionsTest::__pest_evaluable_it_renders_visible_table_row_actions_matching_exact_matrix_across_all_statuses_and_enabled_states_on_list_page with data set \"dataset \"published + enabled\"\"","file":"\\dev\\getnow-cms\\vendor\\filament\\actions\\src\\Testing\\TestsActions.php","line":162,"message":"Failed asserting that an action with name [publish] is hidden on the [App\\Filament\\Admin\\Resources\\ContentBlockResource\\Pages\\ListContentBlocks] component.\nFailed asserting that false is true.","trace":["C:\\dev\\getnow-cms\\vendor\\filament\\actions\\src\\Testing\\TestsActions.php:162","C:\\dev\\getnow-cms\\tests\\Feature\\Admin\\ContentBlock\\ContentBlockStateActionsTest.php:171"]}]}
+{"tool":"pest","result":"failed","tests":25,"passed":13,"assertions":209,"duration_ms":4860,"failed":12,"failures":[{"test":"P\\Tests\\Feature\\Admin\\ContentBlock\\ContentBlockStateActionsTest::__pest_evaluable_it_renders_visible_header_actions_matching_exact_matrix_across_all_statuses_and_enabled_states_on_view_page with data set \"dataset \"published + enabled\"\"","file":"\\dev\\getnow-cms\\vendor\\filament\\actions\\src\\Testing\\TestsActions.php","line":162,"message":"Failed asserting that an action with name [publish] is hidden on the [App\\Filament\\Admin\\Resources\\ContentBlockResource\\Pages\\ViewContentBlock] component.\nFailed asserting that false is true.","trace":["C:\\dev\\getnow-cms\\vendor\\filament\\actions\\src\\Testing\\TestsActions.php:162","C:\\dev\\getnow-cms\\tests\\Feature\\Admin\\ContentBlock\\ContentBlockStateActionsTest.php:143"]},{"test":"P\\Tests\\Feature\\Admin\\ContentBlock\\ContentBlockStateActionsTest::__pest_evaluable_it_renders_visible_header_actions_matching_exact_matrix_across_all_statuses_and_enabled_states_on_view_page with data set \"dataset \"published + disabled\"\"","file":"\\dev\\getnow-cms\\vendor\\filament\\actions\\src\\Testing\\TestsActions.php","line":162,"message":"Failed asserting that an action with name [publish] is hidden on the [App\\Filament\\Admin\\Resources\\ContentBlockResource\\Pages\\ViewContentBlock] component.\nFailed asserting that false is true.","trace":["C:\\dev\\getnow-cms\\vendor\\filament\\actions\\src\\Testing\\TestsActions.php:162","C:\\dev\\getnow-cms\\tests\\Feature\\Admin\\ContentBlock\\ContentBlockStateActionsTest.php:143"]},{"test":"P\\Tests\\Feature\\Admin\\ContentBlock\\ContentBlockStateActionsTest::__pest_evaluable_it_renders_visible_header_actions_matching_exact_matrix_across_all_statuses_and_enabled_states_on_view_page with data set \"dataset \"archived + disabled\"\"","file":"\\dev\\getnow-cms\\vendor\\filament\\actions\\src\\Testing\\TestsActions.php","line":162,"message":"Failed asserting that an action with name [publish] is hidden on the [App\\Filament\\Admin\\Resources\\ContentBlockResource\\Pages\\ViewContentBlock] component.\nFailed asserting that false is true.","trace":["C:\\dev\\getnow-cms\\vendor\\filament\\actions\\src\\Testing\\TestsActions.php:162","C:\\dev\\getnow-cms\\tests\\Feature\\Admin\\ContentBlock\\ContentBlockStateActionsTest.php:143"]},{"test":"P\\Tests\\Feature\\Admin\\ContentBlock\\ContentBlockStateActionsTest::__pest_evaluable_it_renders_visible_header_actions_matching_exact_matrix_across_all_statuses_and_enabled_states_on_view_page with data set \"dataset \"archived + enabled (tamper)\"\"","file":"\\dev\\getnow-cms\\vendor\\filament\\actions\\src\\Testing\\TestsActions.php","line":162,"message":"Failed asserting that an action with name [publish] is hidden on the [App\\Filament\\Admin\\Resources\\ContentBlockResource\\Pages\\ViewContentBlock] component.\nFailed asserting that false is true.","trace":["C:\\dev\\getnow-cms\\vendor\\filament\\actions\\src\\Testing\\TestsActions.php:162","C:\\dev\\getnow-cms\\tests\\Feature\\Admin\\ContentBlock\\ContentBlockStateActionsTest.php:143"]},{"test":"P\\Tests\\Feature\\Admin\\ContentBlock\\ContentBlockStateActionsTest::__pest_evaluable_it_renders_visible_table_row_actions_matching_exact_matrix_across_all_statuses_and_enabled_states_on_list_page with data set \"dataset \"published + enabled\"\"","file":"\\dev\\getnow-cms\\vendor\\filament\\actions\\src\\Testing\\TestsActions.php","line":162,"message":"Failed asserting that an action with name [publish] is hidden on the [App\\Filament\\Admin\\Resources\\ContentBlockResource\\Pages\\ListContentBlocks] component.\nFailed asserting that false is true.","trace":["C:\\dev\\getnow-cms\\vendor\\filament\\actions\\src\\Testing\\TestsActions.php:162","C:\\dev\\getnow-cms\\tests\\Feature\\Admin\\ContentBlock\\ContentBlockStateActionsTest.php:171"]},{"test":"P\\Tests\\Feature\\Admin\\ContentBlock\\ContentBlockStateActionsTest::__pest_evaluable_it_renders_visible_table_row_actions_matching_exact_matrix_across_all_statuses_and_enabled_states_on_list_page with data set \"dataset \"published + disabled\"\"","file":"\\dev\\getnow-cms\\vendor\\filament\\actions\\src\\Testing\\TestsActions.php","line":162,"message":"Failed asserting that an action with name [publish] is hidden on the [App\\Filament\\Admin\\Resources\\ContentBlockResource\\Pages\\ListContentBlocks] component.\nFailed asserting that false is true.","trace":["C:\\dev\\getnow-cms\\vendor\\filament\\actions\\src\\Testing\\TestsActions.php:162","C:\\dev\\getnow-cms\\tests\\Feature\\Admin\\ContentBlock\\ContentBlockStateActionsTest.php:171"]},{"test":"P\\Tests\\Feature\\Admin\\ContentBlock\\ContentBlockStateActionsTest::__pest_evaluable_it_renders_visible_table_row_actions_matching_exact_matrix_across_all_statuses_and_enabled_states_on_list_page with data set \"dataset \"archived + disabled\"\"","file":"\\dev\\getnow-cms\\vendor\\filament\\actions\\src\\Testing\\TestsActions.php","line":162,"message":"Failed asserting that an action with name [publish] is hidden on the [App\\Filament\\Admin\\Resources\\ContentBlockResource\\Pages\\ListContentBlocks] component.\nFailed asserting that false is true.","trace":["C:\\dev\\getnow-cms\\vendor\\filament\\actions\\src\\Testing\\TestsActions.php:162","C:\\dev\\getnow-cms\\tests\\Feature\\Admin\\ContentBlock\\ContentBlockStateActionsTest.php:171"]},{"test":"P\\Tests\\Feature\\Admin\\ContentBlock\\ContentBlockStateActionsTest::__pest_evaluable_it_renders_visible_table_row_actions_matching_exact_matrix_across_all_statuses_and_enabled_states_on_list_page with data set \"dataset \"archived + enabled (tamper)\"\"","file":"\\dev\\getnow-cms\\vendor\\filament\\actions\\src\\Testing\\TestsActions.php","line":162,"message":"Failed asserting that an action with name [publish] is hidden on the [App\\Filament\\Admin\\Resources\\ContentBlockResource\\Pages\\ListContentBlocks] component.\nFailed asserting that false is true.","trace":["C:\\dev\\getnow-cms\\vendor\\filament\\actions\\src\\Testing\\TestsActions.php:162","C:\\dev\\getnow-cms\\tests\\Feature\\Admin\\ContentBlock\\ContentBlockStateActionsTest.php:171"]},{"test":"P\\Tests\\Feature\\Admin\\ContentBlock\\ContentBlockStateActionsTest::__pest_evaluable_it_publishes_draft_block_from_view_header_and_table_row_with_confirmation_modal_and_activity_log","file":"\\dev\\getnow-cms\\vendor\\filament\\actions\\src\\Testing\\TestsActions.php","line":162,"message":"Failed asserting that an action with name [publish] is hidden on the [App\\Filament\\Admin\\Resources\\ContentBlockResource\\Pages\\ViewContentBlock] component.\nFailed asserting that false is true.","trace":["C:\\dev\\getnow-cms\\vendor\\filament\\actions\\src\\Testing\\TestsActions.php:162","C:\\dev\\getnow-cms\\tests\\Feature\\Admin\\ContentBlock\\ContentBlockStateActionsTest.php:256"]},{"test":"P\\Tests\\Feature\\Admin\\ContentBlock\\ContentBlockStateActionsTest::__pest_evaluable_it_archives_block_from_view_header_and_table_row_and_updates_visible_actions","file":"\\dev\\getnow-cms\\vendor\\filament\\actions\\src\\Testing\\TestsActions.php","line":162,"message":"Failed asserting that an action with name [publish] is hidden on the [App\\Filament\\Admin\\Resources\\ContentBlockResource\\Pages\\ViewContentBlock] component.\nFailed asserting that false is true.","trace":["C:\\dev\\getnow-cms\\vendor\\filament\\actions\\src\\Testing\\TestsActions.php:162","C:\\dev\\getnow-cms\\tests\\Feature\\Admin\\ContentBlock\\ContentBlockStateActionsTest.php:348"]},{"test":"P\\Tests\\Feature\\Admin\\ContentBlock\\ContentBlockStateActionsTest::__pest_evaluable_it_probes_tab_B_disable_click_after_tab_A_archives_block","file":"\\dev\\getnow-cms\\vendor\\filament\\actions\\src\\Testing\\TestsActions.php","line":162,"message":"Failed asserting that an action with name [publish] is hidden on the [App\\Filament\\Admin\\Resources\\ContentBlockResource\\Pages\\ViewContentBlock] component.\nFailed asserting that false is true.","trace":["C:\\dev\\getnow-cms\\vendor\\filament\\actions\\src\\Testing\\TestsActions.php:162","C:\\dev\\getnow-cms\\tests\\Feature\\Admin\\ContentBlock\\ContentBlockStateActionsTest.php:538"]},{"test":"P\\Tests\\Feature\\Admin\\ContentBlock\\ContentBlockStateActionsTest::__pest_evaluable_it_throws_AssertionFailedError_when_calling_hidden_action_directly","file":"\\dev\\getnow-cms\\tests\\Feature\\Admin\\ContentBlock\\ContentBlockStateActionsTest.php","line":588,"message":"Exception \"PHPUnit\\Framework\\AssertionFailedError\" not thrown.","trace":["C:\\dev\\getnow-cms\\tests\\Feature\\Admin\\ContentBlock\\ContentBlockStateActionsTest.php:588"]}]}
 ```
 *Verification of matrix test surfaces:* Failures demonstrate explicit assertion of both View header actions (:143) and List table-row actions (:171).  
 *Restoration:* `git checkout app/Filament/Admin/Resources/ContentBlockResource/Actions/ContentBlockTransitionActions.php`  
-*Diff verification:* `git diff app/Filament/Admin/Resources/ContentBlockResource/Actions/ContentBlockTransitionActions.php` -> `[Empty - 0 files touched / clean]`
+**Command:** `git status --short`
+```
+[Empty - clean]
+```
 
 ### MUT-3: Removed `IllegalStateTransitionException` catch in `executeTransition()`
 **Command:** `vendor/bin/pest tests/Feature/Admin/ContentBlock/ContentBlockStateActionsTest.php`
@@ -227,7 +262,10 @@ index aed00af..feedd9d 100644
 {"tool":"pest","result":"failed","tests":25,"passed":24,"assertions":303,"duration_ms":4386,"errors":1,"error_details":[{"test":"P\\Tests\\Feature\\Admin\\ContentBlock\\ContentBlockStateActionsTest::__pest_evaluable_it_handles_stale_state_transition_gracefully_with_danger_notification_and_record_refresh","file":"\\dev\\getnow-cms\\tests\\Feature\\Admin\\ContentBlock\\ContentBlockStateActionsTest.php","line":480,"message":"Cannot publish an archived block.","trace":["C:\\dev\\getnow-cms\\tests\\Feature\\Admin\\ContentBlock\\ContentBlockStateActionsTest.php:480","C:\\dev\\getnow-cms\\app\\Filament\\Admin\\Resources\\ContentBlockResource\\Actions\\ContentBlockTransitionActions.php:73","C:\\dev\\getnow-cms\\app\\Filament\\Admin\\Resources\\ContentBlockResource\\Actions\\ContentBlockTransitionActions.php:38"]}]}
 ```
 *Restoration:* Restored `catch (IllegalStateTransitionException)`.  
-*Diff verification:* `git diff app/Filament/Admin/Resources/ContentBlockResource/Actions/ContentBlockTransitionActions.php` -> `[Empty - clean]`
+**Command:** `git status --short`
+```
+[Empty - clean]
+```
 
 ### MUT-4: Removed `abort_unless` authorization check from `executeTransition()`
 **Command:** `vendor/bin/pest tests/Feature/Admin/ContentBlock/ContentBlockStateActionsTest.php --filter="aborts with 403 when non-admin executes transition action directly"`
@@ -235,13 +273,17 @@ index aed00af..feedd9d 100644
 {"tool":"pest","result":"failed","tests":1,"passed":0,"assertions":1,"duration_ms":868,"failed":1,"failures":[{"test":"P\\Tests\\Feature\\Admin\\ContentBlock\\ContentBlockStateActionsTest::__pest_evaluable_it_aborts_with_403_when_non_admin_executes_transition_action_directly","file":"\\dev\\getnow-cms\\tests\\Feature\\Admin\\ContentBlock\\ContentBlockStateActionsTest.php","line":74,"message":"Failed asserting that false is true.","trace":["C:\\dev\\getnow-cms\\tests\\Feature\\Admin\\ContentBlock\\ContentBlockStateActionsTest.php:74"]}]}
 ```
 *Restoration:* Restored `abort_unless($authUser->can($ability, $record), 403);`.  
-*Diff verification:* `git diff app/Filament/Admin/Resources/ContentBlockResource/Actions/ContentBlockTransitionActions.php` -> `[Empty - clean]`
+**Command:** `git status --short`
+```
+[Empty - clean]
+```
 
 ---
 
 ## 6. Deviations & Gaps
 
-### Accepted Deviation: AC-13 Stale Tab / Concurrent State Change Behavior (Accepted per VERIFY r1 F1)
+### Accepted Deviation: AC-13 Stale Tab / Concurrent State Change Behavior (Accepted per VERIFY r1 F1 & r2 F1)
+- **Status:** **ACCEPTED**
 - **Observation:** In Livewire / Filament, when an action is invoked (either after a confirmation modal has been mounted or from a stale browser tab B) and another session concurrently transitions the record to archived, Filament re-evaluates `visible()` on the action prior to executing the closure. Because all transition actions are hidden in the archived state, Filament drops the execution silently without calling the domain Action.
 - **Observed & Tested Behavior:**
   - The click/execution is a silent no-op.
@@ -253,7 +295,7 @@ index aed00af..feedd9d 100644
 - **In-Request Concurrency:** When a stale transition occurs during in-request execution where the domain Action is reached, the `IllegalStateTransitionException` is caught as designed, displaying the danger notification and refreshing the record (verified by test `it handles stale state transition gracefully with danger notification and record refresh`).
 - **Amended AC-13 & Manual Step 6 Expectation:**
   - *Manual Step 6:* Open block in Tab A and Tab B. Tab A archives the block. Tab B clicks Disable (or Publish). Expected: Click is silently dropped, zero DB changes, zero activity log entries, and Tab B refreshes to show the Archived action set (all transitions and edit hidden).
-  - *AC-13 Status:* **PARTIAL (ACCEPTED DEVIATION)** per VERIFY r1 F1 closeout note.
+  - *AC-13 Status:* **PARTIAL (ACCEPTED DEVIATION)** per VERIFY r1 F1 & r2 F1 closeout note.
 
 ### Gaps
 - None.
@@ -343,8 +385,10 @@ Passed with **0 errors** at Level 8 without baseline entries or suppressions.
 ```
 
 ### Git Log
-**Command:** `git log --oneline main..HEAD`
+**Command:** `git log --oneline origin/main..HEAD`
 ```
+f4781f1 docs(blueprints): update P1-UI4 report for verify r2 findings F5-F8
+372ac3c fix(filament): resolve verify r1 findings F1-F4 in state actions tests and report
 f9cb5b5 docs(blueprints): add P1-UI4 blueprint and report with file reconciliation, architecture diff and A3 fallback
 89ad766 docs(architecture): tick UI step 4 and document resource actions subfolder
 4f3a0a5 test(filament): add state transition feature tests
@@ -353,52 +397,16 @@ b3f9b2e feat(filament): add shared content block transition actions and wire to 
 a278f4a feat(filament): add content block metadata schema, view page and resource view route
 b893057 feat(testing): add assertViewPageRenders method to FilamentSmokeTest
 f6b9782 feat(content): add publish, archive, enable and disable policy abilities
-a632274 docs(blueprints): organize phase 1 blueprints, record P1-UI3 closeout, and tick UI step 3
-b355c7e fix(filament): span payload group full width and mirror smoke test class pattern
-361843d test(content): add UnknownBlockTypeException catch test and tighten assertions
-5326215 test(content): remove redundant RefreshDatabase and TestBlocks from admin tests
-7894a34 fix(testing): restore instance methods and route-key lookup in FilamentSmokeTest
-425de2d feat(filament): add content block create page, header action and create tests
-6ca4649 feat(filament): add content block edit page, table action and edit tests
-c31fa2b feat(filament): add block form contract, registry and announcement bar form schema
-d62b5fd feat(content): add announcement bar text max length and disallow editing archived blocks in policy
-8e8f68f docs(architecture): track phase 1 progress and reconcile discrepancies
-40d9fce docs(content): fix formatting artifacts in ui step 2 verification report
-f25d66e docs(content): finalise ui step 2 verification report
-2b0f043 test(content): cleanup and rename ui step 2 verification tests
-0f98a6e test(content): add strict types to ServingHealthIntegrityTest
-43de6b2 chore(docs): restore ui_step_1_report.md
-a5c3d61 test(content): add navigation visibility test
-58aedd8 test(content): add hide_archived interaction test
-90909f8 chore(content): move AdminTimezoneResolver binding to AdminPanelProvider
-ae5b7c7 fix(content): resolve ui step 2 verify blockers
-262d9be chore: add ADMIN_TIMEZONE to .env.example
-9b0d736 feat(content): scaffold Filament Resource and Table for Content Blocks
-a5d89ce feat(content): implement ui prerequisites and test updates
-494c028 Merge pull request #3 from AchinthaDe/feat/content-blocks-backend
-ddfb7f2 feat(content): implement ui prerequisites and test updates
-eaefedb test(content): add serving health test coverage
-8fbcb88 feat(content): integrate serving health into content actions
-2972a13 feat(content): implement serving health domain layer
-e2962b7 docs(content): add adrs for content block serving health and concurrency
-da5ab93 chore: normalize line endings
-78d17f0 Merge pull request #2 from AchinthaDe/feat/content-blocks-backend
-71047f4 fix(content): resolve 2a correctness and test gaps
-cab32b5 fix(content): resolve minor 2a review feedback
-e0cb538 Fix remaining defects in 2a backend
-b4b35fc fix(content): resolve architectural blockers in 2a backend
-9d389bc feat(content): implement block registry and announcement bar backend
 ```
 
 ### Git Merge-Base
-**Command:** `git merge-base main HEAD`
+**Command:** `git merge-base origin/main HEAD`
 ```
-784c8aa67fbc6de735fbf78bb6785ed9182e766b
+a632274c69f9627c5f18f3b37a1bbc9d0ab2e4c2
 ```
-*(Note: Step P1-UI4 base commit is `a632274`, branching off `b355c7e` / UI3 closeout).*
 
 ### Baseline Diff
-**Command:** `git diff main...HEAD --stat -- '*baseline*'`
+**Command:** `git diff origin/main...HEAD --stat -- '*baseline*'`
 ```
 [Empty - 0 matches]
 ```
@@ -415,20 +423,30 @@ b4b35fc fix(content): resolve architectural blockers in 2a backend
 [Empty - 0 matches]
 ```
 
-### C1 Scan (Strict Types Declaration)
-**Command:** `Get-ChildItem -Path app/Domain/Content/Policies/ContentBlockPolicy.php, app/Filament/Admin/Resources/ContentBlockResource -Recurse -Filter *.php | Where-Object { -not (Get-Content $_.FullName -TotalCount 5 | Select-String -SimpleMatch 'declare(strict_types=1);') }`
+### Exact 10A Command 8: C1 Scan (Strict Types Declaration)
+**Command:** `git diff origin/main...HEAD --name-only -- '*.php' | ForEach-Object { if (-not (Get-Content $_ -TotalCount 5 | Select-String -SimpleMatch 'declare(strict_types=1);')) { $_ } }`
 ```
-[Empty - 0 matches / 100% compliant]
+[Empty - 0 matches / 100% compliant across all 13 changed PHP files]
 ```
 
-### T5 Scan (Skipped or Incomplete Tests)
-**Command:** `Get-ChildItem -Path tests -Recurse -Filter *.php | Select-String -Pattern "->skip\(|markTestIncomplete"`
+### Exact 10A Command 9: T5 Scan (Skipped or Incomplete Tests)
+**Command:** `Get-ChildItem tests -Recurse -Filter *.php | Select-String -Pattern "->skip\(|->todo\(|markTestIncomplete|markTestSkipped"`
+```
+tests\TestCase.php:13:            $this->markTestSkipped($message ?? "Fortify feature [{$feature}] is not enabled.");
+tests\Arch\FilamentWritesTest.php:8:        $this->markTestSkipped('Filament directory does not exist yet.');
+```
+*(Note: `TestCase.php` and `FilamentWritesTest.php` are preexisting Phase 0 scaffold baseline hits; running the scan against all PR/step changed test files yields 0 matches):*  
+**Command:** `git diff origin/main...HEAD --name-only -- 'tests/*.php' | ForEach-Object { Select-String -Path $_ -Pattern "->skip\(|->todo\(|markTestIncomplete|markTestSkipped" }`
 ```
 [Empty - 0 matches]
 ```
 
-### X2 Scan (No Docker Introduced)
-**Command:** `git ls-files "*docker*"`
+### Exact 10A Command 10: X2 Scan (No Docker / Container Introduced)
+**Command:** `git diff origin/main...HEAD --name-only | Select-String -Pattern "docker|compose|sail|container"`
+```
+[Empty - 0 matches]
+```
+**Command:** `git ls-files | Select-String -Pattern "docker-compose|Dockerfile"`
 ```
 [Empty - 0 matches]
 ```
