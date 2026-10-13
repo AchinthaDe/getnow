@@ -20,7 +20,7 @@ This document is the source of truth for structure and boundaries. If code and t
 - [x] UI Step 1 (prerequisites)
 - [x] UI Step 2 (policy, timezone config, read-only list + badges)
 - [x] UI Step 3 (BlockFormRegistry, Create/Edit forms)
-- [ ] UI Step 4 (View page, header/row actions)
+- [x] UI Step 4 (View page, header/row actions)
 - [ ] Menus
 - [ ] Content API v1
 - [ ] Seed data
@@ -79,7 +79,7 @@ app/
 ├── Filament/
 │   ├── Blocks/                 # BlockFormRegistry, plus form schemas per block type
 │   └── Admin/                  # panel `admin`
-│       ├── Resources/          # eg: Resources/ContentBlockResource/{Pages,Schemas,Tables}
+│       ├── Resources/          # eg: Resources/ContentBlockResource/{Actions,Pages,Schemas,Tables}
 │       ├── Pages/              # settings pages, custom pages
 │       └── Widgets/
 ├── Http/
@@ -213,6 +213,7 @@ Contract rules:
 ## 8. Filament conventions
 
 - Panel `admin` at `/admin`. Resources are grouped under `app/Filament/Admin/Resources/<Model>Resource/`.
+- Reusable resource actions (such as lifecycle transitions shared between page headers and table rows) live in `app/Filament/Admin/Resources/<Model>Resource/Actions/`.
 - Form and table definitions live in their own schema classes. Block form schemas live in `app/Filament/Blocks/` so a future retailer panel can reuse them.
 - Create, update, delete and bulk operations call Actions. Status is never a free form field. Use dedicated actions such as Publish, Archive, Enable and Disable.
 - Authorization uses Policies. Content policies extend `BaseContentPolicy`. Phase 1 admin access is a single `is_platform_admin` flag checked in `canAccessPanel`. Roles and permissions arrive with the retailer panel.
