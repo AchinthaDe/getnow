@@ -22,7 +22,7 @@ final class MenuItemFactory extends Factory
     public function definition(): array
     {
         return [
-            'public_id' => (string) Str::ulid(),
+            'public_id' => Str::lower((string) Str::ulid()),
             'menu_id' => Menu::factory(),
             'parent_id' => null,
             'label' => fake()->words(2, true),

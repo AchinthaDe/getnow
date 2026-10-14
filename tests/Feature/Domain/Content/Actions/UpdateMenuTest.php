@@ -2,10 +2,12 @@
 
 declare(strict_types=1);
 
+use App\Domain\Content\Actions\GetMenuTree;
 use App\Domain\Content\Actions\UpdateMenu;
 use App\Domain\Content\Data\UpdateMenuData;
 use App\Domain\Content\Data\UpdateMenuItemInputData;
 use App\Domain\Content\Enums\MenuKey;
+use App\Domain\Content\Exceptions\InvalidMenuTreeException;
 use App\Domain\Content\Models\Menu;
 use App\Domain\Content\Models\MenuItem;
 use App\Models\User;
@@ -244,33 +246,120 @@ it('rolls back database modifications when an exception is triggered mid-transac
         ->and($menu->items()->first()->label)->toBe('Original Item');
 });
 
-it('records activity log entry with causer and plain array tree diff', function () {
+it('records activity log entry with causer and plain array tree diff, zero on rejection, and two on two saves', function () {
     $admin = User::factory()->platformAdmin()->create();
     $menu = Menu::where('key', MenuKey::MAIN_NAV->value)->firstOrFail();
 
-    $updateData = new UpdateMenuData(
-        title: 'Audited Title',
+    $initialCount = Activity::where('subject_type', Menu::class)
+        ->where('subject_id', $menu->id)
+        ->count();
+
+    $updateData1 = new UpdateMenuData(
+        title: 'Audited Title 1',
         items: [
             new UpdateMenuItemInputData(
                 public_id: null,
-                label: 'Audited Item',
-                url: '/audited',
+                label: 'Audited Item 1',
+                url: '/audited-1',
+            ),
+        ],
+    );
+
+    // Save 1: Successful save writes exactly one activity entry
+    app(UpdateMenu::class)($menu, $updateData1, $admin);
+
+    $activitiesAfterSave1 = Activity::where('subject_type', Menu::class)
+        ->where('subject_id', $menu->id)
+        ->get();
+
+    expect($activitiesAfterSave1)->toHaveCount($initialCount + 1);
+
+    $activity1 = $activitiesAfterSave1->last();
+    expect($activity1->causer_id)->toBe($admin->id)
+        ->and($activity1->properties->has('old_items'))->toBeTrue()
+        ->and($activity1->properties->has('new_items'))->toBeTrue()
+        ->and(is_array($activity1->properties['new_items']))->toBeTrue()
+        ->and($activity1->properties['new_items'][0]['label'])->toBe('Audited Item 1');
+
+    // Rejection: Invalid URL must throw exception and write zero activity log entries
+    $invalidData = new UpdateMenuData(
+        title: 'Audited Title 2',
+        items: [
+            new UpdateMenuItemInputData(
+                public_id: null,
+                label: 'Invalid Item',
+                url: 'javascript:alert(1)',
+            ),
+        ],
+    );
+
+    try {
+        app(UpdateMenu::class)($menu, $invalidData, $admin);
+    } catch (InvalidMenuTreeException) {
+        // Expected domain exception
+    }
+
+    $activitiesAfterRejection = Activity::where('subject_type', Menu::class)
+        ->where('subject_id', $menu->id)
+        ->count();
+    expect($activitiesAfterRejection)->toBe($initialCount + 1);
+
+    // Save 2: Second consecutive successful save writes a second activity entry (2 total)
+    $updateData2 = new UpdateMenuData(
+        title: 'Audited Title 2',
+        items: [
+            new UpdateMenuItemInputData(
+                public_id: null,
+                label: 'Audited Item 2',
+                url: '/audited-2',
+            ),
+        ],
+    );
+
+    app(UpdateMenu::class)($menu, $updateData2, $admin);
+
+    $activitiesAfterSave2 = Activity::where('subject_type', Menu::class)
+        ->where('subject_id', $menu->id)
+        ->count();
+
+    expect($activitiesAfterSave2)->toBe($initialCount + 2);
+});
+
+it('bumps menu updated_at when only items change', function () {
+    $admin = User::factory()->platformAdmin()->create();
+    $menu = Menu::where('key', MenuKey::MAIN_NAV->value)->firstOrFail();
+    $menu->update(['title' => 'Constant Title', 'updated_at' => now()->subMinutes(10)]);
+    $initialUpdatedAt = $menu->fresh()->updated_at;
+
+    $updateData = new UpdateMenuData(
+        title: 'Constant Title',
+        items: [
+            new UpdateMenuItemInputData(
+                public_id: null,
+                label: 'New Item Only',
+                url: '/new-item',
             ),
         ],
     );
 
     app(UpdateMenu::class)($menu, $updateData, $admin);
 
-    $activity = Activity::where('log_name', 'content')
-        ->where('subject_id', $menu->id)
-        ->where('event', 'updated')
-        ->latest('id')
-        ->first();
+    $menu->refresh();
+    expect($menu->updated_at->isAfter($initialUpdatedAt))->toBeTrue();
+});
 
-    expect($activity)->not->toBeNull()
-        ->and($activity->causer_id)->toBe($admin->id)
-        ->and($activity->properties->has('old_items'))->toBeTrue()
-        ->and($activity->properties->has('new_items'))->toBeTrue()
-        ->and(is_array($activity->properties['new_items']))->toBeTrue()
-        ->and($activity->properties['new_items'][0]['label'])->toBe('Audited Item');
+it('accepts integer menu id as action identifier across actions', function () {
+    $admin = User::factory()->platformAdmin()->create();
+    $menu = Menu::where('key', MenuKey::MAIN_NAV->value)->firstOrFail();
+
+    $tree = app(GetMenuTree::class)($menu->id);
+    expect($tree->key)->toBe(MenuKey::MAIN_NAV);
+
+    $updateData = new UpdateMenuData(
+        title: 'Updated Via Int ID',
+        items: [],
+    );
+
+    $savedTree = app(UpdateMenu::class)($menu->id, $updateData, $admin);
+    expect($savedTree->title)->toBe('Updated Via Int ID');
 });

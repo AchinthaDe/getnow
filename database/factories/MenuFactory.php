@@ -23,7 +23,7 @@ final class MenuFactory extends Factory
     public function definition(): array
     {
         return [
-            'public_id' => (string) Str::ulid(),
+            'public_id' => Str::lower((string) Str::ulid()),
             'key' => MenuKey::MAIN_NAV,
             'label' => 'Main Navigation',
             'title' => null,

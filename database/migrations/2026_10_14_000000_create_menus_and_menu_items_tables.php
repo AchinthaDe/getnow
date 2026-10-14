@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Domain\Content\Enums\MenuKey;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Carbon;
@@ -43,13 +42,21 @@ return new class extends Migration
 
         // Provision the five code-owned menus idempotently
         $now = Carbon::now('UTC');
-        foreach (MenuKey::cases() as $case) {
-            $exists = DB::table('menus')->where('key', $case->value)->exists();
+        $menus = [
+            ['key' => 'main_nav', 'label' => 'Main Navigation'],
+            ['key' => 'mobile_nav', 'label' => 'Mobile Navigation'],
+            ['key' => 'footer_column_1', 'label' => 'Footer Column 1'],
+            ['key' => 'footer_column_2', 'label' => 'Footer Column 2'],
+            ['key' => 'footer_column_3', 'label' => 'Footer Column 3'],
+        ];
+
+        foreach ($menus as $menu) {
+            $exists = DB::table('menus')->where('key', $menu['key'])->exists();
             if (! $exists) {
                 DB::table('menus')->insert([
-                    'public_id' => (string) Str::ulid(),
-                    'key' => $case->value,
-                    'label' => $case->defaultLabel(),
+                    'public_id' => Str::lower((string) Str::ulid()),
+                    'key' => $menu['key'],
+                    'label' => $menu['label'],
                     'title' => null,
                     'created_at' => $now,
                     'updated_at' => $now,
