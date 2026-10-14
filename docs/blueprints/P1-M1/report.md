@@ -315,3 +315,54 @@ e347c6a feat(content): create menus and menu_items tables with provisioning
 ```
 [Empty - 0 matches]
 ```
+
+---
+
+## 8. Local Environment & Migration Verification (Layer C)
+
+### Local Database Migration Execution
+**Command:** `php artisan migrate`
+```
+ INFO Running migrations. 
+
+ 2026_10_14_000000_create_menus_and_menu_items_tables .. 147.65ms DONE
+```
+
+### Dev Database Menus Table Verification
+**Command:** `php artisan tinker --execute="dump(App\Domain\Content\Models\Menu::all(['id', 'key', 'label', 'public_id'])->toArray());"`
+```
+array:5 [
+  0 => array:4 [
+    "id" => 1
+    "key" => "main_nav"
+    "label" => "Main Navigation"
+    "public_id" => "01M4WM6FQMGKVZX58C8EVWY6X2"
+  ]
+  1 => array:4 [
+    "id" => 2
+    "key" => "mobile_nav"
+    "label" => "Mobile Navigation"
+    "public_id" => "01M4WM6FQNWAQAWQYFGR7KH401"
+  ]
+  2 => array:4 [
+    "id" => 3
+    "key" => "footer_column_1"
+    "label" => "Footer Column 1"
+    "public_id" => "01M4WM6FQPXRG7G2T3G9EWK7C9"
+  ]
+  3 => array:4 [
+    "id" => 4
+    "key" => "footer_column_2"
+    "label" => "Footer Column 2"
+    "public_id" => "01M4WM6FQPXRG7G2T3G9EWK7CA"
+  ]
+  4 => array:4 [
+    "id" => 5
+    "key" => "footer_column_3"
+    "label" => "Footer Column 3"
+    "public_id" => "01M4WM6FQQ7ZYCM047P4PX12EH"
+  ]
+]
+```
+All 5 code-owned menus are verified provisioned and active on the local development dashboard.
+
