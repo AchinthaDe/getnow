@@ -110,7 +110,7 @@ The Blade storefront server and client consumers should leverage HTTP conditiona
   },
   "meta": {
     "api_version": 1,
-    "revision": "a8f5f167f44f4964e6c998dee827110c",
+    "revision": "a8f5f167f44f4964e6c998dee827110ca8f5f167f44f4964e6c998dee827110c",
     "generated_at": "2026-10-14T10:00:00Z"
   }
 }

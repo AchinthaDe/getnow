@@ -22,7 +22,7 @@ This document is the source of truth for structure and boundaries. If code and t
 - [x] UI Step 3 (BlockFormRegistry, Create/Edit forms)
 - [x] UI Step 4 (View page, header/row actions)
 - [x] Menus
-- [ ] Content API v1
+- [x] Content API v1
 - [ ] Seed data
 
 Rule: do not scaffold folders, models or packages for a phase that is not active.
