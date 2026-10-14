@@ -176,16 +176,70 @@ it('rejects structure violations and unknown public IDs with InvalidMenuTreeExce
         ->toThrow(InvalidMenuTreeException::class);
 });
 
-it('rejects title exceeding maximum length with InvalidMenuTreeException', function () {
+it('enforces title length boundaries with InvalidMenuTreeException', function () {
     $admin = User::factory()->platformAdmin()->create();
     $menu = Menu::firstOrFail();
 
-    $tooLongTitle = str_repeat('a', 256);
-    $updateData = new UpdateMenuData(
-        title: $tooLongTitle,
+    // 256 chars: rejected
+    $updateData256 = new UpdateMenuData(
+        title: str_repeat('a', 256),
         items: [],
     );
+    expect(fn () => app(UpdateMenu::class)($menu, $updateData256, $admin))
+        ->toThrow(InvalidMenuTreeException::class);
 
-    expect(fn () => app(UpdateMenu::class)($menu, $updateData, $admin))
+    // 255 chars: accepted
+    $updateData255 = new UpdateMenuData(
+        title: str_repeat('a', 255),
+        items: [],
+    );
+    $tree = app(UpdateMenu::class)($menu, $updateData255, $admin);
+    expect($tree->title)->toBe(str_repeat('a', 255));
+});
+
+it('enforces label length boundaries with InvalidMenuTreeException', function () {
+    $admin = User::factory()->platformAdmin()->create();
+    $menu = Menu::firstOrFail();
+
+    // 81 chars: rejected
+    $updateData81 = new UpdateMenuData(
+        title: null,
+        items: [
+            new UpdateMenuItemInputData(
+                public_id: null,
+                label: str_repeat('a', 81),
+                url: '/test',
+            ),
+        ],
+    );
+    expect(fn () => app(UpdateMenu::class)($menu, $updateData81, $admin))
+        ->toThrow(InvalidMenuTreeException::class);
+
+    // 80 chars: accepted
+    $updateData80 = new UpdateMenuData(
+        title: null,
+        items: [
+            new UpdateMenuItemInputData(
+                public_id: null,
+                label: str_repeat('a', 80),
+                url: '/test',
+            ),
+        ],
+    );
+    $tree = app(UpdateMenu::class)($menu, $updateData80, $admin);
+    expect($tree->items[0]->label)->toBe(str_repeat('a', 80));
+
+    // Empty / whitespace label: rejected
+    $updateDataEmpty = new UpdateMenuData(
+        title: null,
+        items: [
+            new UpdateMenuItemInputData(
+                public_id: null,
+                label: '   ',
+                url: '/test',
+            ),
+        ],
+    );
+    expect(fn () => app(UpdateMenu::class)($menu, $updateDataEmpty, $admin))
         ->toThrow(InvalidMenuTreeException::class);
 });

@@ -203,35 +203,43 @@ it('empties menu when items array is empty', function () {
 it('rolls back database modifications when an exception is triggered mid-transaction', function () {
     $admin = User::factory()->platformAdmin()->create();
     $menu = Menu::where('key', MenuKey::MAIN_NAV->value)->firstOrFail();
+    $menu->update(['title' => 'Initial Title']);
 
     $existingItem = MenuItem::factory()->forMenu($menu)->create(['label' => 'Original Item']);
-    $originalTitle = $menu->title;
 
-    // Submitting a structure with duplicate public_id triggers an exception during validation before writes
+    // Hook into MenuItem saving to throw mid-transaction during child persistence
+    MenuItem::saving(function (MenuItem $item) {
+        if ($item->label === 'Throw Mid-Transaction') {
+            throw new RuntimeException('Simulated mid-transaction failure');
+        }
+    });
+
     $updateData = new UpdateMenuData(
-        title: 'Should Not Persist',
+        title: 'New Title That Should Rollback',
         items: [
             new UpdateMenuItemInputData(
                 public_id: $existingItem->public_id,
-                label: 'Item 1',
-                url: '/valid-1',
-            ),
-            new UpdateMenuItemInputData(
-                public_id: $existingItem->public_id,
-                label: 'Item 2 Duplicate',
-                url: '/valid-2',
+                label: 'Updated Root Item',
+                url: '/root',
+                children: [
+                    new UpdateMenuItemInputData(
+                        public_id: null,
+                        label: 'Throw Mid-Transaction',
+                        url: '/child',
+                    ),
+                ],
             ),
         ],
     );
 
     try {
         app(UpdateMenu::class)($menu, $updateData, $admin);
-    } catch (Throwable) {
+    } catch (RuntimeException) {
         // Expected
     }
 
     $menu->refresh();
-    expect($menu->title)->toBe($originalTitle)
+    expect($menu->title)->toBe('Initial Title')
         ->and($menu->items()->count())->toBe(1)
         ->and($menu->items()->first()->label)->toBe('Original Item');
 });

@@ -84,3 +84,24 @@ it('executes menu tree retrieval within constant query bounds', function () {
     expect($queriesByKey)->toHaveCount(2)
         ->and($treeByKey->items)->toHaveCount(10);
 });
+
+it('returns all items including disabled items without filtering', function () {
+    $menu = Menu::factory()->forKey(MenuKey::MAIN_NAV)->create();
+
+    $item = MenuItem::factory()->forMenu($menu)->create([
+        'label' => 'Disabled Root Item',
+        'is_enabled' => false,
+    ]);
+
+    $child = MenuItem::factory()->childOf($item)->create([
+        'label' => 'Disabled Child Item',
+        'is_enabled' => false,
+    ]);
+
+    $tree = app(GetMenuTree::class)($menu);
+
+    expect($tree->items)->toHaveCount(1)
+        ->and($tree->items[0]->is_enabled)->toBeFalse()
+        ->and($tree->items[0]->children)->toHaveCount(1)
+        ->and($tree->items[0]->children[0]->is_enabled)->toBeFalse();
+});
