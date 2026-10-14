@@ -98,3 +98,17 @@ it('resolves existing provisioned menu records via factory without unique collis
         ->and($menu->title)->toBe('Updated Title')
         ->and(Menu::count())->toBe(5);
 });
+
+it('ensures every menu and menu item public_id is lowercase', function () {
+    $menus = Menu::all();
+    expect($menus)->toHaveCount(5);
+
+    foreach ($menus as $menu) {
+        expect($menu->public_id)->toMatch('/^[0-9a-z]{26}$/')
+            ->and($menu->public_id)->toBe(strtolower($menu->public_id));
+    }
+
+    $item = MenuItem::factory()->forMenu($menus->first())->create();
+    expect($item->public_id)->toMatch('/^[0-9a-z]{26}$/')
+        ->and($item->public_id)->toBe(strtolower($item->public_id));
+});

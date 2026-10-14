@@ -104,9 +104,9 @@ final class UpdateMenu
                 $validateItem($item, true);
             }
 
-            // Update menu title
+            // Update menu title and touch updated_at
             $menu->title = $title;
-            $menu->save();
+            $menu->touch();
 
             // Reordered Reconciliation Sequence
             $submittedPublicIds = [];
