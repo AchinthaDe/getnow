@@ -1,0 +1,1528 @@
+﻿diff --git a/.env.example b/.env.example
+index 7111da0..fc44bcd 100644
+--- a/.env.example
++++ b/.env.example
+@@ -64,3 +64,4 @@ AWS_USE_PATH_STYLE_ENDPOINT=false
+ 
+ VITE_APP_NAME="${APP_NAME}"
+ ADMIN_TIMEZONE=Asia/Colombo
++CONTENT_API_RATE_LIMIT_PER_MINUTE=60
+diff --git a/ARCHITECTURE.md b/ARCHITECTURE.md
+index 4485fc7..67a0b26 100644
+--- a/ARCHITECTURE.md
++++ b/ARCHITECTURE.md
+@@ -22,7 +22,7 @@ This document is the source of truth for structure and boundaries. If code and t
+ - [x] UI Step 3 (BlockFormRegistry, Create/Edit forms)
+ - [x] UI Step 4 (View page, header/row actions)
+ - [x] Menus
+-- [ ] Content API v1
++- [x] Content API v1
+ - [ ] Seed data
+ 
+ Rule: do not scaffold folders, models or packages for a phase that is not active.
+diff --git a/app/Domain/Content/Actions/GetLayoutContent.php b/app/Domain/Content/Actions/GetLayoutContent.php
+new file mode 100644
+index 0000000..6c4d7b8
+--- /dev/null
++++ b/app/Domain/Content/Actions/GetLayoutContent.php
+@@ -0,0 +1,173 @@
++<?php
++
++declare(strict_types=1);
++
++namespace App\Domain\Content\Actions;
++
++use App\Domain\Content\Contracts\BlockRegistry;
++use App\Domain\Content\Data\LayoutBlockData;
++use App\Domain\Content\Data\LayoutData;
++use App\Domain\Content\Data\LayoutMenuData;
++use App\Domain\Content\Data\LayoutMenuItemData;
++use App\Domain\Content\Data\LayoutMetaData;
++use App\Domain\Content\Data\LayoutResponseData;
++use App\Domain\Content\Data\LayoutSettingsData;
++use App\Domain\Content\Enums\MenuKey;
++use App\Domain\Content\Enums\Placement;
++use App\Domain\Content\Models\ContentBlock;
++use App\Domain\Content\Models\Menu;
++use App\Domain\Content\Services\ResolveServablePayload;
++use App\Domain\Content\Settings\StorefrontSettings;
++
++final class GetLayoutContent
++{
++    public function __construct(
++        private readonly StorefrontSettings $settings,
++        private readonly BlockRegistry $registry,
++        private readonly ResolveServablePayload $resolveServablePayload,
++    ) {}
++
++    public function __invoke(): LayoutResponseData
++    {
++        // 1. Settings assembly
++        $settingsData = new LayoutSettingsData(
++            site_name: $this->settings->site_name,
++            default_meta_description: $this->settings->default_meta_description,
++            search_placeholder: $this->settings->search_placeholder,
++            footer_brand_text: $this->settings->footer_brand_text,
++        );
++
++        // 2. Placements assembly (single query with index prefix status, is_enabled, sort_order)
++        $allBlocks = ContentBlock::visible()->servingOrder()->get();
++
++        $blocksByPlacement = [];
++        foreach ($allBlocks as $block) {
++            if ($block->placement instanceof Placement) {
++                $blocksByPlacement[$block->placement->value][] = $block;
++            }
++        }
++
++        $placementsData = [];
++        foreach (Placement::cases() as $placement) {
++            $candidates = $blocksByPlacement[$placement->value] ?? [];
++            $selectedBlocks = [];
++            $maxCount = $placement->maxCount();
++            $allowedTypes = $placement->allowedBlockTypes();
++
++            foreach ($candidates as $candidate) {
++                // Pass candidates to ResolveServablePayload first to log corruption and unknown types
++                $health = ($this->resolveServablePayload)($candidate, log: true);
++
++                if (! $health->isServable() || $health->payload === null) {
++                    continue;
++                }
++
++                // Check placement allowed type second without logging
++                if (! in_array($candidate->type, $allowedTypes, true)) {
++                    continue;
++                }
++
++                $definition = $this->registry->get($candidate->type);
++                if ($definition === null) {
++                    continue;
++                }
++
++                $selectedBlocks[] = new LayoutBlockData(
++                    id: $candidate->public_id,
++                    type: $candidate->type,
++                    version: $definition->schemaVersion(),
++                    data: $health->payload->toArray(),
++                );
++
++                if (count($selectedBlocks) >= $maxCount) {
++                    break;
++                }
++            }
++
++            $placementsData[$placement->value] = $selectedBlocks;
++        }
++
++        // 3. Menus assembly (2 queries: menus, then items ordered by sort_order, id)
++        $menus = Menu::with(['items' => fn ($q) => $q->orderBy('sort_order')->orderBy('id')])
++            ->get()
++            ->keyBy(fn (Menu $m): string => $m->key->value);
++
++        $menusData = [];
++        foreach (MenuKey::cases() as $menuKey) {
++            $menu = $menus->get($menuKey->value);
++
++            if ($menu === null) {
++                $menusData[$menuKey->value] = new LayoutMenuData(
++                    title: null,
++                    items: [],
++                );
++
++                continue;
++            }
++
++            $rootItems = $menu->items
++                ->filter(fn ($item) => $item->parent_id === null && $item->is_enabled === true);
++
++            $childrenByParent = $menu->items
++                ->filter(fn ($item) => $item->parent_id !== null && $item->is_enabled === true)
++                ->groupBy('parent_id');
++
++            $mappedRoots = [];
++            foreach ($rootItems as $root) {
++                $childItems = $childrenByParent->get($root->id, collect());
++                $mappedChildren = [];
++
++                foreach ($childItems as $child) {
++                    $mappedChildren[] = new LayoutMenuItemData(
++                        id: $child->public_id,
++                        label: $child->label,
++                        url: $child->url,
++                        icon: $child->icon,
++                        new_tab: (bool) $child->opens_in_new_tab,
++                        children: [],
++                    );
++                }
++
++                $mappedRoots[] = new LayoutMenuItemData(
++                    id: $root->public_id,
++                    label: $root->label,
++                    url: $root->url,
++                    icon: $root->icon,
++                    new_tab: (bool) $root->opens_in_new_tab,
++                    children: $mappedChildren,
++                );
++            }
++
++            $menusData[$menuKey->value] = new LayoutMenuData(
++                title: $menu->title,
++                items: $mappedRoots,
++            );
++        }
++
++        // 4. Data wrapping & deterministic revision hash generation
++        $layoutData = new LayoutData(
++            settings: $settingsData,
++            placements: $placementsData,
++            menus: $menusData,
++        );
++
++        $canonicalJson = json_encode(
++            $layoutData->toArray(),
++            JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
++        );
++
++        $revision = hash('sha256', $canonicalJson);
++        $generatedAt = now()->utc()->toIso8601ZuluString();
++
++        $metaData = new LayoutMetaData(
++            api_version: 1,
++            revision: $revision,
++            generated_at: $generatedAt,
++        );
++
++        return new LayoutResponseData(
++            data: $layoutData,
++            meta: $metaData,
++        );
++    }
++}
+diff --git a/app/Domain/Content/Data/LayoutBlockData.php b/app/Domain/Content/Data/LayoutBlockData.php
+new file mode 100644
+index 0000000..7e74549
+--- /dev/null
++++ b/app/Domain/Content/Data/LayoutBlockData.php
+@@ -0,0 +1,20 @@
++<?php
++
++declare(strict_types=1);
++
++namespace App\Domain\Content\Data;
++
++use Spatie\LaravelData\Data;
++
++final class LayoutBlockData extends Data
++{
++    /**
++     * @param  array<string, mixed>  $data
++     */
++    public function __construct(
++        public string $id,
++        public string $type,
++        public int $version,
++        public array $data,
++    ) {}
++}
+diff --git a/app/Domain/Content/Data/LayoutData.php b/app/Domain/Content/Data/LayoutData.php
+new file mode 100644
+index 0000000..c292597
+--- /dev/null
++++ b/app/Domain/Content/Data/LayoutData.php
+@@ -0,0 +1,20 @@
++<?php
++
++declare(strict_types=1);
++
++namespace App\Domain\Content\Data;
++
++use Spatie\LaravelData\Data;
++
++final class LayoutData extends Data
++{
++    /**
++     * @param  array<string, array<int, LayoutBlockData>>  $placements
++     * @param  array<string, LayoutMenuData>  $menus
++     */
++    public function __construct(
++        public LayoutSettingsData $settings,
++        public array $placements,
++        public array $menus,
++    ) {}
++}
+diff --git a/app/Domain/Content/Data/LayoutMenuData.php b/app/Domain/Content/Data/LayoutMenuData.php
+new file mode 100644
+index 0000000..a1d2da4
+--- /dev/null
++++ b/app/Domain/Content/Data/LayoutMenuData.php
+@@ -0,0 +1,18 @@
++<?php
++
++declare(strict_types=1);
++
++namespace App\Domain\Content\Data;
++
++use Spatie\LaravelData\Data;
++
++final class LayoutMenuData extends Data
++{
++    /**
++     * @param  array<int, LayoutMenuItemData>  $items
++     */
++    public function __construct(
++        public ?string $title,
++        public array $items,
++    ) {}
++}
+diff --git a/app/Domain/Content/Data/LayoutMenuItemData.php b/app/Domain/Content/Data/LayoutMenuItemData.php
+new file mode 100644
+index 0000000..dd2b7ab
+--- /dev/null
++++ b/app/Domain/Content/Data/LayoutMenuItemData.php
+@@ -0,0 +1,22 @@
++<?php
++
++declare(strict_types=1);
++
++namespace App\Domain\Content\Data;
++
++use Spatie\LaravelData\Data;
++
++final class LayoutMenuItemData extends Data
++{
++    /**
++     * @param  array<int, LayoutMenuItemData>  $children
++     */
++    public function __construct(
++        public string $id,
++        public string $label,
++        public string $url,
++        public ?string $icon,
++        public bool $new_tab,
++        public array $children = [],
++    ) {}
++}
+diff --git a/app/Domain/Content/Data/LayoutMetaData.php b/app/Domain/Content/Data/LayoutMetaData.php
+new file mode 100644
+index 0000000..70bc64b
+--- /dev/null
++++ b/app/Domain/Content/Data/LayoutMetaData.php
+@@ -0,0 +1,16 @@
++<?php
++
++declare(strict_types=1);
++
++namespace App\Domain\Content\Data;
++
++use Spatie\LaravelData\Data;
++
++final class LayoutMetaData extends Data
++{
++    public function __construct(
++        public int $api_version,
++        public string $revision,
++        public string $generated_at,
++    ) {}
++}
+diff --git a/app/Domain/Content/Data/LayoutResponseData.php b/app/Domain/Content/Data/LayoutResponseData.php
+new file mode 100644
+index 0000000..bf451fd
+--- /dev/null
++++ b/app/Domain/Content/Data/LayoutResponseData.php
+@@ -0,0 +1,15 @@
++<?php
++
++declare(strict_types=1);
++
++namespace App\Domain\Content\Data;
++
++use Spatie\LaravelData\Data;
++
++final class LayoutResponseData extends Data
++{
++    public function __construct(
++        public LayoutData $data,
++        public LayoutMetaData $meta,
++    ) {}
++}
+diff --git a/app/Domain/Content/Data/LayoutSettingsData.php b/app/Domain/Content/Data/LayoutSettingsData.php
+new file mode 100644
+index 0000000..ee8c79a
+--- /dev/null
++++ b/app/Domain/Content/Data/LayoutSettingsData.php
+@@ -0,0 +1,17 @@
++<?php
++
++declare(strict_types=1);
++
++namespace App\Domain\Content\Data;
++
++use Spatie\LaravelData\Data;
++
++final class LayoutSettingsData extends Data
++{
++    public function __construct(
++        public string $site_name,
++        public string $default_meta_description,
++        public string $search_placeholder,
++        public string $footer_brand_text,
++    ) {}
++}
+diff --git a/app/Http/Controllers/Api/V1/Content/GetLayoutContentController.php b/app/Http/Controllers/Api/V1/Content/GetLayoutContentController.php
+new file mode 100644
+index 0000000..5040a33
+--- /dev/null
++++ b/app/Http/Controllers/Api/V1/Content/GetLayoutContentController.php
+@@ -0,0 +1,31 @@
++<?php
++
++declare(strict_types=1);
++
++namespace App\Http\Controllers\Api\V1\Content;
++
++use App\Domain\Content\Actions\GetLayoutContent;
++use App\Http\Controllers\Controller;
++use Illuminate\Http\Request;
++use Symfony\Component\HttpFoundation\Response;
++
++final class GetLayoutContentController extends Controller
++{
++    public function __invoke(Request $request, GetLayoutContent $getLayoutContent): Response
++    {
++        $layout = $getLayoutContent();
++        $response = response()->json($layout->toArray(), 200);
++        $response->setEtag($layout->meta->revision);
++
++        $expectedEtag = '"'.$layout->meta->revision.'"';
++        foreach ($request->getEtags() as $etag) {
++            $stripped = (string) preg_replace('/^W\//', '', $etag);
++            if ($stripped === '*' || $stripped === $expectedEtag) {
++                $response->setNotModified();
++                break;
++            }
++        }
++
++        return $response;
++    }
++}
+diff --git a/app/Providers/AppServiceProvider.php b/app/Providers/AppServiceProvider.php
+index f16d1b5..d26062f 100644
+--- a/app/Providers/AppServiceProvider.php
++++ b/app/Providers/AppServiceProvider.php
+@@ -5,8 +5,11 @@ declare(strict_types=1);
+ namespace App\Providers;
+ 
+ use Carbon\CarbonImmutable;
++use Illuminate\Cache\RateLimiting\Limit;
++use Illuminate\Http\Request;
+ use Illuminate\Support\Facades\Date;
+ use Illuminate\Support\Facades\DB;
++use Illuminate\Support\Facades\RateLimiter;
+ use Illuminate\Support\ServiceProvider;
+ use Illuminate\Validation\Rules\Password;
+ 
+@@ -26,6 +29,15 @@ class AppServiceProvider extends ServiceProvider
+     public function boot(): void
+     {
+         $this->configureDefaults();
++        $this->configureRateLimiting();
++    }
++
++    /**
++     * Configure rate limiters for application APIs.
++     */
++    protected function configureRateLimiting(): void
++    {
++        RateLimiter::for('content-api', fn (Request $request): Limit => Limit::perMinute((int) config('content.rate_limit_per_minute', 60))->by($request->ip()));
+     }
+ 
+     /**
+diff --git a/config/content.php b/config/content.php
+new file mode 100644
+index 0000000..196a604
+--- /dev/null
++++ b/config/content.php
+@@ -0,0 +1,7 @@
++<?php
++
++declare(strict_types=1);
++
++return [
++    'rate_limit_per_minute' => (int) env('CONTENT_API_RATE_LIMIT_PER_MINUTE', 60),
++];
+diff --git a/docs/contracts/content-api.md b/docs/contracts/content-api.md
+new file mode 100644
+index 0000000..4f170fb
+--- /dev/null
++++ b/docs/contracts/content-api.md
+@@ -0,0 +1,127 @@
++# Content API v1 Contract
++
++Version: v1  
++Status: Active  
++Base Path: `/api/v1/content`
++
++The Content API delivers public storefront layout state from the GetNow CMS. It is optimized for server-side or client-side storefront consumption with deterministic revision-based conditional caching (`ETag` / `If-None-Match`).
++
++---
++
++## 1. Endpoints
++
++### `GET /api/v1/content/layout`
++
++Delivers the complete public layout graph, including global site settings, visible placement blocks, and enabled navigation menus.
++
++#### Access & Authentication
++- **Authentication**: None. Publicly accessible.
++- **Rate Limit**: 60 requests per minute per IP address by default (`CONTENT_API_RATE_LIMIT_PER_MINUTE=60`). When exceeded, returns `429 Too Many Requests`.
++
++#### Storefront Caching Guidance
++The Blade storefront server and client consumers should leverage HTTP conditional caching. Each response includes a strong `ETag: "<revision>"`. When fetching layout, clients should supply the cached revision in `If-None-Match: "<revision>"`. If the content has not changed, the server returns `304 Not Modified` with zero body content, avoiding redundant serialization and network payload transfer.
++
++#### Request Headers
++| Header | Type | Required | Description |
++|---|---|---|---|
++| `Accept` | `string` | Recommended | Must be `application/json` |
++| `If-None-Match` | `string` | Optional | Client's previously received `meta.revision` quoted string or weak token (e.g., `"1a2b3c..."` or `W/"1a2b3c..."`) |
++
++#### Response Headers
++| Header | Description |
++|---|---|
++| `Content-Type` | `application/json` |
++| `ETag` | Quoted SHA-256 revision hash matching `meta.revision` (e.g. `"a8f5f167..."`) |
++| `Cache-Control` | Default Laravel private cache control (`no-cache, private`) |
++
++#### Response Codes
++- `200 OK`: Full layout JSON payload returned.
++- `304 Not Modified`: Cached content matches current revision. Empty response body.
++- `429 Too Many Requests`: Client exceeded per-minute rate limit.
++
++---
++
++## 2. Response Schema
++
++### Root Structure
++```json
++{
++  "data": {
++    "settings": {
++      "site_name": "GetNow Marketplace",
++      "default_meta_description": "Wholesale mobile phones and consumer electronics.",
++      "search_placeholder": "Search models, brands, or SKUs...",
++      "footer_brand_text": "GetNow Electronics Wholesale Ltd."
++    },
++    "placements": {
++      "announcement_bar": [
++        {
++          "id": "01jar000000000000000000001",
++          "type": "announcement_bar",
++          "version": 1,
++          "data": {
++            "text": "Welcome to GetNow Wholesale Electronics",
++            "link_url": null,
++            "tone": "info"
++          }
++        }
++      ]
++    },
++    "menus": {
++      "main_nav": {
++        "title": "Main Navigation",
++        "items": [
++          {
++            "id": "01jar000000000000000000002",
++            "label": "Phones",
++            "url": "/phones",
++            "icon": null,
++            "new_tab": false,
++            "children": [
++              {
++                "id": "01jar000000000000000000003",
++                "label": "Apple",
++                "url": "/phones/apple",
++                "icon": null,
++                "new_tab": false,
++                "children": []
++              }
++            ]
++          }
++        ]
++      },
++      "mobile_nav": {
++        "title": null,
++        "items": []
++      },
++      "footer_column_1": {
++        "title": null,
++        "items": []
++      },
++      "footer_column_2": {
++        "title": null,
++        "items": []
++      },
++      "footer_column_3": {
++        "title": null,
++        "items": []
++      }
++    }
++  },
++  "meta": {
++    "api_version": 1,
++    "revision": "a8f5f167f44f4964e6c998dee827110ca8f5f167f44f4964e6c998dee827110c",
++    "generated_at": "2026-10-14T10:00:00Z"
++  }
++}
++```
++
++---
++
++## 3. Data Integrity & Contract Guarantees
++
++1. **Complete Key Presence**: Every defined placement (`Placement::cases()`) and menu key (`MenuKey::cases()`) is always present in the response, returning empty arrays or default structures when unpopulated or unprovisioned.
++2. **Server-Side Visibility Enforcement**: Content that is draft, archived, disabled, scheduled in the future, or expired is never exposed.
++3. **Menu Hierarchy & Cascading Exclusion**: If a parent menu item is disabled, the parent and all of its descendant children are omitted from the response. Remaining items are strictly ordered by `sort_order ASC, id ASC`.
++4. **ID Anonymization**: Internal PostgreSQL incremental IDs are never exposed. All entity identifiers are external Crockford ULIDs mapped to the property name `id`.
++5. **Deterministic Revision**: `meta.revision` is computed from the canonical JSON serialization of the `data` object, ensuring identical content produces identical hashes across different request timestamps.
+diff --git a/routes/api.php b/routes/api.php
+index bba806f..01bb18b 100644
+--- a/routes/api.php
++++ b/routes/api.php
+@@ -1,7 +1,10 @@
+ <?php
+ 
++declare(strict_types=1);
++
++use App\Http\Controllers\Api\V1\Content\GetLayoutContentController;
+ use Illuminate\Support\Facades\Route;
+ 
+-Route::middleware([])->group(function () {
+-    // Empty route group
++Route::prefix('v1/content')->middleware(['throttle:content-api'])->group(function (): void {
++    Route::get('layout', GetLayoutContentController::class)->name('api.v1.content.layout');
+ });
+diff --git a/tests/Arch/ContentApiArchTest.php b/tests/Arch/ContentApiArchTest.php
+new file mode 100644
+index 0000000..c4db527
+--- /dev/null
++++ b/tests/Arch/ContentApiArchTest.php
+@@ -0,0 +1,24 @@
++<?php
++
++declare(strict_types=1);
++
++use App\Domain\Content\Actions\GetLayoutContent;
++use App\Domain\Content\Settings\StorefrontSettings;
++use App\Http\Controllers\Api\V1\Content\GetLayoutContentController;
++use Illuminate\Support\Facades\DB;
++
++arch('content api controllers are thin and use GetLayoutContent')
++    ->expect(GetLayoutContentController::class)
++    ->toUse(GetLayoutContent::class);
++
++arch('content api controllers do not depend on domain models, db, or storefront settings directly')
++    ->expect('App\Http\Controllers\Api\V1\Content')
++    ->not->toUse([
++        'App\Domain\Content\Models',
++        DB::class,
++        StorefrontSettings::class,
++    ]);
++
++arch('content domain does not depend on http or illuminate http')
++    ->expect('App\Domain\Content')
++    ->not->toUse('Illuminate\Http');
+diff --git a/tests/Feature/Api/V1/Content/GetLayoutContentEndpointTest.php b/tests/Feature/Api/V1/Content/GetLayoutContentEndpointTest.php
+new file mode 100644
+index 0000000..729b1e2
+--- /dev/null
++++ b/tests/Feature/Api/V1/Content/GetLayoutContentEndpointTest.php
+@@ -0,0 +1,214 @@
++<?php
++
++declare(strict_types=1);
++
++namespace Tests\Feature\Api\V1\Content;
++
++use App\Domain\Content\Enums\MenuKey;
++use App\Domain\Content\Enums\Placement;
++use App\Domain\Content\Enums\Tone;
++use App\Domain\Content\Models\ContentBlock;
++use App\Domain\Content\Models\Menu;
++use App\Domain\Content\Models\MenuItem;
++use App\Domain\Content\Settings\StorefrontSettings;
++use Illuminate\Support\Facades\RateLimiter;
++use Tests\Support\TestBlocks;
++
++use function Pest\Laravel\get;
++use function Pest\Laravel\getJson;
++use function Pest\Laravel\withHeaders;
++
++beforeEach(function (): void {
++    TestBlocks::register();
++    RateLimiter::clear('content-api');
++    RateLimiter::clear('content-api:127.0.0.1');
++    RateLimiter::clear('content-api:'.sha1('127.0.0.1'));
++});
++
++it('returns HTTP 200 with layout data and meta without authentication', function (): void {
++    ContentBlock::factory()->published()->enabled()->create([
++        'type' => 'announcement_bar',
++        'placement' => Placement::ANNOUNCEMENT_BAR->value,
++        'payload' => [
++            'text' => 'Welcome to GetNow',
++            'link_url' => null,
++            'tone' => Tone::INFO->value,
++        ],
++    ]);
++
++    $response = getJson('/api/v1/content/layout');
++
++    $response->assertOk();
++    $response->assertJsonStructure([
++        'data' => [
++            'settings',
++            'placements',
++            'menus',
++        ],
++        'meta' => [
++            'api_version',
++            'revision',
++            'generated_at',
++        ],
++    ]);
++
++    $announcementBar = $response->json('data.placements.announcement_bar.0');
++    expect($announcementBar)->not->toBeNull();
++    expect($announcementBar['data']['tone'])->toBe('info');
++    expect($announcementBar['data']['link_url'])->toBeNull();
++
++    $revision = (string) $response->json('meta.revision');
++    expect($revision)->not->toBeEmpty();
++    $response->assertHeader('ETag', '"'.$revision.'"');
++});
++
++it('handles conditional GET returning 304 on matching ETag and 200 on stale ETag', function (): void {
++    ContentBlock::factory()->published()->enabled()->create([
++        'type' => 'announcement_bar',
++        'placement' => Placement::ANNOUNCEMENT_BAR->value,
++        'payload' => [
++            'text' => 'Welcome to GetNow',
++            'link_url' => null,
++            'tone' => Tone::INFO->value,
++        ],
++    ]);
++
++    $initialResponse = getJson('/api/v1/content/layout');
++    $initialResponse->assertOk();
++    $rev = (string) $initialResponse->json('meta.revision');
++    expect($rev)->not->toBeEmpty();
++
++    // 1. Strong matching ETag
++    $strongResp = withHeaders(['If-None-Match' => '"'.$rev.'"'])->get('/api/v1/content/layout');
++    $strongResp->assertStatus(304);
++    $strongResp->assertHeader('ETag', '"'.$rev.'"');
++    expect($strongResp->getContent())->toBe('');
++
++    // 2. Weak matching ETag
++    $weakResp = withHeaders(['If-None-Match' => 'W/"'.$rev.'"'])->get('/api/v1/content/layout');
++    $weakResp->assertStatus(304);
++    $weakResp->assertHeader('ETag', '"'.$rev.'"');
++    expect($weakResp->getContent())->toBe('');
++
++    // 3. Wildcard ETag
++    $wildcardResp = withHeaders(['If-None-Match' => '*'])->get('/api/v1/content/layout');
++    $wildcardResp->assertStatus(304);
++    expect($wildcardResp->getContent())->toBe('');
++
++    // 4. Comma list containing matching strong token
++    $listResp = withHeaders(['If-None-Match' => '"other-hash", "'.$rev.'"'])->get('/api/v1/content/layout');
++    $listResp->assertStatus(304);
++    expect($listResp->getContent())->toBe('');
++
++    // 5. Comma list containing matching weak token
++    $weakListResp = withHeaders(['If-None-Match' => '"other-hash", W/"'.$rev.'"'])->get('/api/v1/content/layout');
++    $weakListResp->assertStatus(304);
++    expect($weakListResp->getContent())->toBe('');
++
++    // 6. Stale revision token returns HTTP 200 with JSON payload
++    $staleResp = withHeaders(['If-None-Match' => '"stale-revision-hash"'])->getJson('/api/v1/content/layout');
++    $staleResp->assertOk();
++    $staleResp->assertJsonStructure(['data', 'meta']);
++    expect($staleResp->json('meta.revision'))->toBe($rev);
++});
++
++it('throttles requests exceeding configured rate limit with HTTP 429', function (): void {
++    RateLimiter::clear('content-api');
++    RateLimiter::clear('content-api:127.0.0.1');
++    RateLimiter::clear('content-api:'.sha1('127.0.0.1'));
++    config(['content.rate_limit_per_minute' => 2]);
++
++    get('/api/v1/content/layout')->assertOk();
++    get('/api/v1/content/layout')->assertOk();
++    get('/api/v1/content/layout')->assertStatus(429);
++});
++
++it('matches the canonical contract fixture schema', function (): void {
++    $settings = app(StorefrontSettings::class);
++    $settings->site_name = 'GetNow Marketplace';
++    $settings->default_meta_description = 'Wholesale mobile phones and consumer electronics.';
++    $settings->search_placeholder = 'Search models, brands, or SKUs...';
++    $settings->footer_brand_text = 'GetNow Electronics Wholesale Ltd.';
++    $settings->save();
++
++    ContentBlock::factory()->published()->enabled()->create([
++        'type' => 'announcement_bar',
++        'placement' => Placement::ANNOUNCEMENT_BAR->value,
++        'payload' => [
++            'text' => 'Welcome to GetNow Wholesale Electronics',
++            'link_url' => null,
++            'tone' => Tone::INFO->value,
++        ],
++    ]);
++
++    $mainNav = Menu::factory()->create([
++        'key' => MenuKey::MAIN_NAV->value,
++        'title' => 'Main Navigation',
++    ]);
++    $rootItem = MenuItem::factory()->create([
++        'menu_id' => $mainNav->id,
++        'parent_id' => null,
++        'label' => 'Phones',
++        'url' => '/phones',
++        'icon' => null,
++        'opens_in_new_tab' => false,
++        'is_enabled' => true,
++        'sort_order' => 0,
++    ]);
++    MenuItem::factory()->create([
++        'menu_id' => $mainNav->id,
++        'parent_id' => $rootItem->id,
++        'label' => 'Apple',
++        'url' => '/phones/apple',
++        'icon' => null,
++        'opens_in_new_tab' => false,
++        'is_enabled' => true,
++        'sort_order' => 0,
++    ]);
++
++    $fixtureJson = (string) file_get_contents(base_path('tests/Fixtures/contracts/content-layout-v1.json'));
++    /** @var array<string, mixed> $expectedFixture */
++    $expectedFixture = json_decode($fixtureJson, true, 512, JSON_THROW_ON_ERROR);
++
++    $response = getJson('/api/v1/content/layout');
++    $response->assertOk();
++    /** @var array<string, mixed> $actualResponse */
++    $actualResponse = $response->json();
++
++    $assertSchemaMatches = function (mixed $expected, mixed $actual, string $path = '') use (&$assertSchemaMatches): void {
++        if (is_array($expected)) {
++            expect($actual)->toBeArray();
++            if (array_is_list($expected)) {
++                expect(array_is_list($actual))->toBeTrue("Expected list at path '$path'");
++                expect(count($actual))->toBe(count($expected), "Array count mismatch at path '$path'");
++                foreach ($expected as $i => $item) {
++                    $assertSchemaMatches($item, $actual[$i], "$path.[$i]");
++                }
++            } else {
++                $expectedKeys = array_keys($expected);
++                $actualKeys = array_keys($actual);
++                sort($expectedKeys);
++                sort($actualKeys);
++                expect($actualKeys)->toBe($expectedKeys, "Key set mismatch at path '$path'");
++
++                foreach ($expected as $key => $expectedVal) {
++                    $assertSchemaMatches($expectedVal, $actual[$key], "$path.$key");
++                }
++            }
++        } elseif ($expected === '<ulid>') {
++            expect($actual)->toBeString();
++            expect((int) preg_match('/^[0-9A-HJKMNP-TV-Z]{26}$/i', (string) $actual))->toBe(1, "Expected ULID at path '$path', got '$actual'");
++        } elseif ($expected === '<hash>') {
++            expect($actual)->toBeString();
++            expect((int) preg_match('/^[0-9a-f]{64}$/i', (string) $actual))->toBe(1, "Expected 64-char hex hash at path '$path', got '$actual'");
++        } elseif ($expected === '<iso8601>') {
++            expect($actual)->toBeString();
++            expect((int) preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/', (string) $actual))->toBe(1, "Expected ISO8601 Zulu string at path '$path', got '$actual'");
++        } else {
++            expect(gettype($actual))->toBe(gettype($expected), "Type mismatch at path '$path'");
++            expect($actual)->toBe($expected, "Value mismatch at path '$path'");
++        }
++    };
++
++    $assertSchemaMatches($expectedFixture, $actualResponse, 'root');
++});
+diff --git a/tests/Feature/Domain/Content/Actions/GetLayoutContentTest.php b/tests/Feature/Domain/Content/Actions/GetLayoutContentTest.php
+new file mode 100644
+index 0000000..8e91732
+--- /dev/null
++++ b/tests/Feature/Domain/Content/Actions/GetLayoutContentTest.php
+@@ -0,0 +1,594 @@
++<?php
++
++declare(strict_types=1);
++
++namespace Tests\Feature\Domain\Content\Actions;
++
++use App\Domain\Content\Actions\GetLayoutContent;
++use App\Domain\Content\Actions\GetMenuTree;
++use App\Domain\Content\Contracts\BlockDefinition;
++use App\Domain\Content\Contracts\BlockRegistry;
++use App\Domain\Content\Data\BlockPayload;
++use App\Domain\Content\Enums\MenuKey;
++use App\Domain\Content\Enums\Placement;
++use App\Domain\Content\Enums\ServingHealthOutcome;
++use App\Domain\Content\Enums\Tone;
++use App\Domain\Content\Models\ContentBlock;
++use App\Domain\Content\Models\Menu;
++use App\Domain\Content\Models\MenuItem;
++use App\Domain\Content\Services\ContentBlockRegistry;
++use App\Domain\Content\Settings\StorefrontSettings;
++use Closure;
++use Illuminate\Contracts\Support\Arrayable;
++use Illuminate\Support\Carbon;
++use Illuminate\Support\Facades\Cache;
++use Illuminate\Support\Facades\DB;
++use Tests\Support\TestBlocks;
++
++beforeEach(function (): void {
++    TestBlocks::register();
++});
++
++dataset('failing_servable_outcomes', function () {
++    return [
++        'UnknownType' => [
++            fn () => ContentBlock::factory()->published()->enabled()->unknownType()->create([
++                'placement' => Placement::ANNOUNCEMENT_BAR->value,
++                'sort_order' => 0,
++            ]),
++            ServingHealthOutcome::UnknownType,
++        ],
++        'UnsupportedVersion' => [
++            fn () => ContentBlock::factory()->published()->enabled()->unsupportedVersion()->create([
++                'placement' => Placement::ANNOUNCEMENT_BAR->value,
++                'sort_order' => 0,
++            ]),
++            ServingHealthOutcome::UnsupportedVersion,
++        ],
++        'InvalidAfterUpgrade' => [
++            fn () => ContentBlock::factory()->published()->enabled()->invalidAfterUpgrade()->create([
++                'placement' => Placement::ANNOUNCEMENT_BAR->value,
++                'sort_order' => 0,
++            ]),
++            ServingHealthOutcome::InvalidAfterUpgrade,
++        ],
++        'UpgradeFailed' => [
++            fn () => ContentBlock::factory()->published()->enabled()->failedUpgrade()->create([
++                'placement' => Placement::ANNOUNCEMENT_BAR->value,
++                'sort_order' => 0,
++            ]),
++            ServingHealthOutcome::UpgradeFailed,
++        ],
++    ];
++});
++
++it('returns storefront settings matching configured values', function (): void {
++    $settings = app(StorefrontSettings::class);
++    $settings->site_name = 'Custom Store';
++    $settings->default_meta_description = 'Wholesale store';
++    $settings->search_placeholder = 'Find models';
++    $settings->footer_brand_text = 'Brand Text';
++    $settings->save();
++
++    $response = app(GetLayoutContent::class)();
++
++    expect($response->data->settings->site_name)->toBe('Custom Store')
++        ->and($response->data->settings->default_meta_description)->toBe('Wholesale store')
++        ->and($response->data->settings->search_placeholder)->toBe('Find models')
++        ->and($response->data->settings->footer_brand_text)->toBe('Brand Text');
++});
++
++it('includes every defined placement and menu key even when empty or unprovisioned', function (): void {
++    ContentBlock::query()->delete();
++    MenuItem::query()->delete();
++    Menu::query()->delete();
++
++    $response = app(GetLayoutContent::class)();
++
++    expect($response->data->placements)->toHaveKey(Placement::ANNOUNCEMENT_BAR->value)
++        ->and($response->data->placements[Placement::ANNOUNCEMENT_BAR->value])->toBe([]);
++
++    foreach (MenuKey::cases() as $menuKey) {
++        expect($response->data->menus)->toHaveKey($menuKey->value)
++            ->and($response->data->menus[$menuKey->value]->title)->toBeNull()
++            ->and($response->data->menus[$menuKey->value]->items)->toBe([]);
++    }
++});
++
++it('excludes draft, archived, disabled, future-scheduled, and expired blocks from placements', function (): void {
++    Carbon::setTestNow('2026-10-15 10:00:00');
++
++    // Create ONLY the 6 excluded blocks
++    ContentBlock::factory()->draft()->enabled()->create(['placement' => Placement::ANNOUNCEMENT_BAR->value]);
++    ContentBlock::factory()->archived()->enabled()->create(['placement' => Placement::ANNOUNCEMENT_BAR->value]);
++    ContentBlock::factory()->published()->disabled()->create(['placement' => Placement::ANNOUNCEMENT_BAR->value]);
++    ContentBlock::factory()->published()->enabled()->create([
++        'placement' => Placement::ANNOUNCEMENT_BAR->value,
++        'starts_at' => now()->addHour(),
++    ]);
++    ContentBlock::factory()->published()->enabled()->create([
++        'placement' => Placement::ANNOUNCEMENT_BAR->value,
++        'ends_at' => now()->subHour(),
++    ]);
++    ContentBlock::factory()->published()->enabled()->create([
++        'placement' => Placement::ANNOUNCEMENT_BAR->value,
++        'ends_at' => now(),
++    ]);
++
++    // Exclusion phase: verify all 6 blocks are omitted
++    $response = app(GetLayoutContent::class)();
++    expect($response->data->placements[Placement::ANNOUNCEMENT_BAR->value])->toBe([]);
++
++    // Boundary active phase: verify exact starts_at == now() is served
++    /** @var ContentBlock $boundaryActive */
++    $boundaryActive = ContentBlock::factory()->published()->enabled()->create([
++        'placement' => Placement::ANNOUNCEMENT_BAR->value,
++        'starts_at' => now(),
++        'ends_at' => null,
++    ]);
++
++    $responseWithActive = app(GetLayoutContent::class)();
++    expect($responseWithActive->data->placements[Placement::ANNOUNCEMENT_BAR->value])->toHaveCount(1)
++        ->and($responseWithActive->data->placements[Placement::ANNOUNCEMENT_BAR->value][0]->id)->toBe($boundaryActive->public_id);
++});
++
++it('enforces placement maxCount and selects candidate by D8 tie break order', function (): void {
++    Carbon::setTestNow('2026-10-15 10:00:00');
++
++    // Sub-case A: sort_order ASC
++    ContentBlock::query()->delete();
++    ContentBlock::factory()->published()->enabled()->create([
++        'placement' => Placement::ANNOUNCEMENT_BAR->value,
++        'sort_order' => 1,
++        'starts_at' => null,
++    ]);
++    /** @var ContentBlock $winnerA */
++    $winnerA = ContentBlock::factory()->published()->enabled()->create([
++        'placement' => Placement::ANNOUNCEMENT_BAR->value,
++        'sort_order' => 0,
++        'starts_at' => null,
++    ]);
++
++    $respA = app(GetLayoutContent::class)();
++    expect($respA->data->placements[Placement::ANNOUNCEMENT_BAR->value])->toHaveCount(1)
++        ->and($respA->data->placements[Placement::ANNOUNCEMENT_BAR->value][0]->id)->toBe($winnerA->public_id);
++
++    // Sub-case B: starts_at DESC NULLS LAST
++    ContentBlock::query()->delete();
++    ContentBlock::factory()->published()->enabled()->create([
++        'placement' => Placement::ANNOUNCEMENT_BAR->value,
++        'sort_order' => 0,
++        'starts_at' => null, // NULLS LAST
++    ]);
++    ContentBlock::factory()->published()->enabled()->create([
++        'placement' => Placement::ANNOUNCEMENT_BAR->value,
++        'sort_order' => 0,
++        'starts_at' => now()->subMinutes(10),
++    ]);
++    /** @var ContentBlock $winnerB */
++    $winnerB = ContentBlock::factory()->published()->enabled()->create([
++        'placement' => Placement::ANNOUNCEMENT_BAR->value,
++        'sort_order' => 0,
++        'starts_at' => now()->subMinutes(5),
++    ]);
++
++    $respB = app(GetLayoutContent::class)();
++    expect($respB->data->placements[Placement::ANNOUNCEMENT_BAR->value])->toHaveCount(1)
++        ->and($respB->data->placements[Placement::ANNOUNCEMENT_BAR->value][0]->id)->toBe($winnerB->public_id);
++
++    // Sub-case C: id DESC
++    ContentBlock::query()->delete();
++    ContentBlock::factory()->published()->enabled()->create([
++        'placement' => Placement::ANNOUNCEMENT_BAR->value,
++        'sort_order' => 0,
++        'starts_at' => null,
++    ]);
++    /** @var ContentBlock $winnerC */
++    $winnerC = ContentBlock::factory()->published()->enabled()->create([
++        'placement' => Placement::ANNOUNCEMENT_BAR->value,
++        'sort_order' => 0,
++        'starts_at' => null,
++    ]);
++
++    $respC = app(GetLayoutContent::class)();
++    expect($respC->data->placements[Placement::ANNOUNCEMENT_BAR->value])->toHaveCount(1)
++        ->and($respC->data->placements[Placement::ANNOUNCEMENT_BAR->value][0]->id)->toBe($winnerC->public_id);
++});
++
++it('falls back to next valid candidate when top candidate is unservable', function (Closure $failingBlockFactory, ServingHealthOutcome $outcome): void {
++    /** @var ContentBlock $corruptBlock */
++    $corruptBlock = $failingBlockFactory();
++
++    ContentBlock::factory()->published()->enabled()->create([
++        'placement' => Placement::ANNOUNCEMENT_BAR->value,
++        'sort_order' => 1,
++        'payload' => [
++            'text' => 'Fallback Block',
++            'tone' => 'info',
++            'link_url' => null,
++        ],
++    ]);
++
++    $response = app(GetLayoutContent::class)();
++
++    expect($response->data->placements[Placement::ANNOUNCEMENT_BAR->value])->toHaveCount(1)
++        ->and($response->data->placements[Placement::ANNOUNCEMENT_BAR->value][0]->data['text'])->toBe('Fallback Block');
++
++    $cacheKey = "serving_failure:{$corruptBlock->public_id}:{$outcome->value}";
++    expect(Cache::has($cacheKey))->toBeTrue();
++})->with('failing_servable_outcomes');
++
++it('returns empty placement array when all candidate blocks are corrupt', function (): void {
++    ContentBlock::factory()->published()->enabled()->unknownType()->create([
++        'placement' => Placement::ANNOUNCEMENT_BAR->value,
++        'sort_order' => 0,
++    ]);
++
++    $response = app(GetLayoutContent::class)();
++    expect($response->data->placements[Placement::ANNOUNCEMENT_BAR->value])->toBe([]);
++});
++
++it('skips blocks whose type is not permitted for the placement', function (): void {
++    /** @var BlockRegistry $registry */
++    $registry = app(BlockRegistry::class);
++    $otherDefinition = new class implements BlockDefinition
++    {
++        public function typeKey(): string
++        {
++            return 'other_type';
++        }
++
++        public function schemaVersion(): int
++        {
++            return 1;
++        }
++
++        public function dataClass(): string
++        {
++            return get_class(new class extends BlockPayload
++            {
++                public string $value = 'other';
++
++                /**
++                 * @param  Arrayable<string, mixed>|array<string, mixed>  $payload
++                 */
++                public static function validateAndCreate(Arrayable|array $payload): static
++                {
++                    return new self;
++                }
++            });
++        }
++
++        public function upgradePayload(int $fromVersion, array $payload): array
++        {
++            return $payload;
++        }
++    };
++    $registry->register($otherDefinition);
++
++    ContentBlock::factory()->published()->enabled()->create([
++        'placement' => Placement::ANNOUNCEMENT_BAR->value,
++        'type' => 'other_type',
++        'schema_version' => 1,
++        'payload' => ['value' => 'other'],
++    ]);
++
++    $response = app(GetLayoutContent::class)();
++    expect($response->data->placements[Placement::ANNOUNCEMENT_BAR->value])->toBe([]);
++});
++
++it('upgrades older payload schemas to current version', function (): void {
++    $v2Definition = new class implements BlockDefinition
++    {
++        public function typeKey(): string
++        {
++            return 'announcement_bar';
++        }
++
++        public function schemaVersion(): int
++        {
++            return 2;
++        }
++
++        public function dataClass(): string
++        {
++            return get_class(new class extends BlockPayload
++            {
++                public string $text = '';
++
++                public ?string $link_url = null;
++
++                public Tone $tone = Tone::INFO;
++
++                public bool $upgraded = false;
++
++                /**
++                 * @param  Arrayable<string, mixed>|array<string, mixed>  $payload
++                 */
++                public static function validateAndCreate(Arrayable|array $payload): static
++                {
++                    $data = $payload instanceof Arrayable ? $payload->toArray() : $payload;
++                    $instance = new self;
++                    $instance->text = (string) ($data['text'] ?? '');
++                    $instance->link_url = isset($data['link_url']) ? (string) $data['link_url'] : null;
++                    $instance->tone = isset($data['tone']) && $data['tone'] instanceof Tone ? $data['tone'] : Tone::INFO;
++                    $instance->upgraded = (bool) ($data['upgraded'] ?? false);
++
++                    return $instance;
++                }
++            });
++        }
++
++        public function upgradePayload(int $fromVersion, array $payload): array
++        {
++            if ($fromVersion === 1) {
++                $payload['upgraded'] = true;
++            }
++
++            return $payload;
++        }
++    };
++
++    $customRegistry = new ContentBlockRegistry;
++    $customRegistry->register($v2Definition);
++    app()->instance(BlockRegistry::class, $customRegistry);
++
++    ContentBlock::factory()->published()->enabled()->create([
++        'placement' => Placement::ANNOUNCEMENT_BAR->value,
++        'type' => 'announcement_bar',
++        'schema_version' => 1,
++        'payload' => [
++            'text' => 'Upgrade Test',
++            'tone' => 'info',
++            'link_url' => null,
++        ],
++    ]);
++
++    $response = app(GetLayoutContent::class)();
++
++    expect($response->data->placements[Placement::ANNOUNCEMENT_BAR->value])->toHaveCount(1)
++        ->and($response->data->placements[Placement::ANNOUNCEMENT_BAR->value][0]->version)->toBe(2)
++        ->and($response->data->placements[Placement::ANNOUNCEMENT_BAR->value][0]->data['upgraded'])->toBeTrue();
++});
++
++it('cascades exclusion to children of disabled parent items while retaining enabled siblings in strict sort order', function (): void {
++    $menu = Menu::factory()->forKey(MenuKey::MAIN_NAV)->create();
++
++    $root1 = MenuItem::factory()->forMenu($menu)->create([
++        'is_enabled' => false,
++        'sort_order' => 0,
++        'label' => 'Root 1',
++    ]);
++    $child1A = MenuItem::factory()->childOf($root1)->forMenu($menu)->create([
++        'is_enabled' => true,
++        'sort_order' => 0,
++        'label' => 'Child 1A',
++    ]);
++
++    $root2 = MenuItem::factory()->forMenu($menu)->create([
++        'is_enabled' => true,
++        'sort_order' => 1,
++        'label' => 'Root 2',
++    ]);
++    $child2B = MenuItem::factory()->childOf($root2)->forMenu($menu)->create([
++        'is_enabled' => true,
++        'sort_order' => 0,
++        'label' => 'Child 2B',
++    ]);
++    $child2A = MenuItem::factory()->childOf($root2)->forMenu($menu)->create([
++        'is_enabled' => true,
++        'sort_order' => 0,
++        'label' => 'Child 2A',
++    ]);
++    $child2C = MenuItem::factory()->childOf($root2)->forMenu($menu)->create([
++        'is_enabled' => false,
++        'sort_order' => 0,
++        'label' => 'Child 2C',
++    ]);
++
++    $root3 = MenuItem::factory()->forMenu($menu)->create([
++        'is_enabled' => true,
++        'sort_order' => 0,
++        'label' => 'Root 3',
++    ]);
++
++    // Admin tree preserves all disabled items
++    $adminTree = app(GetMenuTree::class)(MenuKey::MAIN_NAV);
++    expect($adminTree->items)->toHaveCount(3);
++
++    // Public API excludes disabled root 1 and its child, excludes disabled child 2C, orders root 3 before root 2, and child 2B before child 2A
++    $publicLayout = app(GetLayoutContent::class)();
++    $items = $publicLayout->data->menus[MenuKey::MAIN_NAV->value]->items;
++
++    expect($items)->toHaveCount(2)
++        ->and($items[0]->id)->toBe($root3->public_id)
++        ->and($items[1]->id)->toBe($root2->public_id);
++
++    $root2Children = $items[1]->children;
++    expect($root2Children)->toHaveCount(2)
++        ->and($root2Children[0]->id)->toBe($child2B->public_id)
++        ->and($root2Children[1]->id)->toBe($child2A->public_id);
++});
++
++it('maps menu item attributes to public contract shape without internal columns', function (): void {
++    $menu = Menu::factory()->forKey(MenuKey::MAIN_NAV)->create();
++
++    $root = MenuItem::factory()->forMenu($menu)->create([
++        'label' => 'Deals',
++        'url' => '/deals',
++        'icon' => null,
++        'opens_in_new_tab' => true,
++        'is_enabled' => true,
++    ]);
++
++    $child = MenuItem::factory()->childOf($root)->forMenu($menu)->create([
++        'label' => 'Daily Deals',
++        'url' => '/deals/daily',
++        'icon' => null,
++        'opens_in_new_tab' => false,
++        'is_enabled' => true,
++    ]);
++
++    $response = app(GetLayoutContent::class)()->toArray();
++    $rootData = $response['data']['menus'][MenuKey::MAIN_NAV->value]['items'][0];
++
++    expect($rootData['id'])->toBe($root->public_id)
++        ->and($rootData['label'])->toBe('Deals')
++        ->and($rootData['url'])->toBe('/deals')
++        ->and($rootData['icon'])->toBeNull()
++        ->and($rootData['new_tab'])->toBeTrue()
++        ->and($rootData)->not->toHaveKeys(['opens_in_new_tab', 'menu_id', 'parent_id', 'is_enabled', 'sort_order'])
++        ->and($rootData['children'])->toHaveCount(1);
++
++    $childData = $rootData['children'][0];
++    expect($childData['id'])->toBe($child->public_id)
++        ->and($childData['label'])->toBe('Daily Deals')
++        ->and($childData['url'])->toBe('/deals/daily')
++        ->and($childData['new_tab'])->toBeFalse()
++        ->and($childData['children'])->toBe([])
++        ->and($childData)->not->toHaveKeys(['opens_in_new_tab', 'menu_id', 'parent_id', 'is_enabled', 'sort_order']);
++});
++
++it('contains zero raw database primary keys or internal lifecycle attributes', function (): void {
++    $menu = Menu::factory()->forKey(MenuKey::MAIN_NAV)->create();
++    $root = MenuItem::factory()->forMenu($menu)->create(['is_enabled' => true]);
++    MenuItem::factory()->childOf($root)->forMenu($menu)->create(['is_enabled' => true]);
++
++    ContentBlock::factory()->published()->enabled()->create([
++        'placement' => Placement::ANNOUNCEMENT_BAR->value,
++    ]);
++
++    $array = app(GetLayoutContent::class)()->toArray();
++
++    $denyList = [
++        'id_numeric',
++        'sort_order',
++        'status',
++        'is_enabled',
++        'starts_at',
++        'ends_at',
++        'created_by',
++        'updated_by',
++        'created_at',
++        'updated_at',
++        'menu_id',
++        'parent_id',
++        'opens_in_new_tab',
++    ];
++
++    $checkArray = function (array $items) use (&$checkArray, $denyList): void {
++        foreach ($items as $key => $value) {
++            expect(in_array($key, $denyList, true))->toBeFalse("Found denied key: {$key}");
++
++            if ($key === 'id') {
++                expect(is_string($value))->toBeTrue("Expected 'id' to be a string ULID")
++                    ->and(is_numeric($value))->toBeFalse("Expected 'id' not to be numeric")
++                    ->and(preg_match('/^[0-9a-hjkmnp-tv-z]{26}$/i', $value))->toBe(1, "Expected '{$value}' to be a valid 26-char Crockford ULID");
++            }
++
++            if (is_array($value)) {
++                $checkArray($value);
++            }
++        }
++    };
++
++    $checkArray($array);
++});
++
++it('produces identical revision hash across timestamps and changes hash when content mutates', function (): void {
++    Carbon::setTestNow('2026-10-15 10:00:00');
++
++    $menu = Menu::factory()->forKey(MenuKey::MAIN_NAV)->create();
++    $block = ContentBlock::factory()->published()->enabled()->create([
++        'placement' => Placement::ANNOUNCEMENT_BAR->value,
++        'payload' => [
++            'text' => 'Initial Text',
++            'tone' => 'info',
++            'link_url' => null,
++        ],
++    ]);
++
++    $res1 = app(GetLayoutContent::class)();
++    $hash1 = $res1->meta->revision;
++    $time1 = $res1->meta->generated_at;
++
++    // Advance time: hash must remain deterministic, timestamp updates
++    Carbon::setTestNow('2026-10-15 12:00:00');
++    $res2 = app(GetLayoutContent::class)();
++    $hash2 = $res2->meta->revision;
++    $time2 = $res2->meta->generated_at;
++
++    expect($hash1)->toBe($hash2)
++        ->and($time1)->not->toBe($time2);
++
++    // Mutate settings: hash changes
++    $settings = app(StorefrontSettings::class);
++    $settings->site_name = 'Mutated Store Name';
++    $settings->save();
++
++    $res3 = app(GetLayoutContent::class)();
++    $hash3 = $res3->meta->revision;
++    expect($hash3)->not->toBe($hash1);
++
++    // Mutate block payload: hash changes
++    $block->update(['payload' => ['text' => 'Mutated Text', 'tone' => 'info', 'link_url' => null]]);
++    $res4 = app(GetLayoutContent::class)();
++    $hash4 = $res4->meta->revision;
++    expect($hash4)->not->toBe($hash3);
++
++    // Mutate block is_enabled: hash changes
++    $block->update(['is_enabled' => false]);
++    $res5 = app(GetLayoutContent::class)();
++    $hash5 = $res5->meta->revision;
++    expect($hash5)->not->toBe($hash4);
++
++    // Add enabled menu item: hash changes
++    $menuItem = MenuItem::factory()->forMenu($menu)->create([
++        'label' => 'New Item',
++        'is_enabled' => true,
++    ]);
++    $res6 = app(GetLayoutContent::class)();
++    $hash6 = $res6->meta->revision;
++    expect($hash6)->not->toBe($hash5);
++
++    // Toggle menu item is_enabled: hash changes
++    $menuItem->update(['is_enabled' => false]);
++    $res7 = app(GetLayoutContent::class)();
++    $hash7 = $res7->meta->revision;
++    expect($hash7)->not->toBe($hash6);
++});
++
++it('executes layout retrieval within constant query bounds', function (): void {
++    // Pre-warm settings
++    $_ = app(StorefrontSettings::class)->site_name;
++
++    ContentBlock::query()->delete();
++    MenuItem::query()->delete();
++    Menu::query()->delete();
++
++    $menu = Menu::factory()->forKey(MenuKey::MAIN_NAV)->create();
++
++    // Seed N=5 blocks and 10 menu items
++    ContentBlock::factory()->count(5)->published()->enabled()->create([
++        'placement' => Placement::ANNOUNCEMENT_BAR->value,
++    ]);
++    MenuItem::factory()->count(10)->forMenu($menu)->create(['is_enabled' => true]);
++
++    DB::enableQueryLog();
++    app(GetLayoutContent::class)();
++    $queriesN = DB::getQueryLog();
++
++    // Seed 2N=10 blocks and 20 menu items
++    ContentBlock::factory()->count(5)->published()->enabled()->create([
++        'placement' => Placement::ANNOUNCEMENT_BAR->value,
++    ]);
++    MenuItem::factory()->count(10)->forMenu($menu)->create(['is_enabled' => true]);
++
++    DB::flushQueryLog();
++    app(GetLayoutContent::class)();
++    $queries2N = DB::getQueryLog();
++    DB::disableQueryLog();
++
++    expect($queriesN)->toHaveCount(3)
++        ->and($queries2N)->toHaveCount(3);
++});
+diff --git a/tests/Fixtures/contracts/content-layout-v1.json b/tests/Fixtures/contracts/content-layout-v1.json
+new file mode 100644
+index 0000000..536958b
+--- /dev/null
++++ b/tests/Fixtures/contracts/content-layout-v1.json
+@@ -0,0 +1,69 @@
++{
++  "data": {
++    "settings": {
++      "site_name": "GetNow Marketplace",
++      "default_meta_description": "Wholesale mobile phones and consumer electronics.",
++      "search_placeholder": "Search models, brands, or SKUs...",
++      "footer_brand_text": "GetNow Electronics Wholesale Ltd."
++    },
++    "placements": {
++      "announcement_bar": [
++        {
++          "id": "<ulid>",
++          "type": "announcement_bar",
++          "version": 1,
++          "data": {
++            "text": "Welcome to GetNow Wholesale Electronics",
++            "link_url": null,
++            "tone": "info"
++          }
++        }
++      ]
++    },
++    "menus": {
++      "main_nav": {
++        "title": "Main Navigation",
++        "items": [
++          {
++            "id": "<ulid>",
++            "label": "Phones",
++            "url": "/phones",
++            "icon": null,
++            "new_tab": false,
++            "children": [
++              {
++                "id": "<ulid>",
++                "label": "Apple",
++                "url": "/phones/apple",
++                "icon": null,
++                "new_tab": false,
++                "children": []
++              }
++            ]
++          }
++        ]
++      },
++      "mobile_nav": {
++        "title": null,
++        "items": []
++      },
++      "footer_column_1": {
++        "title": null,
++        "items": []
++      },
++      "footer_column_2": {
++        "title": null,
++        "items": []
++      },
++      "footer_column_3": {
++        "title": null,
++        "items": []
++      }
++    }
++  },
++  "meta": {
++    "api_version": 1,
++    "revision": "<hash>",
++    "generated_at": "<iso8601>"
++  }
++}
