@@ -3,7 +3,7 @@
 **Step ID:** P1-M1  
 **Status:** Complete  
 **Base Commit:** `2e3ca781f305d8613e85944c4d25c79219e322e1`  
-**Head Commit:** `89b305f86c62a909dc564004803f6d1e8c9fd5e0`  
+**Head Commit:** `2b9c6c0b3d1ff3ee7b8da5a36372074f76786a34`  
 **Branch:** `feat/storefront-navigation-menus`  
 **Commits:**
 1. `e347c6a` feat(content): create menus and menu_items tables with provisioning
@@ -11,34 +11,37 @@
 3. `7d56b7f` feat(content): add atomic UpdateMenu action with row locking and audit logging
 4. `fa3e319` feat(filament): add menu management resource with nested tree editing
 5. `89b305f` docs(architecture): mark menus complete and record menu write concurrency in D9
+6. `8c951ad` docs(blueprints): add P1-M1 brief, plan v2, and implementation report
+7. `7503af6` docs(blueprints): record local database migration execution in P1-M1 report
+8. `2b9c6c0` test(content): add boundary, disabled items, and mid-transaction rollback tests
 
 ---
 
-## 1. Acceptance Criteria Verification
+## 1. Acceptance Criteria Verification (Canonical Plan v2 Section 9)
 
-| AC | Requirement | Implementation (File:Line) | Verifying Test | Result |
-|---|---|---|---|---|
-| **AC-1** | Five menus exist after migration: `main_nav`, `mobile_nav`, `footer_column_1`, `footer_column_2`, `footer_column_3`. Migration is idempotent. | `2026_10_14_000000_create_menus_and_menu_items_tables.php:40-54`, `MenuKey.php:12-24` | `MenuSchemaAndProvisioningTest.php:13` (`it provisions exactly five code-owned menus with default labels on migration`), `line 44` (`it maintains provisioning idempotency across multiple runs`) | **PASSED** |
-| **AC-2** | DB constraints: FKs with cascade on `menu_items.menu_id` and `menu_items.parent_id`; index on `(menu_id, parent_id, sort_order)`; check constraint on `sort_order >= 0`. | `2026_10_14_000000_create_menus_and_menu_items_tables.php:24-38`, `line 38` | `MenuSchemaAndProvisioningTest.php:67` (`it enforces database schema integrity and foreign key cascading`) | **PASSED** |
-| **AC-3** | Navigation item: 'Menus' under 'Content', sort 30, heroicon-o-bars-3. | `MenuResource.php:17-25` | `MenuResourceTest.php:14` (`it configures navigation label, icon, group, and sort order under Content`) | **PASSED** |
-| **AC-4** | List page: five rows, sorted by key asc; columns: Label, Key (badge), Title, Items (badge with count), Updated; row action Edit; no create button, no bulk actions, no delete actions. | `MenuTable.php:17-48`, `ListMenus.php:16-19`, `MenuResource.php:40-49` | `MenuResourceTest.php:25` (`it renders list table with five menus, correct columns, and zero delete or create actions`) | **PASSED** |
-| **AC-5** | Edit page: title input (optional, max 100), items tree editor; save button; no delete button. | `MenuForm.php:18-65`, `EditMenu.php:22-27` | `MenuResourceTest.php:49` (`it renders edit page with title and items form, omitting delete action`) | **PASSED** |
-| **AC-6** | Tree editor: max 10 top-level items, max 10 children per top-level item; no third level. | `MenuForm.php:28-63`, `UpdateMenu.php:48, 90-92` | `MenuFormTest.php:39` (`it forbids third-level nesting in form schema`), `UpdateMenuRejectionsTest.php:69` (`it rejects depth violations`), `line 96` (`it rejects item count and child caps violations`) | **PASSED** |
-| **AC-7** | Item fields: label (required, 1-60 chars), url (required, relative path or https:// URL), opens_in_new_tab (boolean, default false), is_enabled (boolean, default true). | `MenuForm.php:30-49, 53-62`, `UpdateMenu.php:65-74` | `MenuFormTest.php:107` (`it displays field errors for invalid URL inputs`), `UpdateMenuRejectionsTest.php:16` (`it rejects link violations with InvalidMenuTreeException`) | **PASSED** |
-| **AC-8** | Icons: rejected on write with validation error. | `UpdateMenu.php:75-77` | `UpdateMenuRejectionsTest.php:46` (`it rejects icons with InvalidMenuTreeException`) | **PASSED** |
-| **AC-9** | Save action: atomic; wraps in DB transaction; lockForUpdate on menu row; preserves existing item public_ids; deletes omitted items; creates new items with new public_ids; updates sort_order; updates menu title. | `UpdateMenu.php:44-162` | `UpdateMenuTest.php:19` (`it atomically replaces whole menu tree inside database transaction with row lock`), `line 72` (`it preserves public_id values on item reordering and reparenting`), `line 133` (`it reorders and reparents child items correctly without cascade delete collision on omitted parent`) | **PASSED** |
-| **AC-10** | Audit logging: writes to activity log with log_name `content`, subject `Menu`, event `updated`, causer authenticated admin, description `Updated navigation menu: {key}`. | `UpdateMenu.php:164-177` | `UpdateMenuTest.php:225` (`it logs activity on menu update with causer, subject, and description`) | **PASSED** |
-| **AC-11** | Policy: platform_admin can viewAny, view, update; create and delete denied for everyone. | `MenuPolicy.php:13-58` | `MenuPolicyTest.php:13` (`it denies non-admin on all abilities`), `line 31` (`it denies create, delete, deleteAny, forceDelete for platform_admin`), `line 38` (`it authorizes viewAny, view, update for platform_admin`) | **PASSED** |
-| **AC-12** | Read action GetMenuTree: returns structured tree with items sorted by sort_order, children sorted by sort_order. | `GetMenuTree.php:18-76` | `GetMenuTreeTest.php:16` (`it retrieves empty menu tree for menu with zero items`), `line 27` (`it retrieves structured menu tree with sorted top-level items and children`) | **PASSED** |
-| **AC-13** | Read action GetMenuList: returns all five menus with item counts and timestamps. | `GetMenuList.php:17-28` | `GetMenuListTest.php:13` (`it lists all five code-owned menus with item counts and timestamps`) | **PASSED** |
-| **AC-14** | No public API endpoint in this step. Content API stays untouched. | Routes (`routes/api.php`) untouched; no menu endpoints exposed. | `routes/api.php` untouched; existing contract tests passing without modifications | **PASSED** |
+| AC ID | Part | Requirement Summary | Implementation Files | Verifying Test Name (`it('...')`) | Test File | Result |
+|---|---|---|---|---|---|---|
+| **AC-1** | R | `menus` and `menu_items` match section 6; DB rejects duplicate keys, negative sort_order, orphan menu_id. | `database/migrations/2026_10_14_000000_create_menus_and_menu_items_tables.php`, `Menu.php`, `MenuItem.php` | `it('rejects duplicate menu key via database unique constraint')`, `it('rejects negative sort_order via database check constraint')`, `it('rejects orphan menu_id via foreign key constraint')`, `it('cascades deletion of menu items when menu is deleted')` | `MenuSchemaAndProvisioningTest.php` | **PASSED** |
+| **AC-2** | R | `MenuKey` has exactly five keys; after migration every key has a menu row; test fails on missing row; factory does not collide. | `MenuKey.php`, `MenuFactory.php`, `MenuItemFactory.php`, Migration | `it('provisions exactly the five code-owned menu keys on migration')`, `it('detects provisioning drift if an enum case has no corresponding database row')`, `it('resolves existing provisioned menu records via factory without unique collisions')` | `MenuSchemaAndProvisioningTest.php` | **PASSED** |
+| **AC-3** | R | `GetMenuTree` returns ordered tree with nested children; `GetMenuList` returns summaries with item counts; constant query count. | `GetMenuTree.php`, `GetMenuList.php`, `MenuItemData.php`, `MenuTreeData.php`, `MenuSummaryData.php`, `MenuListData.php` | `it('returns two-level menu tree ordered by sort_order')`, `it('executes menu tree retrieval within constant query bounds')`, `it('returns menu list summaries with accurate item counts')`, `it('returns all items including disabled items without filtering')` | `GetMenuTreeTest.php`, `GetMenuListTest.php` | **PASSED** |
+| **AC-4** | R | `MenuPolicy`: true for platform admin on `viewAny`, `view`, `update`; false for non-admin; false for everyone on `create`, `delete`, `deleteAny`, `forceDelete`. | `MenuPolicy.php`, `ContentServiceProvider.php` | `it('allows platform admin on viewAny, view, update')`, `it('denies non-admin on all abilities')`, `it('denies create, delete, deleteAny, forceDelete for platform admin')` | `MenuPolicyTest.php` | **PASSED** |
+| **AC-5** | W | `UpdateMenu` replaces tree in one transaction under row lock; in-place update by `public_id`, new ULIDs for new items, hard delete for omitted items, `sort_order` from position. | `UpdateMenu.php`, `UpdateMenuData.php`, `UpdateMenuItemInputData.php` | `it('replaces menu title and items atomically under a row lock')`, `it('promotes child item safely when parent is deleted in same update')` | `UpdateMenuTest.php` | **PASSED** |
+| **AC-6** | W | `UpdateMenu` rejects with domain exception: empty label, label > 80, title > 255, invalid URL, depth > 2, caps exceeded, non-null icon, foreign `public_id`, unknown `public_id`, duplicate `public_id`. | `UpdateMenu.php`, `InvalidMenuTreeException.php`, `SafeLink.php` | `it('rejects link violations with InvalidMenuTreeException')`, `it('rejects structure violations and unknown public IDs with InvalidMenuTreeException')`, `it('enforces title length boundaries with InvalidMenuTreeException')`, `it('enforces label length boundaries with InvalidMenuTreeException')` | `UpdateMenuRejectionsTest.php` | **PASSED** |
+| **AC-7** | W | Atomicity: failure injected mid-save leaves previous tree and title unchanged. | `UpdateMenu.php` | `it('rolls back database modifications when an exception is triggered mid-transaction')` | `UpdateMenuTest.php` | **PASSED** |
+| **AC-8** | W | Exactly one activity entry on menu with causer on successful save; zero on rejection; two on consecutive saves. | `UpdateMenu.php` | `it('records activity log entry with causer and plain array tree diff')` | `UpdateMenuTest.php` | **PASSED** |
+| **AC-9** | W | Saving tree keeps `public_id` values for retained/reordered items; new items get new ULIDs; empty tree clears items. | `UpdateMenu.php` | `it('preserves public_id values on item reordering and reparenting')`, `it('generates new public_ids for newly added items')`, `it('hard deletes items omitted from submission')`, `it('empties menu when items array is empty')` | `UpdateMenuTest.php` | **PASSED** |
+| **AC-10** | U | `MenuResource` registers index and edit only; edit URL uses `public_id`; raw int id returns 404; list shows 5 menus, item counts, timezone date; history convention applied. | `MenuResource.php`, `ListMenus.php`, `MenuTable.php` | `it('registers only index and edit routes on MenuResource')`, `it('returns 404 when navigating to edit route via raw integer id')`, `it('configures table pagination on ListMenus with history false')` | `MenuResourceTest.php` | **PASSED** |
+| **AC-11** | U | Platform admin loads list and edit; non-admin gets 403; resource smoke test passes. | `MenuResource.php`, `ListMenus.php`, `EditMenu.php` | `it('renders list and edit pages for platform admin via smoke test')`, `it('returns 403 for non-admin on list and edit routes')` | `MenuResourceTest.php` | **PASSED** |
+| **AC-12** | U | Edit form prefilled from `GetMenuTree`; two-level repeater (items and children); no third level; inputs for label, url, new tab, enabled; hidden `public_id`; forbidden component scan passes. | `MenuForm.php`, `EditMenu.php`, `BlockFormRegistryTest.php` | `it('hydrates form from GetMenuTree rather than Eloquent relationships')`, `it('forbids third-level nesting in form schema')` | `MenuFormTest.php` | **PASSED** |
+| **AC-13** | U | Save calls `UpdateMenu` once; shows success notification; re-hydrates form state; consecutive saves create no duplicates. | `EditMenu.php`, `UpdateMenu.php` | `it('saves form data through UpdateMenu and re-hydrates state without duplicate creation on second save')` | `MenuFormTest.php` | **PASSED** |
+| **AC-14** | U | Invalid input shows field errors; domain rejection shows danger notification with fixed copy, no exception message, persists nothing. | `EditMenu.php`, `MenuForm.php` | `it('displays field errors for invalid URL inputs')`, `it('displays danger notification with fixed copy on domain rejection')` | `MenuFormTest.php` | **PASSED** |
 
 ---
 
 ## 2. Review Decision Confirmations
 
 ### OD-1 & OD-2: Single Plan & Granular Commits
-Plan executed as a unified milestone with 5 isolated, conventional commits matching the sequence in Section 12 of `plan.md`.
+Plan executed as a unified milestone with isolated, conventional commits matching the sequence in Section 12 of `plan.md`.
 
 ### OD-3: Concurrency on Save (Option A Confirmed)
 Implemented atomic whole-tree replacement inside `DB::transaction()` under `lockForUpdate()`. The `menus` row is locked at transaction start, serializing concurrent writes for that menu. Last-write-wins per Architecture Decision D9. Documented in `ARCHITECTURE.md`.
@@ -48,6 +51,9 @@ In `UpdateMenu.php`, reconciliation follows an inverted 3-pass sequence:
 1. Pass 1: Detach/update all retained top-level items (`parent_id = null`) and create new top-level items.
 2. Pass 2: Update all retained child items (`parent_id = $parentRecordId`) and create new child items.
 3. Pass 3: Hard-delete omitted items **last**, guaranteeing no retained child references an omitted parent at deletion time. Verified by `it reorders and reparents child items correctly without cascade delete collision on omitted parent` in `UpdateMenuTest.php:133`.
+
+### Navigation Sorting Confirmation (F5)
+`MenuResource::$navigationSort` is set to `2` under `navigationGroup = 'Content'` matching Plan v2 Section 5.5.1.
 
 ---
 
@@ -79,6 +85,9 @@ M	app/Providers/ContentServiceProvider.php
 A	database/factories/MenuFactory.php
 A	database/factories/MenuItemFactory.php
 A	database/migrations/2026_10_14_000000_create_menus_and_menu_items_tables.php
+A	docs/blueprints/P1-M1/brief.md
+A	docs/blueprints/P1-M1/plan.md
+A	docs/blueprints/P1-M1/report.md
 A	tests/Feature/Admin/Menu/MenuFormTest.php
 A	tests/Feature/Admin/Menu/MenuResourceTest.php
 A	tests/Feature/Domain/Content/Actions/GetMenuListTest.php
@@ -91,39 +100,42 @@ A	tests/Feature/Domain/Content/Policies/MenuPolicyTest.php
 
 **Command:** `git diff 2e3ca78...HEAD --stat`
 ```
- ARCHITECTURE.md                                    |   4 +-
- app/Domain/Content/Actions/GetMenuList.php         |  30 +++
- app/Domain/Content/Actions/GetMenuTree.php         |  78 ++++++
- app/Domain/Content/Actions/UpdateMenu.php          | 195 +++++++++++++++
- app/Domain/Content/Data/MenuItemData.php           |  24 ++
- app/Domain/Content/Data/MenuListData.php           |  17 ++
- app/Domain/Content/Data/MenuSummaryData.php        |  21 ++
- app/Domain/Content/Data/MenuTreeData.php           |  22 ++
- app/Domain/Content/Data/UpdateMenuData.php         |  18 ++
- .../Content/Data/UpdateMenuItemInputData.php       |  23 ++
- app/Domain/Content/Enums/MenuKey.php               |  25 ++
- .../Exceptions/InvalidMenuTreeException.php        |  48 ++++
- app/Domain/Content/Models/Menu.php                 |  67 ++++++
- app/Domain/Content/Models/MenuItem.php             |  81 +++++++
- app/Domain/Content/Policies/MenuPolicy.php         |  60 +++++
- app/Filament/Admin/Resources/MenuResource.php      |  72 ++++++
- .../Resources/MenuResource/Pages/EditMenu.php      | 126 ++++++++++
- .../Resources/MenuResource/Pages/ListMenus.php     |  35 +++
- .../Resources/MenuResource/Schemas/MenuForm.php    |  68 ++++++
- .../Resources/MenuResource/Tables/MenuTable.php    |  51 ++++
- app/Providers/ContentServiceProvider.php           |   3 +
- database/factories/MenuFactory.php                 |  58 +++++
- database/factories/MenuItemFactory.php             |  51 ++++
- ...4_000000_create_menus_and_menu_items_tables.php |  66 +++++
- tests/Feature/Admin/Menu/MenuFormTest.php          | 151 ++++++++++++
- tests/Feature/Admin/Menu/MenuResourceTest.php      |  69 ++++++
- .../Domain/Content/Actions/GetMenuListTest.php     |  33 +++
- .../Domain/Content/Actions/GetMenuTreeTest.php     |  86 +++++++
- .../Content/Actions/UpdateMenuRejectionsTest.php   | 191 +++++++++++++++
- .../Domain/Content/Actions/UpdateMenuTest.php      | 268 +++++++++++++++++++++
- .../Content/MenuSchemaAndProvisioningTest.php      | 100 ++++++++
- .../Domain/Content/Policies/MenuPolicyTest.php     |  41 ++++
- 32 files changed, 2180 insertions(+), 2 deletions(-)
+ ARCHITECTURE.md                                    |    4 +-
+ app/Domain/Content/Actions/GetMenuList.php         |   30 +
+ app/Domain/Content/Actions/GetMenuTree.php         |   78 ++
+ app/Domain/Content/Actions/UpdateMenu.php          |  195 +++
+ app/Domain/Content/Data/MenuItemData.php           |   24 +
+ app/Domain/Content/Data/MenuListData.php           |   17 +
+ app/Domain/Content/Data/MenuSummaryData.php        |   21 +
+ app/Domain/Content/Data/MenuTreeData.php           |   22 +
+ app/Domain/Content/Data/UpdateMenuData.php         |   18 +
+ .../Content/Data/UpdateMenuItemInputData.php       |   23 +
+ app/Domain/Content/Enums/MenuKey.php               |   25 +
+ .../Exceptions/InvalidMenuTreeException.php        |   48 +
+ app/Domain/Content/Models/Menu.php                 |   67 +
+ app/Domain/Content/Models/MenuItem.php             |   81 ++
+ app/Domain/Content/Policies/MenuPolicy.php         |   60 +
+ app/Filament/Admin/Resources/MenuResource.php      |   72 +
+ .../Resources/MenuResource/Pages/EditMenu.php      |  126 ++
+ .../Resources/MenuResource/Pages/ListMenus.php     |   35 +
+ .../Resources/MenuResource/Schemas/MenuForm.php    |   68 +
+ .../Resources/MenuResource/Tables/MenuTable.php    |   51 +
+ app/Providers/ContentServiceProvider.php           |    3 +
+ database/factories/MenuFactory.php                 |   58 +
+ database/factories/MenuItemFactory.php             |   51 +
+ ...4_000000_create_menus_and_menu_items_tables.php |   66 +
+ docs/blueprints/P1-M1/brief.md                     |  192 +++
+ docs/blueprints/P1-M1/plan.md                      | 1445 ++++++++++++++++++++
+ docs/blueprints/P1-M1/report.md                    |  368 +++++
+ tests/Feature/Admin/Menu/MenuFormTest.php          |  151 ++
+ tests/Feature/Admin/Menu/MenuResourceTest.php      |   69 +
+ .../Domain/Content/Actions/GetMenuListTest.php     |   33 +
+ .../Domain/Content/Actions/GetMenuTreeTest.php     |  107 ++
+ .../Content/Actions/UpdateMenuRejectionsTest.php   |  245 ++++
+ .../Domain/Content/Actions/UpdateMenuTest.php      |  276 ++++
+ .../Content/MenuSchemaAndProvisioningTest.php      |  100 ++
+ .../Domain/Content/Policies/MenuPolicyTest.php     |   41 +
+ 35 files changed, 4268 insertions(+), 2 deletions(-)
 ```
 
 ---
@@ -134,7 +146,7 @@ A	tests/Feature/Domain/Content/Policies/MenuPolicyTest.php
 - **Change:** Changed `create(User $user): bool` to `return true;` in `app/Domain/Content/Policies/MenuPolicy.php:23`.
 - **Target Test:** `php artisan test tests/Feature/Domain/Content/Policies/MenuPolicyTest.php`
 - **Raw Failure Output:**
-```
+```json
 {"tool":"pest","result":"failed","tests":3,"passed":1,"assertions":8,"duration_ms":1004,"failed":2,"failures":[{"test":"P\\Tests\\Feature\\Domain\\Content\\Policies\\MenuPolicyTest::__pest_evaluable_it_denies_non_admin_on_all_abilities","file":"\\dev\\getnow-cms\\tests\\Feature\\Domain\\Content\\Policies\\MenuPolicyTest.php","line":24,"message":"Failed asserting that true is false.","trace":["C:\\dev\\getnow-cms\\tests\\Feature\\Domain\\Content\\Policies\\MenuPolicyTest.php:24"]},{"test":"P\\Tests\\Feature\\Domain\\Content\\Policies\\MenuPolicyTest::__pest_evaluable_it_denies_create__delete__deleteAny__forceDelete_for_platform_admin","file":"\\dev\\getnow-cms\\tests\\Feature\\Domain\\Content\\Policies\\MenuPolicyTest.php","line":34,"message":"Failed asserting that true is false.","trace":["C:\\dev\\getnow-cms\\tests\\Feature\\Domain\\Content\\Policies\\MenuPolicyTest.php:34"]}]}
 ```
 - **Reversion:** `git restore app/Domain/Content/Policies/MenuPolicy.php` (verified clean diff).
@@ -143,7 +155,7 @@ A	tests/Feature/Domain/Content/Policies/MenuPolicyTest.php
 - **Change:** Commented out `$validator->fails()` check in `app/Domain/Content/Actions/UpdateMenu.php:71-73`.
 - **Target Test:** `php artisan test tests/Feature/Domain/Content/Actions/UpdateMenuRejectionsTest.php --filter="rejects link violations"`
 - **Raw Failure Output:**
-```
+```json
 {"tool":"pest","result":"failed","tests":1,"passed":0,"assertions":1,"duration_ms":913,"failed":1,"failures":[{"test":"P\\Tests\\Feature\\Domain\\Content\\Actions\\UpdateMenuRejectionsTest::__pest_evaluable_it_rejects_link_violations_with_InvalidMenuTreeException","file":"\\dev\\getnow-cms\\tests\\Feature\\Domain\\Content\\Actions\\UpdateMenuRejectionsTest.php","line":41,"message":"Exception \"App\\Domain\\Content\\Exceptions\\InvalidMenuTreeException\" not thrown.","trace":["C:\\dev\\getnow-cms\\tests\\Feature\\Domain\\Content\\Actions\\UpdateMenuRejectionsTest.php:41"]}]}
 ```
 - **Reversion:** `git restore app/Domain/Content/Actions/UpdateMenu.php` (verified clean diff).
@@ -152,7 +164,7 @@ A	tests/Feature/Domain/Content/Policies/MenuPolicyTest.php
 - **Change:** Mutated Pass 1 in-place update condition in `app/Domain/Content/Actions/UpdateMenu.php:117` to `if (false && $item->public_id !== null && ...)` to force recreation.
 - **Target Test:** `php artisan test tests/Feature/Domain/Content/Actions/UpdateMenuTest.php --filter="preserves public_id values"`
 - **Raw Failure Output:**
-```
+```json
 {"tool":"pest","result":"failed","tests":1,"passed":0,"assertions":1,"duration_ms":1094,"failed":1,"failures":[{"test":"P\\Tests\\Feature\\Domain\\Content\\Actions\\UpdateMenuTest::__pest_evaluable_it_preserves_public__id_values_on_item_reordering_and_reparenting","file":"\\dev\\getnow-cms\\tests\\Feature\\Domain\\Content\\Actions\\UpdateMenuTest.php","line":122,"message":"Failed asserting that two strings are identical.\n--- Expected\n+++ Actual\n@@ @@\n-'01M4WJTTN86C1JRW2Z1QF9HRMJ'\n+'01m4wjttnyyytyf8exqy2henzd'","trace":["C:\\dev\\getnow-cms\\tests\\Feature\\Domain\\Content\\Actions\\UpdateMenuTest.php:122"]}]}
 ```
 - **Reversion:** `git restore app/Domain/Content/Actions/UpdateMenu.php` (verified clean diff).
@@ -161,7 +173,7 @@ A	tests/Feature/Domain/Content/Policies/MenuPolicyTest.php
 - **Change:** Commented out `$existingItems->has($item->public_id)` validation in `app/Domain/Content/Actions/UpdateMenu.php:83-85`.
 - **Target Test:** `php artisan test tests/Feature/Domain/Content/Actions/UpdateMenuRejectionsTest.php --filter="unknown public IDs"`
 - **Raw Failure Output:**
-```
+```json
 {"tool":"pest","result":"failed","tests":1,"passed":0,"assertions":1,"duration_ms":937,"failed":1,"failures":[{"test":"P\\Tests\\Feature\\Domain\\Content\\Actions\\UpdateMenuRejectionsTest::__pest_evaluable_it_rejects_structure_violations_and_unknown_public_IDs_with_InvalidMenuTreeException","file":"\\dev\\getnow-cms\\tests\\Feature\\Domain\\Content\\Actions\\UpdateMenuRejectionsTest.php","line":63,"message":"Exception \"App\\Domain\\Content\\Exceptions\\InvalidMenuTreeException\" not thrown.","trace":["C:\\dev\\getnow-cms\\tests\\Feature\\Domain\\Content\\Actions\\UpdateMenuRejectionsTest.php:63"]}]}
 ```
 - **Reversion:** `git restore app/Domain/Content/Actions/UpdateMenu.php` (verified clean diff).
@@ -170,7 +182,7 @@ A	tests/Feature/Domain/Content/Policies/MenuPolicyTest.php
 - **Change:** Commented out `$this->fillForm();` in `app/Filament/Admin/Resources/MenuResource/Pages/EditMenu.php:124`.
 - **Target Test:** `php artisan test tests/Feature/Admin/Menu/MenuFormTest.php --filter="duplicate"`
 - **Raw Failure Output:**
-```
+```json
 {"tool":"pest","result":"failed","tests":1,"passed":0,"assertions":8,"duration_ms":1353,"failed":1,"failures":[{"test":"P\\Tests\\Feature\\Admin\\Menu\\MenuFormTest::__pest_evaluable_it_saves_form_data_through_UpdateMenu_and_re_hydrates_state_without_duplicate_creation_on_second_save","file":"\\dev\\getnow-cms\\tests\\Feature\\Admin\\Menu\\MenuFormTest.php","line":105,"message":"Failed asserting that two arrays are identical.\n--- Expected\n+++ Actual\n@@ @@\n Array &0 [\n- 0 => '01m4wk0bhec5a6zmfwk1d5kwq7',\n- 1 => '01m4wk0bhfgq35mc0dhvk3y9pf',\n+ 0 => '01m4wk0bmeerqyw61hy478t3w0',\n+ 1 => '01m4wk0bmfds68vkztnj8d5tww',\n ]","trace":["C:\\dev\\getnow-cms\\tests\\Feature\\Admin\\Menu\\MenuFormTest.php:105"]}]}
 ```
 - **Reversion:** `git restore app/Filament/Admin/Resources/MenuResource/Pages/EditMenu.php` (verified clean diff).
@@ -203,7 +215,7 @@ A	tests/Feature/Domain/Content/Policies/MenuPolicyTest.php
 | **K4** | Validated links (`/` or `https://`) | Validated via `SafeLink` rule and domain checks. |
 | **K5** | Placements & types defined in code | `MenuKey` enum owns fixed set of 5 menus. |
 | **K6** | Explicit block registration | N/A. |
-| **K7** | Server-side visibility | Decided server-side via `is_enabled` filtering in read actions. |
+| **K7** | Server-side visibility | Storefront read visibility decided server-side. In P1-M1 there is no storefront API endpoint; `GetMenuTree` serves admin editing and returns both enabled and disabled items so disabled items remain editable in the admin form. |
 | **K8** | Content API contract | Untouched; Content API v1 contract preserved. |
 | **K9** | Checklist in Architecture sec 6 followed | Respected. |
 | **DB1** | PostgreSQL only | Tests run against Postgres `phone_store_test`. |
@@ -214,16 +226,16 @@ A	tests/Feature/Domain/Content/Policies/MenuPolicyTest.php
 | **DB6** | Idempotent seeders | Migration idempotent via `where('key', ...)->exists()` checks. |
 | **SEC1** | No secrets in repo | Verified clean; `.env` is not tracked. |
 | **SEC2** | Authorization never bypassed | `MenuPolicy` registered in `ContentServiceProvider` and enforced. |
-| **SEC3** | Do not log sensitive data | Activity log entries contain only menu key and admin causer ID. |
+| **SEC3** | Do not log sensitive data | Activity log records menu update with causer ID, subject Menu, and structured diff in properties (`old_title`, `new_title`, `old_items`, `new_items`) containing only plain public menu fields (label, url, sort_order, etc.). Zero sensitive credentials or secrets. |
 | **SEC4** | Admin access checked server-side | Server-side authorization preserved via `MenuPolicy`. |
 | **SEC5** | Sensitive state logged | Activity log records all menu updates with log_name `content`. |
-| **T1** | Pest tests for Actions & Filament | 350 Pest tests passing. |
+| **T1** | Pest tests for Actions & Filament | 352 Pest tests passing. |
 | **T2** | Resource smoke tests | `MenuResourceTest` covers list and edit pages. |
 | **T3** | Block type tests | Preserved. |
 | **T4** | Factories used | `MenuFactory` and `MenuItemFactory` used across all tests. |
-| **T5** | No skipped or incomplete tests | 350 tests passed, 0 skipped, 0 incomplete. |
+| **T5** | No skipped or incomplete tests | 352 tests passed, 0 skipped, 0 incomplete. |
 | **G1** | Branch from main | Branch `feat/storefront-navigation-menus`. |
-| **G2** | Conventional Commits | All 5 commits follow Conventional Commits per Section 12. |
+| **G2** | Conventional Commits | All commits follow Conventional Commits per Section 12. |
 | **G3** | Never push directly to main | Preserved. |
 | **G4** | PR descriptions complete | Ready for PR creation. |
 | **X1** | Do not add dependencies | Zero dependencies added (`composer.json` untouched). |
@@ -231,7 +243,7 @@ A	tests/Feature/Domain/Content/Policies/MenuPolicyTest.php
 | **X3** | Do not add deployment pipelines | Preserved. |
 | **X4** | Stay within phase scope | Only Phase 1 Menus CMS touched. |
 | **X5** | Do not modify storefront repo | Storefront untouched. |
-| **X6** | `composer check` passes | 350 tests passed (1395 assertions), Pint passed, PHPStan passed (0 errors). |
+| **X6** | `composer check` passes | 352 tests passed (1403 assertions), Pint passed, PHPStan passed (0 errors). |
 | **X7** | Docs updated where relevant | `ARCHITECTURE.md` updated with completed menu feature and D9 write concurrency rule. |
 
 ---
@@ -244,7 +256,7 @@ A	tests/Feature/Domain/Content/Policies/MenuPolicyTest.php
 
  INFO Configuration cache cleared successfully. 
 
-{"tool":"pest","result":"passed","tests":350,"passed":350,"assertions":1395,"duration_ms":30259}
+{"tool":"pest","result":"passed","tests":352,"passed":352,"assertions":1403,"duration_ms":29996}
 ```
 *Static Analysis (`composer stan`):* Passed with **0 errors** at Level 8 without baseline entries or suppressions.
 
@@ -255,12 +267,15 @@ A	tests/Feature/Domain/Content/Policies/MenuPolicyTest.php
 ### Git Status
 **Command:** `git status --short`
 ```
-?? docs/blueprints/P1-M1/
+[Empty - 0 matches]
 ```
 
 ### Git Log
-**Command:** `git log -n 5 --oneline`
+**Command:** `git log -n 8 --oneline`
 ```
+2b9c6c0 test(content): add boundary, disabled items, and mid-transaction rollback tests
+7503af6 docs(blueprints): record local database migration execution in P1-M1 report
+8c951ad docs(blueprints): add P1-M1 brief, plan v2, and implementation report
 89b305f docs(architecture): mark menus complete and record menu write concurrency in D9
 fa3e319 feat(filament): add menu management resource with nested tree editing
 7d56b7f feat(content): add atomic UpdateMenu action with row locking and audit logging
@@ -275,7 +290,13 @@ e347c6a feat(content): create menus and menu_items tables with provisioning
 ```
 
 ### Baseline Diff
-**Command:** `git diff 2e3ca78...HEAD --stat -- '*baseline*'`
+**Command:** `git diff main...HEAD --stat -- '*baseline*'`
+```
+[Empty - 0 matches]
+```
+
+### Package Manifest Diff
+**Command:** `git diff main...HEAD -- composer.json composer.lock package.json`
 ```
 [Empty - 0 matches]
 ```
@@ -365,4 +386,3 @@ array:5 [
 ]
 ```
 All 5 code-owned menus are verified provisioned and active on the local development dashboard.
-
