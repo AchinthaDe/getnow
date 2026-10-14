@@ -219,6 +219,7 @@ Contract rules:
 - Authorization uses Policies. Content policies extend `BaseContentPolicy`. Phase 1 admin access is a single `is_platform_admin` flag checked in `canAccessPanel`. Roles and permissions arrive with the retailer panel.
 - Customize only through documented extension points. Pin the Filament version and upgrade in its own PR.
 - Every resource has a smoke test that loads its list, create and edit pages.
+- Browser history convention: table state interactions (search, sort, and filters inherit `history: false`, pagination configured with `history: false`) replace the current browser history entry (`history: false`), while inter-page navigation pushes a new history entry. Intra-table state changes never pollute browser history.
 
 ## 9. Database conventions (PostgreSQL)
 

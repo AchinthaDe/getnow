@@ -230,6 +230,19 @@ it('resolves freshly if starts_at or ends_at changes without updated_at changing
     expect($action($block)->status)->toBe(ServingStatus::NotLive);
 });
 
+it('evaluates live status immediately when time reaches starts_at without cache clearing', function () {
+    Carbon::setTestNow(Carbon::parse('2026-01-01 10:00:00'));
+    /** @var ContentBlock $block */
+    $block = ContentBlock::factory()->published()->scheduled(now()->addMinutes(10), null)->create();
+    $action = app(GetBlockServingStatus::class);
+
+    expect($action($block)->status)->toBe(ServingStatus::NotLive);
+
+    Carbon::setTestNow(Carbon::parse('2026-01-01 10:10:00'));
+
+    expect($action($block)->status)->toBe(ServingStatus::Live);
+});
+
 it('resolves freshly if schema_version changes without updated_at changing', function () {
     Carbon::setTestNow(Carbon::parse('2026-01-01 10:00:00'));
     /** @var ContentBlock $block */

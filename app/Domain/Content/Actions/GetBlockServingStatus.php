@@ -19,34 +19,27 @@ final class GetBlockServingStatus
 
     public function __invoke(ContentBlock $block): BlockServingStatusResult
     {
-        // Key based on the block's current state
+        if (! $block->isLive()) {
+            return new BlockServingStatusResult(ServingStatus::NotLive);
+        }
+
         $updatedAt = $block->updated_at !== null ? $block->updated_at->timestamp : 0;
         $payloadString = json_encode($block->payload);
         $key = sprintf(
-            'serving_status_%d_%s_%d_%s_%d_%d_%s_%d_%d',
+            'serving_status_%d_%s_%d_%d_%s',
             $block->id ?? 0,
             $block->type,
             $updatedAt,
-            $block->status ? $block->status->value : '',
-            $block->is_enabled ? 1 : 0,
             $block->schema_version ?? 1,
-            md5($payloadString ?: ''),
-            $block->starts_at !== null ? $block->starts_at->timestamp : 0,
-            $block->ends_at !== null ? $block->ends_at->timestamp : 0
+            md5($payloadString ?: '')
         );
 
-        return Cache::store('array')->rememberForever($key, function () use ($block) {
-            if (! $block->isLive()) {
-                return new BlockServingStatusResult(ServingStatus::NotLive);
-            }
-
+        return Cache::store('array')->rememberForever($key, function () use ($block): BlockServingStatusResult {
             $healthResult = ($this->resolveServablePayload)($block, false);
 
-            if ($healthResult->outcome === ServingHealthOutcome::Servable) {
-                $status = ServingStatus::Live;
-            } else {
-                $status = ServingStatus::PayloadError;
-            }
+            $status = ($healthResult->outcome === ServingHealthOutcome::Servable)
+                ? ServingStatus::Live
+                : ServingStatus::PayloadError;
 
             return new BlockServingStatusResult($status, $healthResult->outcome);
         });
