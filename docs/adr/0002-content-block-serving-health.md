@@ -22,10 +22,10 @@ We need to establish how the public API handles these unservable blocks and how 
    - Distinguish failure outcomes strictly into structured reason categories: `UnknownType`, `UnsupportedVersion`, `InvalidAfterUpgrade`, and `UpgradeFailed`.
 
 3. **Admin Live Indicator (Phase 1 Step 2b):**
-   - The `isLive()` method on `ContentBlock` will remain a pure lifecycle check (status, schedule, enable state) without invoking the payload upgrader.
+   - The `isLive()` method on `ContentBlock` will remain a pure lifecycle check (status, schedule, enable state) without invoking the payload upgrader. It is evaluated dynamically on every request, ensuring lifecycle non-live states are never stored in cache.
    - The admin UI table will display three states: **Live**, **Not live**, and **Payload error**. 
    - The specific structured reason category (e.g., "UnsupportedVersion") will be shown only in a tooltip on the "Payload error" badge, preventing UI clutter while hiding internal exceptions.
-   - Serving health is only resolved for lifecycle-live rows, cached per request, and paginated. 
+   - Serving health outcome caching applies strictly to records that have passed lifecycle validation (`isLive() === true`), cached per request in array store, and paginated. Lifecycle non-live states are never cached so time-based window transitions are reflected immediately without cache invalidation. 
 
 4. **View/Edit Behaviour & Publishing/Enabling:**
    - The View page will display the raw payload for administrative debugging and show the structured reason for the failure.
