@@ -21,7 +21,7 @@ This document is the source of truth for structure and boundaries. If code and t
 - [x] UI Step 2 (policy, timezone config, read-only list + badges)
 - [x] UI Step 3 (BlockFormRegistry, Create/Edit forms)
 - [x] UI Step 4 (View page, header/row actions)
-- [ ] Menus
+- [x] Menus
 - [ ] Content API v1
 - [ ] Seed data
 
@@ -255,7 +255,7 @@ Contract rules:
 | D6 | Phase 1 admin access is one platform-admin flag. Roles come with the retailer panel. |
 | D7 | Published content edits go live immediately in phase 1. Revisions and preview come in phase 2. |
 | D8 | MaxCount is enforced at API output limit, not publish lock. Tie-break: `sort_order ASC, starts_at DESC NULLS LAST, id DESC`. One block = one message. |
-| D9 | Concurrency & Locks: Content blocks use last-write-wins for payloads, pessimistic locking for state transitions. |
+| D9 | Concurrency & Locks: Content blocks use last-write-wins for payloads, pessimistic locking for state transitions. Menus use whole-tree atomic replacement under a row lock, last-write-wins. |
 
 Open decisions (record as ADRs in `docs/adr/` when settled):
 - React frontend shape: Inertia inside this app versus a separate SPA or SSR app. The Content API is the contract either way.
