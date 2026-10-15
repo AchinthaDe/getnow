@@ -16,8 +16,10 @@ use App\Domain\Content\Enums\MenuKey;
 use App\Domain\Content\Enums\Placement;
 use App\Domain\Content\Models\ContentBlock;
 use App\Domain\Content\Models\Menu;
+use App\Domain\Content\Models\MenuItem;
 use App\Domain\Content\Services\ResolveServablePayload;
 use App\Domain\Content\Settings\StorefrontSettings;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 final class GetLayoutContent
 {
@@ -29,7 +31,6 @@ final class GetLayoutContent
 
     public function __invoke(): LayoutResponseData
     {
-        // 1. Settings assembly
         $settingsData = new LayoutSettingsData(
             site_name: $this->settings->site_name,
             default_meta_description: $this->settings->default_meta_description,
@@ -37,7 +38,7 @@ final class GetLayoutContent
             footer_brand_text: $this->settings->footer_brand_text,
         );
 
-        // 2. Placements assembly (single query with index prefix status, is_enabled, sort_order)
+        // Pre-index blocks by placement to bound queries regardless of placement count.
         $allBlocks = ContentBlock::visible()->servingOrder()->get();
 
         $blocksByPlacement = [];
@@ -87,8 +88,7 @@ final class GetLayoutContent
             $placementsData[$placement->value] = $selectedBlocks;
         }
 
-        // 3. Menus assembly (2 queries: menus, then items ordered by sort_order, id)
-        $menus = Menu::with(['items' => fn ($q) => $q->orderBy('sort_order')->orderBy('id')])
+        $menus = Menu::with(['items' => fn (HasMany $q) => $q->orderBy('sort_order')->orderBy('id')])
             ->get()
             ->keyBy(fn (Menu $m): string => $m->key->value);
 
@@ -106,10 +106,10 @@ final class GetLayoutContent
             }
 
             $rootItems = $menu->items
-                ->filter(fn ($item) => $item->parent_id === null && $item->is_enabled === true);
+                ->filter(fn (MenuItem $item): bool => $item->parent_id === null && $item->is_enabled === true);
 
             $childrenByParent = $menu->items
-                ->filter(fn ($item) => $item->parent_id !== null && $item->is_enabled === true)
+                ->filter(fn (MenuItem $item): bool => $item->parent_id !== null && $item->is_enabled === true)
                 ->groupBy('parent_id');
 
             $mappedRoots = [];
@@ -144,7 +144,7 @@ final class GetLayoutContent
             );
         }
 
-        // 4. Data wrapping & deterministic revision hash generation
+        // Hash only the canonical data object so revision tokens remain stable across request timestamps.
         $layoutData = new LayoutData(
             settings: $settingsData,
             placements: $placementsData,

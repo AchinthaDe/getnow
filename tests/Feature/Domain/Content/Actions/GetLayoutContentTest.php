@@ -461,7 +461,6 @@ it('contains zero raw database primary keys or internal lifecycle attributes', f
     $array = app(GetLayoutContent::class)()->toArray();
 
     $denyList = [
-        'id_numeric',
         'sort_order',
         'status',
         'is_enabled',

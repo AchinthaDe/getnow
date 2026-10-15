@@ -21,8 +21,6 @@ use function Pest\Laravel\withHeaders;
 beforeEach(function (): void {
     TestBlocks::register();
     RateLimiter::clear('content-api');
-    RateLimiter::clear('content-api:127.0.0.1');
-    RateLimiter::clear('content-api:'.sha1('127.0.0.1'));
 });
 
 it('returns HTTP 200 with layout data and meta without authentication', function (): void {
@@ -78,34 +76,28 @@ it('handles conditional GET returning 304 on matching ETag and 200 on stale ETag
     $rev = (string) $initialResponse->json('meta.revision');
     expect($rev)->not->toBeEmpty();
 
-    // 1. Strong matching ETag
     $strongResp = withHeaders(['If-None-Match' => '"'.$rev.'"'])->get('/api/v1/content/layout');
     $strongResp->assertStatus(304);
     $strongResp->assertHeader('ETag', '"'.$rev.'"');
     expect($strongResp->getContent())->toBe('');
 
-    // 2. Weak matching ETag
     $weakResp = withHeaders(['If-None-Match' => 'W/"'.$rev.'"'])->get('/api/v1/content/layout');
     $weakResp->assertStatus(304);
     $weakResp->assertHeader('ETag', '"'.$rev.'"');
     expect($weakResp->getContent())->toBe('');
 
-    // 3. Wildcard ETag
     $wildcardResp = withHeaders(['If-None-Match' => '*'])->get('/api/v1/content/layout');
     $wildcardResp->assertStatus(304);
     expect($wildcardResp->getContent())->toBe('');
 
-    // 4. Comma list containing matching strong token
     $listResp = withHeaders(['If-None-Match' => '"other-hash", "'.$rev.'"'])->get('/api/v1/content/layout');
     $listResp->assertStatus(304);
     expect($listResp->getContent())->toBe('');
 
-    // 5. Comma list containing matching weak token
     $weakListResp = withHeaders(['If-None-Match' => '"other-hash", W/"'.$rev.'"'])->get('/api/v1/content/layout');
     $weakListResp->assertStatus(304);
     expect($weakListResp->getContent())->toBe('');
 
-    // 6. Stale revision token returns HTTP 200 with JSON payload
     $staleResp = withHeaders(['If-None-Match' => '"stale-revision-hash"'])->getJson('/api/v1/content/layout');
     $staleResp->assertOk();
     $staleResp->assertJsonStructure(['data', 'meta']);
@@ -114,8 +106,6 @@ it('handles conditional GET returning 304 on matching ETag and 200 on stale ETag
 
 it('throttles requests exceeding configured rate limit with HTTP 429', function (): void {
     RateLimiter::clear('content-api');
-    RateLimiter::clear('content-api:127.0.0.1');
-    RateLimiter::clear('content-api:'.sha1('127.0.0.1'));
     config(['content.rate_limit_per_minute' => 2]);
 
     get('/api/v1/content/layout')->assertOk();

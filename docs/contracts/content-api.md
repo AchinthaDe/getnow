@@ -25,7 +25,7 @@ The Blade storefront server and client consumers should leverage HTTP conditiona
 | Header | Type | Required | Description |
 |---|---|---|---|
 | `Accept` | `string` | Recommended | Must be `application/json` |
-| `If-None-Match` | `string` | Optional | Client's previously received `meta.revision` quoted string or weak token (e.g., `"1a2b3c..."` or `W/"1a2b3c..."`) |
+| `If-None-Match` | `string` | Optional | Client's previously received `meta.revision` quoted string, weak token, comma-separated list, or wildcard `*` (e.g., `"1a2b3c..."`, `W/"1a2b3c..."`, or `*`) |
 
 #### Response Headers
 | Header | Description |
@@ -125,3 +125,4 @@ The Blade storefront server and client consumers should leverage HTTP conditiona
 3. **Menu Hierarchy & Cascading Exclusion**: If a parent menu item is disabled, the parent and all of its descendant children are omitted from the response. Remaining items are strictly ordered by `sort_order ASC, id ASC`.
 4. **ID Anonymization**: Internal PostgreSQL incremental IDs are never exposed. All entity identifiers are external Crockford ULIDs mapped to the property name `id`.
 5. **Deterministic Revision**: `meta.revision` is computed from the canonical JSON serialization of the `data` object, ensuring identical content produces identical hashes across different request timestamps.
+6. **Placement Cardinality & Unservable Resilience**: `announcement_bar` returns at most 1 block (`maxCount() = 1`). Candidate blocks that are unservable (due to unknown type, unsupported schema version, upgrade failure, or invalid payload) or whose type is not permitted for the placement are skipped silently, falling back to the next eligible candidate in tie-break order.
