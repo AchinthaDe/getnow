@@ -1,0 +1,10 @@
+@props(['product'])
+@php($variant = $product->availableVariant())
+<article class="product-card">
+    <div class="product-visual">
+        <a href="{{ route('product', $product->slug) }}" tabindex="-1" aria-hidden="true"><img src="{{ $product->image }}" alt="" loading="lazy" width="400" height="400"></a>
+        @if($product->discount())<span class="badge badge-sale">-{{ $product->discount() }}%</span>@elseif($product->badge)<span class="badge">{{ $product->badge }}</span>@endif
+        <form method="post" action="{{ route('wishlist.toggle') }}" class="save-product">@csrf<input type="hidden" name="slug" value="{{ $product->slug }}"><button class="icon-button {{ in_array($product->slug, session('wishlist', [])) ? 'is-saved' : '' }}" aria-label="{{ in_array($product->slug, session('wishlist', [])) ? 'Unsave' : 'Save' }} {{ $product->name }}" title="Save for later"><x-icon name="heart" size="19"/></button></form>
+    </div>
+    <div class="product-info"><span class="product-brand">{{ $product->brand }}</span><h3><a href="{{ route('product', $product->slug) }}">{{ $product->name }}</a></h3><p class="product-type">{{ str_replace('-', ' ', $product->category) }}</p><div class="product-price"><strong>{{ $product::money($product->priceMinor) }}</strong>@if($product->compareAtMinor !== null && $product->compareAtMinor > $product->priceMinor)<del>{{ $product::money($product->compareAtMinor) }}</del>@endif</div><div class="product-bottom"><span class="stock {{ ! $variant ? 'sold-out' : '' }}">{{ $variant ? 'In stock' : 'Coming back soon' }}</span>@if($variant)<form method="post" action="{{ route('cart.store') }}">@csrf<input type="hidden" name="slug" value="{{ $product->slug }}"><input type="hidden" name="variant_id" value="{{ $variant['id'] }}"><input type="hidden" name="quantity" value="1"><button class="quick-add" aria-label="Add {{ $product->name }} to bag"><x-icon name="plus" size="18"/></button></form>@else<a class="quick-add" href="{{ route('product', $product->slug) }}" aria-label="View {{ $product->name }}"><x-icon name="search" size="18"/></a>@endif</div></div>
+</article>
