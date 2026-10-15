@@ -1,0 +1,1 @@
+<a href="{{ route('home') }}" class="logo" aria-label="{{ config('storefront.name') }} home"><span class="logo-mark"><x-icon name="bolt" size="28"/></span>{{ config('storefront.name') }}<span class="logo-period">.</span></a>

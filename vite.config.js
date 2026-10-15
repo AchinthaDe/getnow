@@ -10,6 +10,8 @@ export default defineConfig({
                 'resources/css/app.css',
                 'resources/js/app.js',
                 'resources/js/passkeys.js',
+                'resources/css/storefront.css',
+                'resources/js/storefront.js',
             ],
             refresh: true,
             fonts: [

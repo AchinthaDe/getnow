@@ -23,7 +23,7 @@ This document is the source of truth for structure and boundaries. If code and t
 - [x] UI Step 4 (View page, header/row actions)
 - [x] Menus
 - [x] Content API v1
-- [ ] Seed data
+- [x] Seed data
 
 Rule: do not scaffold folders, models or packages for a phase that is not active.
 
@@ -58,6 +58,8 @@ Storefront (Blade now, React later) ──► GET /api/v1/content/layout ──�
 ```
 
 The CMS and the storefront are separate applications with separate databases. The storefront never reads this database. The API is the only contract.
+
+*Note (Temporary Demo Storefront)*: For local Phase 1 demonstration and validation, a temporary read-only homepage harness is mounted on `GET /` calling `GetLayoutContent` directly. See `docs/blueprints/P1-S1/DEMO-TEARDOWN.md` for details and cleanup procedures.
 
 ## 5. Code structure
 

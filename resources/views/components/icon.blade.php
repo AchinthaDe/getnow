@@ -1,0 +1,36 @@
+@props(['name', 'size' => 22])
+@php
+$paths = [
+ 'search'=>'<circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/>',
+ 'bag'=>'<path d="M5 7h14l1 14H4L5 7Z"/><path d="M8 8V6a4 4 0 0 1 8 0v2"/>',
+ 'heart'=>'<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z"/>',
+ 'user'=>'<circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/>',
+ 'menu'=>'<path d="M4 6h16M4 12h16M4 18h16"/>',
+ 'close'=>'<path d="m6 6 12 12M6 18 18 6"/>',
+ 'chevron'=>'<path d="m8 4 8 8-8 8"/>',
+ 'down'=>'<path d="m5 9 7 7 7-7"/>',
+ 'plus'=>'<path d="M12 5v14M5 12h14"/>',
+ 'minus'=>'<path d="M5 12h14"/>',
+ 'pause'=>'<path d="M8 5v14M16 5v14"/>',
+ 'play'=>'<path d="m8 4 12 8-12 8Z"/>',
+ 'headphones'=>'<path d="M3 15v-3a9 9 0 0 1 18 0v3"/><rect x="2" y="12" width="5" height="9" rx="2"/><rect x="17" y="12" width="5" height="9" rx="2"/>',
+ 'phone'=>'<rect x="6" y="2" width="12" height="20" rx="3"/><path d="M10 5h4M11 19h2"/>',
+ 'watch'=>'<rect x="5" y="6" width="14" height="12" rx="4"/><path d="m8 6 1-4h6l1 4M8 18l1 4h6l1-4M12 9v3l2 1"/>',
+ 'speaker'=>'<rect x="4" y="2" width="16" height="20" rx="3"/><circle cx="12" cy="15" r="4"/><circle cx="12" cy="6" r="1"/>',
+ 'battery'=>'<rect x="2" y="6" width="18" height="12" rx="2"/><path d="M22 10v4m-11-5-3 4h5l-3 4"/>',
+ 'gamepad'=>'<path d="M7 7h10c3 0 4 5 4 9 0 4-4 2-6-1H9c-2 3-6 5-6 1 0-4 1-9 4-9Z"/><path d="M8 10v5M5.5 12.5h5M16 11h.1M18 14h.1"/>',
+ 'home'=>'<path d="m3 10 9-8 9 8v11h-6v-7H9v7H3Z"/>',
+ 'laptop'=>'<rect x="4" y="3" width="16" height="13" rx="2"/><path d="m4 16-3 5h22l-3-5"/>',
+ 'truck'=>'<path d="M1 4h13v13H1zM14 8h5l3 5v4h-8"/><circle cx="5" cy="18" r="3"/><circle cx="18" cy="18" r="3"/>',
+ 'shield'=>'<path d="M12 2 3 6v6c0 5 9 10 9 10s9-5 9-10V6l-9-4Z"/><path d="m8 12 3 3 5-6"/>',
+ 'check'=>'<path d="m5 12 4 4L19 6"/>',
+ 'lock'=>'<rect x="4" y="10" width="16" height="12" rx="2"/><path d="M8 10V6a4 4 0 0 1 8 0v4M12 14v4"/>',
+ 'eye'=>'<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>',
+ 'filter'=>'<path d="M4 7h16M4 17h16M8 4v6M16 14v6"/>',
+ 'mail'=>'<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2 5 10 8L22 5"/>',
+ 'box'=>'<path d="m12 2 10 5v10l-10 5-10-5V7l10-5Z"/><path d="m2 7 10 5 10-5M12 12v10M7 4.5l10 5"/>',
+ 'trash'=>'<path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7"/>',
+ 'bolt'=>'<path d="m14 2-10 12h7l-1 8L20 9h-7l1-7Z"/>',
+];
+@endphp
+<svg {{ $attributes->class('icon') }} width="{{ $size }}" height="{{ $size }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{!! $paths[$name] ?? $paths['box'] !!}</svg>
