@@ -1,0 +1,6 @@
+@import './storefront/base.css';
+@import './storefront/layout.css';
+@import './storefront/components.css';
+@import './storefront/pages.css';
+@import './storefront/responsive.css';
+@import './storefront/carousel.css';
