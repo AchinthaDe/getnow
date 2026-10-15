@@ -1,0 +1,69 @@
+{
+  "data": {
+    "settings": {
+      "site_name": "GetNow Marketplace",
+      "default_meta_description": "Wholesale mobile phones and consumer electronics.",
+      "search_placeholder": "Search models, brands, or SKUs...",
+      "footer_brand_text": "GetNow Electronics Wholesale Ltd."
+    },
+    "placements": {
+      "announcement_bar": [
+        {
+          "id": "<ulid>",
+          "type": "announcement_bar",
+          "version": 1,
+          "data": {
+            "text": "Welcome to GetNow Wholesale Electronics",
+            "link_url": null,
+            "tone": "info"
+          }
+        }
+      ]
+    },
+    "menus": {
+      "main_nav": {
+        "title": "Main Navigation",
+        "items": [
+          {
+            "id": "<ulid>",
+            "label": "Phones",
+            "url": "/phones",
+            "icon": null,
+            "new_tab": false,
+            "children": [
+              {
+                "id": "<ulid>",
+                "label": "Apple",
+                "url": "/phones/apple",
+                "icon": null,
+                "new_tab": false,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      "mobile_nav": {
+        "title": null,
+        "items": []
+      },
+      "footer_column_1": {
+        "title": null,
+        "items": []
+      },
+      "footer_column_2": {
+        "title": null,
+        "items": []
+      },
+      "footer_column_3": {
+        "title": null,
+        "items": []
+      }
+    }
+  },
+  "meta": {
+    "api_version": 1,
+    "revision": "<hash>",
+    "generated_at": "<iso8601>"
+  }
+}
