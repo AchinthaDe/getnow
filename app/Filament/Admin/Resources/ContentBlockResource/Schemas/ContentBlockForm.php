@@ -43,15 +43,16 @@ final class ContentBlockForm
 
             Select::make('placement')
                 ->label('Placement')
+                ->disabled(fn (Get $get): bool => blank($get('page')))
                 ->options(function (Get $get): array {
                     $pageVal = $get('page');
                     if (blank($pageVal)) {
-                        return collect(Placement::cases())->mapWithKeys(fn (Placement $p) => [$p->value => $p->label()])->all();
+                        return [];
                     }
 
                     $page = PlacementPage::tryFrom((string) $pageVal);
                     if ($page === null) {
-                        return collect(Placement::cases())->mapWithKeys(fn (Placement $p) => [$p->value => $p->label()])->all();
+                        return [];
                     }
 
                     return collect(Placement::forPage($page))->mapWithKeys(fn (Placement $p) => [$p->value => $p->shortLabel()])->all();
@@ -68,7 +69,6 @@ final class ContentBlockForm
 
                     $placement = Placement::tryFrom($state);
                     if ($placement !== null) {
-                        $set('page', $placement->page()->value);
                         $allowedTypes = $placement->allowedBlockTypes();
                         if (count($allowedTypes) === 1) {
                             $set('type', $allowedTypes[0]);

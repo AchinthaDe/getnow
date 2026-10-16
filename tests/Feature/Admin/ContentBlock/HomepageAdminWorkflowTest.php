@@ -134,8 +134,10 @@ it('creates one block of each of the 5 new types in Filament', function (): void
     ];
 
     foreach ($blockSpecs as $type => $spec) {
+        $placement = Placement::from($spec['placement']);
         $component = Livewire::test(CreateContentBlock::class)
             ->fillForm([
+                'page' => $placement->page()->value,
                 'placement' => $spec['placement'],
                 'type' => $spec['type'],
             ]);

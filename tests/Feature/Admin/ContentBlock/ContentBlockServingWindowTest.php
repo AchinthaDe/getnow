@@ -57,6 +57,7 @@ it('persists entered schedule converted to UTC under non-UTC admin timezone', fu
 
     Livewire::test(CreateContentBlock::class)
         ->fillForm([
+            'page' => 'global_layout',
             'placement' => 'announcement_bar',
             'type' => 'announcement_bar',
             'payload.text' => 'Timezone schedule test',
