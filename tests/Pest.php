@@ -10,6 +10,10 @@ uses(
     RefreshDatabase::class,
 )->in('Feature');
 
+uses(
+    TestCase::class,
+)->in('Unit');
+
 uses()->beforeEach(function () {
     TestBlocks::register();
 })->in('Feature/Filament', 'Feature/Admin');
