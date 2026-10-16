@@ -75,7 +75,10 @@ final class UpdateContentBlock
                 throw ValidationException::withMessages($errors);
             }
 
-            if ($block->status === PublishStatus::PUBLISHED && $block->is_enabled === true) {
+            $startsAtChanged = ($block->starts_at?->clone()->setTimezone('UTC')->format('U') !== $startsAt?->format('U'));
+            $endsAtChanged = ($block->ends_at?->clone()->setTimezone('UTC')->format('U') !== $endsAt?->format('U'));
+
+            if (($startsAtChanged || $endsAtChanged) && $block->status === PublishStatus::PUBLISHED && $block->is_enabled === true) {
                 $this->ensurePlacementCapacity->check($block, $startsAt, $endsAt);
             }
 
@@ -98,10 +101,10 @@ final class UpdateContentBlock
             if (json_encode($oldPayload, JSON_THROW_ON_ERROR) !== json_encode($newPayload, JSON_THROW_ON_ERROR)) {
                 $changed[] = 'payload';
             }
-            if ($block->starts_at?->clone()->setTimezone('UTC')->format('U') !== $startsAt?->format('U')) {
+            if ($startsAtChanged) {
                 $changed[] = 'starts_at';
             }
-            if ($block->ends_at?->clone()->setTimezone('UTC')->format('U') !== $endsAt?->format('U')) {
+            if ($endsAtChanged) {
                 $changed[] = 'ends_at';
             }
             if ($block->schema_version !== $definition->schemaVersion()) {

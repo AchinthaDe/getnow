@@ -8,6 +8,7 @@ use App\Domain\Content\Contracts\BlockDefinition;
 use App\Domain\Content\Contracts\BlockRegistry;
 use App\Domain\Content\Data\UpdateContentBlockData;
 use App\Domain\Content\Exceptions\IllegalStateTransitionException;
+use App\Domain\Content\Exceptions\PlacementCapacityExceededException;
 use App\Domain\Content\Exceptions\UnknownBlockTypeException;
 use App\Domain\Content\Exceptions\UnsupportedSchemaVersionException;
 use App\Domain\Content\Models\ContentBlock;
@@ -375,4 +376,94 @@ it('accepts sort_order at valid boundary values 0 and 2147483647', function () {
         ['text' => 'hello', 'tone' => 'info']
     );
     expect($block->fresh()->sort_order)->toBe(ContentBlock::MAX_SORT_ORDER);
+});
+
+it('allows text-only edit on over-capacity legacy block without throwing capacity exception', function () {
+    $action = app(UpdateContentBlock::class);
+
+    /** @var ContentBlock $block1 */
+    $block1 = ContentBlock::factory()->published()->create([
+        'placement' => 'announcement_bar',
+        'type' => 'announcement_bar',
+        'is_enabled' => true,
+        'starts_at' => null,
+        'ends_at' => null,
+    ]);
+    /** @var ContentBlock $block2 */
+    $block2 = ContentBlock::factory()->published()->create([
+        'placement' => 'announcement_bar',
+        'type' => 'announcement_bar',
+        'is_enabled' => true,
+        'starts_at' => null,
+        'ends_at' => null,
+    ]);
+
+    $updated = $action(
+        id: $block2->id,
+        data: new UpdateContentBlockData(starts_at: null, ends_at: null),
+        rawPayload: ['text' => 'Updated Text Without Schedule Change', 'tone' => 'info'],
+    );
+
+    expect($updated->payload['text'])->toBe('Updated Text Without Schedule Change');
+});
+
+it('throws capacity exception when schedule edit overlaps existing active singleton block', function () {
+    $action = app(UpdateContentBlock::class);
+
+    /** @var ContentBlock $block1 */
+    $block1 = ContentBlock::factory()->published()->create([
+        'placement' => 'announcement_bar',
+        'type' => 'announcement_bar',
+        'is_enabled' => true,
+        'starts_at' => null,
+        'ends_at' => null,
+    ]);
+
+    $futureStart = now()->addDays(7);
+    /** @var ContentBlock $block2 */
+    $block2 = ContentBlock::factory()->published()->create([
+        'placement' => 'announcement_bar',
+        'type' => 'announcement_bar',
+        'is_enabled' => true,
+        'starts_at' => $futureStart,
+        'ends_at' => null,
+    ]);
+
+    expect(fn () => $action(
+        id: $block2->id,
+        data: new UpdateContentBlockData(starts_at: now(), ends_at: null),
+        rawPayload: ['text' => 'Overlapping schedule edit', 'tone' => 'info'],
+    ))->toThrow(PlacementCapacityExceededException::class);
+});
+
+it('passes when updating an over-capacity legacy block with identical non-null schedule', function () {
+    $action = app(UpdateContentBlock::class);
+
+    $startsAt = Carbon::parse('2026-01-01 10:00:00');
+    $endsAt = Carbon::parse('2026-12-31 23:59:59');
+
+    /** @var ContentBlock $block1 */
+    $block1 = ContentBlock::factory()->published()->create([
+        'placement' => 'announcement_bar',
+        'type' => 'announcement_bar',
+        'is_enabled' => true,
+        'starts_at' => $startsAt,
+        'ends_at' => $endsAt,
+    ]);
+    /** @var ContentBlock $block2 */
+    $block2 = ContentBlock::factory()->published()->create([
+        'placement' => 'announcement_bar',
+        'type' => 'announcement_bar',
+        'is_enabled' => true,
+        'starts_at' => $startsAt,
+        'ends_at' => $endsAt,
+    ]);
+
+    $updated = $action(
+        id: $block2->id,
+        data: new UpdateContentBlockData(starts_at: $startsAt, ends_at: $endsAt),
+        rawPayload: ['text' => 'Same schedule update', 'tone' => 'info'],
+    );
+
+    expect($updated->payload['text'])->toBe('Same schedule update');
 });
