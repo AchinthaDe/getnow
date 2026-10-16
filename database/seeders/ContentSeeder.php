@@ -32,7 +32,7 @@ final class ContentSeeder extends Seeder
     public function run(): void
     {
         if (! app()->environment(['local', 'testing'])) {
-            abort(403, 'ContentSeeder may only be executed in local or testing environments.');
+            throw new \RuntimeException('ContentSeeder may only be executed in local or testing environments.');
         }
 
         $this->seedSettings();

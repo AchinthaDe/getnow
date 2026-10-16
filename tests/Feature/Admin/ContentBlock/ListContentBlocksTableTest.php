@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Domain\Content\Actions\GetBlockServingStatus;
+use App\Domain\Content\Contracts\BlockRegistry;
 use App\Domain\Content\Data\ServingHealthResult;
 use App\Domain\Content\Enums\Placement;
 use App\Domain\Content\Enums\PublishStatus;
@@ -458,14 +459,8 @@ it('drift-guard: type filter offers registered block types and filters correctly
     if (! $typeFilter instanceof SelectFilter) {
         throw new RuntimeException('Expected type filter to be a SelectFilter.');
     }
-    expect($typeFilter->getOptions())->toHaveKeys([
-        'announcement_bar',
-        'promo_slide',
-        'feature_banner',
-        'service_item',
-        'section_header',
-        'brand_strip',
-    ]);
+    $registeredKeys = array_keys(app(BlockRegistry::class)->all());
+    expect(array_keys($typeFilter->getOptions()))->toBe($registeredKeys);
 
     $component->set('tableFilters.type.value', 'promo_slide')
         ->assertCanSeeTableRecords([$block2])

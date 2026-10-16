@@ -163,6 +163,56 @@ it('reflects admin mutations and omits disabled announcement bar without crashin
     $response->assertDontSee('Good tech. Better everyday.');
 });
 
+it('reflects admin payload and sort_order mutations across homepage blocks immediately on GET /', function (): void {
+    (new ContentSeeder)->run();
+
+    // 1. Mutate hero promo slide headline
+    $slide = ContentBlock::where('placement', Placement::HOME_HERO_CAROUSEL->value)->orderBy('sort_order')->firstOrFail();
+    $slidePayload = $slide->payload;
+    $slidePayload['title_line_1'] = 'Exclusive Flash Deals';
+    app(UpdateContentBlock::class)($slide->id, new UpdateContentBlockData(null, null, $slide->sort_order), $slidePayload);
+
+    $response = get('/');
+    $response->assertOk();
+    $response->assertSee('Exclusive Flash Deals');
+
+    // 2. Mutate sort order of promo slide to reorder carousel slides
+    $lastSlide = ContentBlock::where('placement', Placement::HOME_HERO_CAROUSEL->value)->orderByDesc('sort_order')->firstOrFail();
+    $lastSlidePayload = $lastSlide->payload;
+    // Move last slide to sort_order -1 so it becomes first
+    app(UpdateContentBlock::class)($lastSlide->id, new UpdateContentBlockData(null, null, 0), $lastSlidePayload);
+    // Move previous first slide to sort_order 10
+    app(UpdateContentBlock::class)($slide->id, new UpdateContentBlockData(null, null, 10), $slidePayload);
+
+    $response = get('/');
+    $response->assertOk();
+    // The previous last slide title is now first in HTML order
+    $html = $response->getContent();
+    expect(strpos($html, (string) $lastSlidePayload['title_line_1']))
+        ->toBeLessThan(strpos($html, 'Exclusive Flash Deals'));
+
+    // 3. Mutate collection feature banner
+    $banner = ContentBlock::where('placement', Placement::HOME_COLLECTION_BANNER->value)->firstOrFail();
+    $bannerPayload = $banner->payload;
+    $bannerPayload['title_line_1'] = 'Supercharged Weekend';
+    app(UpdateContentBlock::class)($banner->id, new UpdateContentBlockData(null, null, 0), $bannerPayload);
+
+    $response = get('/');
+    $response->assertOk();
+    $response->assertSee('Supercharged Weekend');
+
+    // 4. Mutate brand strip brands
+    $brandStrip = ContentBlock::where('placement', Placement::HOME_BRAND_STRIP->value)->firstOrFail();
+    $brandPayload = $brandStrip->payload;
+    $brandPayload['brands'][] = ['label' => 'Nothing Tech', 'url' => '/shop?brand=Nothing'];
+    app(UpdateContentBlock::class)($brandStrip->id, new UpdateContentBlockData(null, null, 0), $brandPayload);
+
+    $response = get('/');
+    $response->assertOk();
+    $response->assertSee('Nothing Tech');
+    $response->assertSee('/shop?brand=Nothing');
+});
+
 it('reflects admin changes when a menu item is updated', function (): void {
     (new ContentSeeder)->run();
 

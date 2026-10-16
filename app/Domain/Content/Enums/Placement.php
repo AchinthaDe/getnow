@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domain\Content\Enums;
 
+use Illuminate\Support\Str;
+
 enum Placement: string
 {
     case ANNOUNCEMENT_BAR = 'announcement_bar';
@@ -47,5 +49,10 @@ enum Placement: string
             self::HOME_NEW_ARRIVALS_HEADER,
             self::HOME_BRAND_STRIP => 1,
         };
+    }
+
+    public function label(): string
+    {
+        return Str::headline($this->value);
     }
 }

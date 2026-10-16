@@ -155,3 +155,20 @@ it('rejects sort_order outside valid integer range [0, 2147483647]', function ()
         ['text' => 'hello', 'tone' => 'info']
     ))->toThrow(ValidationException::class);
 });
+
+it('accepts sort_order at valid boundary values 0 and 2147483647', function () {
+    $registry = app(BlockRegistry::class);
+    $action = new CreateContentBlock($registry);
+
+    $blockMin = $action(
+        new CreateContentBlockData(Placement::ANNOUNCEMENT_BAR, 'announcement_bar', null, null, ContentBlock::MIN_SORT_ORDER),
+        ['text' => 'hello', 'tone' => 'info']
+    );
+    expect($blockMin->sort_order)->toBe(ContentBlock::MIN_SORT_ORDER);
+
+    $blockMax = $action(
+        new CreateContentBlockData(Placement::ANNOUNCEMENT_BAR, 'announcement_bar', null, null, ContentBlock::MAX_SORT_ORDER),
+        ['text' => 'hello', 'tone' => 'info']
+    );
+    expect($blockMax->sort_order)->toBe(ContentBlock::MAX_SORT_ORDER);
+});

@@ -29,7 +29,7 @@ final class ContentBlockForm
 
         return $schema->components([
             Select::make('placement')
-                ->options(collect(Placement::cases())->mapWithKeys(fn (Placement $p) => [$p->value => Str::headline($p->value)])->all())
+                ->options(collect(Placement::cases())->mapWithKeys(fn (Placement $p) => [$p->value => $p->label()])->all())
                 ->required()
                 ->live()
                 ->afterStateUpdated(function (Set $set): void {
@@ -121,8 +121,8 @@ final class ContentBlockForm
             TextInput::make('sort_order')
                 ->numeric()
                 ->default(0)
-                ->minValue(0)
-                ->maxValue(2147483647)
+                ->minValue(ContentBlock::MIN_SORT_ORDER)
+                ->maxValue(ContentBlock::MAX_SORT_ORDER)
                 ->label('Sort Order')
                 ->helperText('Determines display order within the placement (lower numbers appear first).'),
         ]);

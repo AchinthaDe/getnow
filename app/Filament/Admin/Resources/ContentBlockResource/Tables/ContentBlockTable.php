@@ -126,7 +126,7 @@ final class ContentBlockTable
                     ->default(true),
 
                 SelectFilter::make('placement')
-                    ->options(collect(Placement::cases())->mapWithKeys(fn (Placement $p) => [$p->value => Str::headline($p->value)])->all()),
+                    ->options(collect(Placement::cases())->mapWithKeys(fn (Placement $p) => [$p->value => $p->label()])->all()),
 
                 SelectFilter::make('type')
                     ->options(collect(app(BlockRegistry::class)->all())->mapWithKeys(fn ($def, string $key) => [$key => Str::headline($key)])->all()),

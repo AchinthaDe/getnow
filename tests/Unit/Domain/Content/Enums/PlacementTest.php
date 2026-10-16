@@ -36,3 +36,9 @@ it('verifies allowed block types and max counts for all 9 placements', function 
             ->and($placement->maxCount())->toBe($expectedMaxCounts[$placement->value]);
     }
 });
+
+it('returns headline labels for all placements', function () {
+    expect(Placement::ANNOUNCEMENT_BAR->label())->toBe('Announcement Bar')
+        ->and(Placement::HOME_HERO_CAROUSEL->label())->toBe('Home Hero Carousel')
+        ->and(Placement::HOME_BRAND_STRIP->label())->toBe('Home Brand Strip');
+});

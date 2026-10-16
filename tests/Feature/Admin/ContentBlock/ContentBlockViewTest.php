@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Admin\ContentBlock;
 
+use App\Domain\Content\Enums\Placement;
 use App\Domain\Content\Enums\PublishStatus;
 use App\Domain\Content\Models\ContentBlock;
 use App\Filament\Admin\Resources\ContentBlockResource;
@@ -157,4 +158,71 @@ it('allows admin to view archived blocks', function () {
 
     Livewire::test(ViewContentBlock::class, ['record' => $block->public_id])
         ->assertSuccessful();
+});
+
+it('renders promo_slide block payload on view page', function () {
+    /** @var User $admin */
+    $admin = User::factory()->platformAdmin()->create();
+    /** @var ContentBlock $block */
+    $block = ContentBlock::factory()->create([
+        'type' => 'promo_slide',
+        'placement' => Placement::HOME_HERO_CAROUSEL->value,
+        'schema_version' => 1,
+        'payload' => [
+            'theme' => 'sky',
+            'label' => 'Deals Slide',
+            'eyebrow' => 'FLASH SALE',
+            'title_line_1' => 'Smartphones on Sale',
+            'title_line_2' => 'Up to 30% Off',
+            'description' => 'Grab genuine flagships at wholesale rates.',
+            'cta_label' => 'Shop Deals',
+            'cta_url' => '/shop?deals=1',
+            'image_url' => '/images/promo/phone.png',
+            'image_alt' => 'Smartphone banner',
+        ],
+    ]);
+
+    actingAs($admin);
+
+    $component = Livewire::test(ViewContentBlock::class, ['record' => $block->public_id]);
+    $component->assertSuccessful();
+
+    expect($component->get('data.payload.eyebrow'))->toBe('FLASH SALE')
+        ->and($component->get('data.payload.title_line_1'))->toBe('Smartphones on Sale')
+        ->and($component->get('data.payload.label'))->toBe('Deals Slide')
+        ->and($component->get('data.payload.cta_url'))->toBe('/shop?deals=1');
+});
+
+it('renders brand_strip block payload with nested brands repeater array on view page', function () {
+    /** @var User $admin */
+    $admin = User::factory()->platformAdmin()->create();
+    /** @var ContentBlock $block */
+    $block = ContentBlock::factory()->create([
+        'type' => 'brand_strip',
+        'placement' => Placement::HOME_BRAND_STRIP->value,
+        'schema_version' => 1,
+        'payload' => [
+            'eyebrow' => 'GOOD COMPANY',
+            'title' => 'Great brands.',
+            'brands' => [
+                ['label' => 'Apple', 'url' => '/shop?brand=Apple'],
+                ['label' => 'Samsung', 'url' => '/shop?brand=Samsung'],
+                ['label' => 'Sony', 'url' => '/shop?brand=Sony'],
+            ],
+        ],
+    ]);
+
+    actingAs($admin);
+
+    $component = Livewire::test(ViewContentBlock::class, ['record' => $block->public_id]);
+    $component->assertSuccessful();
+
+    $brands = $component->get('data.payload.brands');
+    expect($component->get('data.payload.eyebrow'))->toBe('GOOD COMPANY')
+        ->and($component->get('data.payload.title'))->toBe('Great brands.')
+        ->and(array_values(is_array($brands) ? $brands : []))->toBe([
+            ['label' => 'Apple', 'url' => '/shop?brand=Apple'],
+            ['label' => 'Samsung', 'url' => '/shop?brand=Samsung'],
+            ['label' => 'Sony', 'url' => '/shop?brand=Sony'],
+        ]);
 });

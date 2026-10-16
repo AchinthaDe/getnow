@@ -30,9 +30,9 @@ final class UpdateContentBlock
         $startsAt = $data->starts_at?->clone()->setTimezone('UTC')->startOfSecond();
         $endsAt = $data->ends_at?->clone()->setTimezone('UTC')->startOfSecond();
 
-        if ($data->sort_order !== null && ($data->sort_order < 0 || $data->sort_order > 2147483647)) {
+        if ($data->sort_order !== null && ($data->sort_order < ContentBlock::MIN_SORT_ORDER || $data->sort_order > ContentBlock::MAX_SORT_ORDER)) {
             throw ValidationException::withMessages([
-                'sort_order' => 'The sort order must be between 0 and 2147483647.',
+                'sort_order' => 'The sort order must be between '.ContentBlock::MIN_SORT_ORDER.' and '.ContentBlock::MAX_SORT_ORDER.'.',
             ]);
         }
 

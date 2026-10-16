@@ -19,7 +19,6 @@ use App\Domain\Content\Settings\StorefrontSettings;
 use App\Support\Rules\SafeLink;
 use Database\Seeders\ContentSeeder;
 use Illuminate\Support\Facades\Validator;
-use Symfony\Component\HttpKernel\Exception\HttpException;
 
 use function Pest\Laravel\getJson;
 
@@ -285,5 +284,21 @@ it('aborts when executed outside local or testing environments', function (): vo
     app()['env'] = 'production';
 
     expect(fn () => (new ContentSeeder)->run())
-        ->toThrow(HttpException::class);
+        ->toThrow(\RuntimeException::class, 'ContentSeeder may only be executed in local or testing environments.');
+});
+
+it('seeds a new published block when existing block in placement is archived', function (): void {
+    (new ContentSeeder)->run();
+
+    $block = ContentBlock::where('placement', Placement::ANNOUNCEMENT_BAR->value)->firstOrFail();
+    app(ArchiveContentBlock::class)($block->id);
+
+    expect(ContentBlock::where('placement', Placement::ANNOUNCEMENT_BAR->value)->count())->toBe(1)
+        ->and($block->fresh()->status)->toBe(PublishStatus::ARCHIVED);
+
+    (new ContentSeeder)->run();
+
+    expect(ContentBlock::where('placement', Placement::ANNOUNCEMENT_BAR->value)->count())->toBe(2)
+        ->and(ContentBlock::where('placement', Placement::ANNOUNCEMENT_BAR->value)->where('status', PublishStatus::PUBLISHED->value)->count())->toBe(1)
+        ->and(ContentBlock::where('placement', Placement::ANNOUNCEMENT_BAR->value)->where('status', PublishStatus::ARCHIVED->value)->count())->toBe(1);
 });
