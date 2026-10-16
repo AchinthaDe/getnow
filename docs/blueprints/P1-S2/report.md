@@ -1,11 +1,11 @@
 # P1-S2 IMPLEMENTATION REPORT
 
 **Step ID:** P1-S2  
-**Status:** Completed (Fixes Applied per VERIFY r1 & r2)  
+**Status:** Accepted (Approved by reviewer)  
 **Base Commit:** `03becb18ad52f2df2d5c72379683326d59814ab4` (`03becb1 docs(blueprints): add P1-S1 plan, migration notes, cr-01, report, and code diff`)  
 **Tracking Upstream:** `origin/main` (`03becb18ad52f2df2d5c72379683326d59814ab4`)  
 **Branch:** `feat/homepage-cms-blocks`  
-**Head Commit:** `782c615` (`782c615 test(admin): add HomepageAdminWorkflowTest, drop history 404 test, and remove committed diff files`)  
+**Head Commit:** `7aaf278` (`7aaf278 docs(blueprints): finalize plan v4.1 and implementation report for r3 closeout`)  
 **Commits on Branch (`base..HEAD`):**
 1. `58c8cee` feat(content): upgrade announcement bar block to schema v2 with v1 upgrader
 2. `427598e` feat(content): add sort order support to content block actions and filament forms
@@ -22,6 +22,7 @@
 13. `cfb8c74` test(admin): add Layer C click-path test covering filters, creation, views, and sort order
 14. `fe6d4a0` docs(blueprints): finalize report with Layer C click-path results, MUT-F1, and synchronized diffs
 15. `782c615` test(admin): add HomepageAdminWorkflowTest, drop history 404 test, and remove committed diff files
+16. `7aaf278` docs(blueprints): finalize plan v4.1 and implementation report for r3 closeout
 
 **Approved Change Requests:**
 - `CR-P1-S2-01`: Announcement Bar Schema v2 Field Count Expansion (3 to 5 fields) — Approved
@@ -34,6 +35,7 @@
 ## 1. Commit Log (`git log --oneline 03becb1...HEAD`)
 
 ```text
+7aaf278 docs(blueprints): finalize plan v4.1 and implementation report for r3 closeout
 782c615 test(admin): add HomepageAdminWorkflowTest, drop history 404 test, and remove committed diff files
 fe6d4a0 docs(blueprints): finalize report with Layer C click-path results, MUT-F1, and synchronized diffs
 cfb8c74 test(admin): add Layer C click-path test covering filters, creation, views, and sort order
