@@ -8,6 +8,7 @@ use App\Domain\Content\Actions\GetUpgradedBlockPayload;
 use App\Domain\Content\Actions\UpdateContentBlock as UpdateContentBlockAction;
 use App\Domain\Content\Exceptions\IllegalStateTransitionException;
 use App\Domain\Content\Exceptions\InvalidPayloadException;
+use App\Domain\Content\Exceptions\PlacementCapacityExceededException;
 use App\Domain\Content\Exceptions\UnknownBlockTypeException;
 use App\Domain\Content\Exceptions\UnsupportedSchemaVersionException;
 use App\Domain\Content\Exceptions\UpgradeFailedException;
@@ -77,6 +78,9 @@ final class EditContentBlock extends EditRecord
             return app(UpdateContentBlockAction::class)((int) $record->getKey(), $actionData, $rawPayload, $causer);
         } catch (ValidationException $e) {
             $this->throwRemappedValidationException($e);
+        } catch (PlacementCapacityExceededException $e) {
+            Notification::make()->danger()->title('Capacity Exceeded')->body($e->getMessage())->send();
+            throw new Halt;
         } catch (IllegalStateTransitionException $e) {
             Notification::make()->danger()->title('Cannot Update Block')->body('This block has been archived and cannot be edited.')->send();
             $this->redirect(self::getResource()::getUrl('index'));

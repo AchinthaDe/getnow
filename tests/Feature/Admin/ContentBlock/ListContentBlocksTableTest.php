@@ -466,3 +466,62 @@ it('drift-guard: type filter offers registered block types and filters correctly
         ->assertCanSeeTableRecords([$block2])
         ->assertCanNotSeeTableRecords([$block1]);
 });
+
+it('filters list table by page tabs with badge counts', function () {
+    /** @var User $admin */
+    $admin = User::factory()->platformAdmin()->create();
+
+    $globalBlock = ContentBlock::factory()->create([
+        'placement' => Placement::ANNOUNCEMENT_BAR->value,
+    ]);
+    $homeBlock = ContentBlock::factory()->create([
+        'placement' => Placement::HOME_HERO_CAROUSEL->value,
+    ]);
+
+    $component = Livewire::actingAs($admin)->test(ListContentBlocks::class);
+
+    $component->assertCanSeeTableRecords([$globalBlock, $homeBlock]);
+
+    $component->set('activeTab', 'home')
+        ->assertCanSeeTableRecords([$homeBlock])
+        ->assertCanNotSeeTableRecords([$globalBlock]);
+
+    $component->set('activeTab', 'global_layout')
+        ->assertCanSeeTableRecords([$globalBlock])
+        ->assertCanNotSeeTableRecords([$homeBlock]);
+});
+
+it('renders page badge column', function () {
+    /** @var User $admin */
+    $admin = User::factory()->platformAdmin()->create();
+
+    $globalBlock = ContentBlock::factory()->create([
+        'placement' => Placement::ANNOUNCEMENT_BAR->value,
+    ]);
+    $homeBlock = ContentBlock::factory()->create([
+        'placement' => Placement::HOME_HERO_CAROUSEL->value,
+    ]);
+
+    Livewire::actingAs($admin)
+        ->test(ListContentBlocks::class)
+        ->assertTableColumnExists('page')
+        ->assertCanSeeTableRecords([$globalBlock, $homeBlock]);
+});
+
+it('scopes placement filter options to active tab and resets placement filter on tab change', function () {
+    /** @var User $admin */
+    $admin = User::factory()->platformAdmin()->create();
+
+    $component = Livewire::actingAs($admin)
+        ->test(ListContentBlocks::class)
+        ->set('activeTab', 'home')
+        ->set('tableFilters.placement.value', Placement::HOME_HERO_CAROUSEL->value);
+
+    expect(data_get($component->get('tableFilters'), 'placement.value'))
+        ->toBe(Placement::HOME_HERO_CAROUSEL->value);
+
+    // Switch tab to global_layout
+    $component->set('activeTab', 'global_layout');
+
+    expect(data_get($component->get('tableFilters'), 'placement.value'))->toBeNull();
+});

@@ -33,8 +33,7 @@ dataset('actions', [
     ],
     'update' => [
         function () {
-            $registry = app(BlockRegistry::class);
-            $action = new UpdateContentBlock($registry);
+            $action = app(UpdateContentBlock::class);
             /** @var ContentBlock $block */
             $block = ContentBlock::factory()->create(['payload' => ['text' => 'old', 'tone' => 'info']]);
             $data = new UpdateContentBlockData(starts_at: null, ends_at: null);

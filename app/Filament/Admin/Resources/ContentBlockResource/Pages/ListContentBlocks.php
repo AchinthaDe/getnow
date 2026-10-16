@@ -4,9 +4,14 @@ declare(strict_types=1);
 
 namespace App\Filament\Admin\Resources\ContentBlockResource\Pages;
 
+use App\Domain\Content\Enums\Placement;
+use App\Domain\Content\Enums\PlacementPage;
+use App\Domain\Content\Models\ContentBlock;
 use App\Filament\Admin\Resources\ContentBlockResource;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
+use Filament\Schemas\Components\Tabs\Tab;
+use Illuminate\Database\Eloquent\Builder;
 
 final class ListContentBlocks extends ListRecords
 {
@@ -35,5 +40,30 @@ final class ListContentBlocks extends ListRecords
         return [
             CreateAction::make(),
         ];
+    }
+
+    /**
+     * @return array<string, Tab>
+     */
+    public function getTabs(): array
+    {
+        $homePlacements = collect(Placement::forPage(PlacementPage::HOME))->map(fn (Placement $p) => $p->value)->all();
+        $globalPlacements = collect(Placement::forPage(PlacementPage::GLOBAL_LAYOUT))->map(fn (Placement $p) => $p->value)->all();
+
+        return [
+            'all' => Tab::make('All Pages')
+                ->badge(ContentBlock::query()->count()),
+            'home' => Tab::make('Homepage')
+                ->modifyQueryUsing(fn (Builder $query) => $query->whereIn('placement', $homePlacements))
+                ->badge(ContentBlock::query()->whereIn('placement', $homePlacements)->count()),
+            'global_layout' => Tab::make('Global Layout')
+                ->modifyQueryUsing(fn (Builder $query) => $query->whereIn('placement', $globalPlacements))
+                ->badge(ContentBlock::query()->whereIn('placement', $globalPlacements)->count()),
+        ];
+    }
+
+    public function updatedActiveTab(): void
+    {
+        data_set($this->tableFilters, 'placement.value', null);
     }
 }

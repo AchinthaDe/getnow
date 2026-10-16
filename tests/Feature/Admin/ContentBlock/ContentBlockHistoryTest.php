@@ -65,6 +65,7 @@ it('redirects Create form save to edit page using assertRedirect', function (): 
 
     $component = Livewire::test(CreateContentBlock::class)
         ->fillForm([
+            'page' => 'global_layout',
             'placement' => 'announcement_bar',
             'type' => 'announcement_bar',
             'payload.text' => 'Spring Sale Now On',

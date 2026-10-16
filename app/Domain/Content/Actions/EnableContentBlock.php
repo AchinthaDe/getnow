@@ -8,6 +8,7 @@ use App\Domain\Content\Enums\PublishStatus;
 use App\Domain\Content\Exceptions\IllegalStateTransitionException;
 use App\Domain\Content\Exceptions\UnservablePayloadException;
 use App\Domain\Content\Models\ContentBlock;
+use App\Domain\Content\Services\EnsurePlacementCapacity;
 use App\Domain\Content\Services\ResolveServablePayload;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -15,12 +16,20 @@ use Illuminate\Support\Facades\DB;
 final class EnableContentBlock
 {
     public function __construct(
-        private readonly ResolveServablePayload $resolveServablePayload
+        private readonly ResolveServablePayload $resolveServablePayload,
+        private readonly EnsurePlacementCapacity $ensurePlacementCapacity,
     ) {}
 
     public function __invoke(int $id, ?User $causer = null): ContentBlock
     {
         return DB::transaction(function () use ($id, $causer) {
+            $placementValue = DB::table('content_blocks')->where('id', $id)->value('placement');
+            if ($placementValue !== null) {
+                DB::statement('SELECT pg_advisory_xact_lock(?)', [
+                    (int) (crc32('placement:'.$placementValue) & 0x7FFFFFFF),
+                ]);
+            }
+
             $block = ContentBlock::where('id', $id)->lockForUpdate()->firstOrFail();
 
             if ($block->status === PublishStatus::ARCHIVED) {
@@ -34,6 +43,10 @@ final class EnableContentBlock
             $health = ($this->resolveServablePayload)($block);
             if (! $health->isServable()) {
                 throw new UnservablePayloadException($health->outcome);
+            }
+
+            if ($block->status === PublishStatus::PUBLISHED) {
+                $this->ensurePlacementCapacity->check($block, $block->starts_at, $block->ends_at);
             }
 
             $oldEnabled = $block->is_enabled;

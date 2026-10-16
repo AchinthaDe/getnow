@@ -14,8 +14,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
 it('publishes draft block and logs activity', function () {
-    $resolveServablePayload = app(ResolveServablePayload::class);
-    $action = new PublishContentBlock($resolveServablePayload);
+    $action = app(PublishContentBlock::class);
 
     $user = User::factory()->create();
     /** @var ContentBlock $block */
@@ -36,8 +35,7 @@ it('publishes draft block and logs activity', function () {
 });
 
 it('rejects archived blocks', function () {
-    $resolveServablePayload = app(ResolveServablePayload::class);
-    $action = new PublishContentBlock($resolveServablePayload);
+    $action = app(PublishContentBlock::class);
 
     /** @var ContentBlock $block */
     $block = ContentBlock::factory()->archived()->create();
@@ -47,8 +45,7 @@ it('rejects archived blocks', function () {
 });
 
 it('returns immediately if already published', function () {
-    $resolveServablePayload = app(ResolveServablePayload::class);
-    $action = new PublishContentBlock($resolveServablePayload);
+    $action = app(PublishContentBlock::class);
 
     /** @var ContentBlock $block */
     $block = ContentBlock::factory()->published()->create();
@@ -67,8 +64,7 @@ it('returns immediately if already published', function () {
 });
 
 it('throws UnservablePayloadException if stored version is above current and leaves row draft', function () {
-    $resolveServablePayload = app(ResolveServablePayload::class);
-    $action = new PublishContentBlock($resolveServablePayload);
+    $action = app(PublishContentBlock::class);
 
     /** @var ContentBlock $block */
     $block = ContentBlock::factory()->draft()->create([
@@ -83,8 +79,7 @@ it('throws UnservablePayloadException if stored version is above current and lea
 });
 
 it('throws UnservablePayloadException if type is unregistered', function () {
-    $resolveServablePayload = app(ResolveServablePayload::class);
-    $action = new PublishContentBlock($resolveServablePayload);
+    $action = app(PublishContentBlock::class);
 
     /** @var ContentBlock $block */
     $block = ContentBlock::factory()->draft()->create([
@@ -98,8 +93,7 @@ it('throws UnservablePayloadException if type is unregistered', function () {
 });
 
 it('throws UnservablePayloadException if payload is invalid', function () {
-    $resolveServablePayload = app(ResolveServablePayload::class);
-    $action = new PublishContentBlock($resolveServablePayload);
+    $action = app(PublishContentBlock::class);
 
     /** @var ContentBlock $block */
     $block = ContentBlock::factory()->draft()->create([

@@ -12,6 +12,7 @@ use App\Domain\Content\Exceptions\IllegalStateTransitionException;
 use App\Domain\Content\Exceptions\UnknownBlockTypeException;
 use App\Domain\Content\Exceptions\UnsupportedSchemaVersionException;
 use App\Domain\Content\Models\ContentBlock;
+use App\Domain\Content\Services\EnsurePlacementCapacity;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -19,7 +20,8 @@ use Illuminate\Validation\ValidationException;
 final class UpdateContentBlock
 {
     public function __construct(
-        private readonly BlockRegistry $registry
+        private readonly BlockRegistry $registry,
+        private readonly EnsurePlacementCapacity $ensurePlacementCapacity,
     ) {}
 
     /**
@@ -43,6 +45,13 @@ final class UpdateContentBlock
         }
 
         return DB::transaction(function () use ($id, $data, $rawPayload, $causer, $startsAt, $endsAt) {
+            $placementValue = DB::table('content_blocks')->where('id', $id)->value('placement');
+            if ($placementValue !== null) {
+                DB::statement('SELECT pg_advisory_xact_lock(?)', [
+                    (int) (crc32('placement:'.$placementValue) & 0x7FFFFFFF),
+                ]);
+            }
+
             $block = ContentBlock::where('id', $id)->lockForUpdate()->firstOrFail();
 
             if ($block->status === PublishStatus::ARCHIVED) {
@@ -73,6 +82,13 @@ final class UpdateContentBlock
                 throw ValidationException::withMessages($errors);
             }
 
+            $startsAtChanged = ($block->starts_at?->clone()->setTimezone('UTC')->format('U') !== $startsAt?->format('U'));
+            $endsAtChanged = ($block->ends_at?->clone()->setTimezone('UTC')->format('U') !== $endsAt?->format('U'));
+
+            if (($startsAtChanged || $endsAtChanged) && $block->status === PublishStatus::PUBLISHED && $block->is_enabled === true) {
+                $this->ensurePlacementCapacity->check($block, $startsAt, $endsAt);
+            }
+
             $oldPayload = $block->payload;
             $newPayload = $payloadData->toArray();
 
@@ -92,10 +108,10 @@ final class UpdateContentBlock
             if (json_encode($oldPayload, JSON_THROW_ON_ERROR) !== json_encode($newPayload, JSON_THROW_ON_ERROR)) {
                 $changed[] = 'payload';
             }
-            if ($block->starts_at?->clone()->setTimezone('UTC')->format('U') !== $startsAt?->format('U')) {
+            if ($startsAtChanged) {
                 $changed[] = 'starts_at';
             }
-            if ($block->ends_at?->clone()->setTimezone('UTC')->format('U') !== $endsAt?->format('U')) {
+            if ($endsAtChanged) {
                 $changed[] = 'ends_at';
             }
             if ($block->schema_version !== $definition->schemaVersion()) {

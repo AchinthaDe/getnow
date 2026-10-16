@@ -152,6 +152,7 @@ it('creates and serves each allowed block type for every homepage placement in F
     actingAs($admin);
 
     $component = Livewire::test(CreateContentBlock::class)
+        ->set('data.page', $placement->page()->value)
         ->set('data.placement', $placement->value);
 
     // Verify type options match allowedBlockTypes
@@ -167,6 +168,7 @@ it('creates and serves each allowed block type for every homepage placement in F
 
     // Fill form and create
     $component->fillForm([
+        'page' => $placement->page()->value,
         'placement' => $placement->value,
         'type' => $type,
         'sort_order' => 0,

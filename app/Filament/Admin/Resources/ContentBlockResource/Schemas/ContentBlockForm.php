@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Filament\Admin\Resources\ContentBlockResource\Schemas;
 
+use App\Domain\Content\Actions\CountLiveBlocksForPlacement;
 use App\Domain\Content\Contracts\BlockRegistry;
 use App\Domain\Content\Enums\Placement;
+use App\Domain\Content\Enums\PlacementPage;
 use App\Domain\Content\Enums\PublishStatus;
 use App\Domain\Content\Models\ContentBlock;
 use App\Filament\Admin\Services\AdminTimezoneResolver;
@@ -28,17 +30,73 @@ final class ContentBlockForm
         $timezone = app(AdminTimezoneResolver::class)->resolve(config('admin.timezone', 'UTC'));
 
         return $schema->components([
-            Select::make('placement')
-                ->options(collect(Placement::cases())->mapWithKeys(fn (Placement $p) => [$p->value => $p->label()])->all())
-                ->required()
+            Select::make('page')
+                ->label('Page')
+                ->options(collect(PlacementPage::cases())->mapWithKeys(fn (PlacementPage $p) => [$p->value => $p->label()])->all())
                 ->live()
+                ->dehydrated(false)
                 ->afterStateUpdated(function (Set $set): void {
+                    $set('placement', null);
                     $set('type', null);
                     $set('payload', []);
                 })
                 ->visibleOn('create'),
 
+            Select::make('placement')
+                ->label('Placement')
+                ->disabled(fn (Get $get): bool => blank($get('page')))
+                ->options(function (Get $get): array {
+                    $pageVal = $get('page');
+                    if (blank($pageVal)) {
+                        return [];
+                    }
+
+                    $page = PlacementPage::tryFrom((string) $pageVal);
+                    if ($page === null) {
+                        return [];
+                    }
+
+                    return collect(Placement::forPage($page))->mapWithKeys(fn (Placement $p) => [$p->value => $p->shortLabel()])->all();
+                })
+                ->helperText(function (Get $get): ?string {
+                    $placementValue = $get('placement');
+                    if (blank($placementValue)) {
+                        return null;
+                    }
+                    $placement = Placement::tryFrom((string) $placementValue);
+                    if ($placement === null) {
+                        return null;
+                    }
+                    $liveCount = app(CountLiveBlocksForPlacement::class)($placement);
+                    $max = $placement->maxCount();
+
+                    return "Live capacity: {$liveCount} / {$max} active block(s).";
+                })
+                ->required()
+                ->live()
+                ->afterStateUpdated(function (Get $get, Set $set, ?string $state): void {
+                    if (blank($state)) {
+                        $set('type', null);
+                        $set('payload', []);
+
+                        return;
+                    }
+
+                    $placement = Placement::tryFrom($state);
+                    if ($placement !== null) {
+                        $allowedTypes = $placement->allowedBlockTypes();
+                        if (count($allowedTypes) === 1) {
+                            $set('type', $allowedTypes[0]);
+                        } else {
+                            $set('type', null);
+                        }
+                    }
+                    $set('payload', []);
+                })
+                ->visibleOn('create'),
+
             Select::make('type')
+                ->label('Type')
                 ->options(function (Get $get): array {
                     $placementVal = $get('placement');
                     if (blank($placementVal)) {
@@ -65,6 +123,12 @@ final class ContentBlockForm
                     $set('payload', []);
                 })
                 ->visibleOn('create'),
+
+            TextEntry::make('page_display')
+                ->label('Page')
+                ->state(fn (?ContentBlock $record): string => $record?->placement?->page()->label() ?? '—')
+                ->visibleOn('edit'),
+
             TextEntry::make('placement_display')
                 ->label('Placement')
                 ->state(function (?ContentBlock $record): string {
@@ -73,8 +137,19 @@ final class ContentBlockForm
                     }
 
                     return $record->placement instanceof Placement
-                        ? $record->placement->value
+                        ? $record->placement->label()
                         : (string) ($record->getRawOriginal('placement') ?? '');
+                })
+                ->helperText(function (?ContentBlock $record): string {
+                    if ($record === null || $record->placement === null) {
+                        return '';
+                    }
+                    $liveCount = ContentBlock::visible()
+                        ->where('placement', $record->placement->value)
+                        ->count();
+                    $maxCount = $record->placement->maxCount();
+
+                    return "{$liveCount} / {$maxCount} live in this placement";
                 })
                 ->visibleOn('edit'),
 

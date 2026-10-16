@@ -40,6 +40,7 @@ it('creates draft content block with causer and logs activity', function () {
 
     Livewire::test(CreateContentBlock::class)
         ->fillForm([
+            'page' => 'global_layout',
             'placement' => 'announcement_bar',
             'type' => 'announcement_bar',
             'payload.text' => 'Spring Sale Now On',
@@ -100,6 +101,7 @@ it('[Action path] Text containing HTML tags is rejected with data.payload.text',
 
     Livewire::test(CreateContentBlock::class)
         ->fillForm([
+            'page' => 'global_layout',
             'placement' => 'announcement_bar',
             'type' => 'announcement_bar',
             'payload.text' => '<b>Bold Text</b>',
@@ -117,6 +119,7 @@ it('[Action path] Disallowed link scheme is rejected with data.payload.link_url'
 
     Livewire::test(CreateContentBlock::class)
         ->fillForm([
+            'page' => 'global_layout',
             'placement' => 'announcement_bar',
             'type' => 'announcement_bar',
             'payload.text' => 'Valid announcement text',
@@ -135,6 +138,7 @@ it('[Action path] Schedule ends_at before starts_at is rejected with data.ends_a
 
     Livewire::test(CreateContentBlock::class)
         ->fillForm([
+            'page' => 'global_layout',
             'placement' => 'announcement_bar',
             'type' => 'announcement_bar',
             'payload.text' => 'Valid announcement text',
@@ -154,6 +158,7 @@ it('rejects whitespace-only text with data.payload.text validation error', funct
 
     Livewire::test(CreateContentBlock::class)
         ->fillForm([
+            'page' => 'global_layout',
             'placement' => 'announcement_bar',
             'type' => 'announcement_bar',
             'payload.text' => '    ',
@@ -171,6 +176,7 @@ it('accepts safe relative and https link urls and converts empty link to null', 
 
     Livewire::test(CreateContentBlock::class)
         ->fillForm([
+            'page' => 'global_layout',
             'placement' => 'announcement_bar',
             'type' => 'announcement_bar',
             'payload.text' => 'Announcement with https URL',
@@ -186,6 +192,7 @@ it('accepts safe relative and https link urls and converts empty link to null', 
 
     Livewire::test(CreateContentBlock::class)
         ->fillForm([
+            'page' => 'global_layout',
             'placement' => 'announcement_bar',
             'type' => 'announcement_bar',
             'payload.text' => 'Announcement with empty URL',
@@ -210,6 +217,7 @@ it('persists schedule in UTC when admin creates block in non-UTC timezone', func
 
     Livewire::test(CreateContentBlock::class)
         ->fillForm([
+            'page' => 'global_layout',
             'placement' => 'announcement_bar',
             'type' => 'announcement_bar',
             'payload.text' => 'Scheduled announcement',
@@ -261,6 +269,7 @@ it('dynamically displays payload fields when placement and type are selected on 
     Livewire::test(CreateContentBlock::class)
         ->assertFormFieldExists('placement')
         ->assertFormFieldExists('type')
+        ->set('data.page', 'global_layout')
         ->set('data.placement', 'announcement_bar')
         ->set('data.type', 'announcement_bar')
         ->assertFormFieldExists('payload.text')
@@ -276,6 +285,7 @@ it('redirects to edit page after successful block creation', function () {
 
     $component = Livewire::test(CreateContentBlock::class)
         ->fillForm([
+            'page' => 'global_layout',
             'placement' => 'announcement_bar',
             'type' => 'announcement_bar',
             'payload.text' => 'Redirect check',
@@ -298,6 +308,7 @@ it('discards undeclared payload keys submitted during create', function () {
 
     Livewire::test(CreateContentBlock::class)
         ->fillForm([
+            'page' => 'global_layout',
             'placement' => 'announcement_bar',
             'type' => 'announcement_bar',
             'payload.text' => 'Tamper test',
@@ -331,6 +342,7 @@ it('catches UnknownBlockTypeException in handleRecordCreation, notifies user and
 
     Livewire::test(CreateContentBlock::class)
         ->fillForm([
+            'page' => 'global_layout',
             'placement' => 'announcement_bar',
             'type' => 'announcement_bar',
             'payload.text' => 'Attempted text',
