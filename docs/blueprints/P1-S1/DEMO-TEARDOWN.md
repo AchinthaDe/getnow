@@ -123,3 +123,12 @@ Following execution of the teardown script:
    - Larastan: Level 8 static analysis green with 0 errors
    - Pest: all tests passing cleanly.
 3. The root route `GET /` reverts to `Route::view('/', 'welcome')`.
+
+---
+
+## 6. Recorded Technical Debt & Deferred Constraints (Step P1-S2)
+
+During Step P1-S2, three architectural decisions resulted in recorded technical debt to be resolved when Phase 2 (Catalog / Storefront API) begins:
+1. **Dead `config/promotions.php`**: Retained solely for historical reference during the demo phase; 0 references remain in `app/`, `resources/`, or `tests/`. It must be deleted during teardown.
+2. **Dead `STOREFRONT_FREE_DELIVERY_MINOR` in `config/storefront.php`**: The demo storefront announcement bar copy now renders dynamically from the CMS `announcement_bar` block payload `secondary_text`. The env key `STOREFRONT_FREE_DELIVERY_MINOR` is unused by the CMS and storefront home page.
+3. **`maxCount()` Enforced Only When Serving (`GetLayoutContent`)**: `maxCount()` constraints on `Placement` (e.g. 5 for `home_hero_carousel`, 1 for single-block placements) are strictly enforced at layout serving time (`GetLayoutContent.php`), taking the top `$maxCount` records ordered by `sort_order ASC, id ASC`. Validation on block creation/publishing is not enforced at the Filament form or domain action layer. As a result, an admin can create additional blocks that are persisted but silently omitted from the layout API response. Server-side create-time/publish-time validation is deferred to Phase 2.

@@ -1666,7 +1666,7 @@ The contract documentation in `docs/contracts/content-api.md` will be updated to
 
 ### Phase P1-S2a (Checkpoint CP-A1: Announcement Bar v2, Sort Order & Forms) - 16 Unique Files
 
-1. **Commit 1 (Announcement Bar v2 Upgrade, Upgrader Contract & Fixture - 12 Files)**:
+1. **Commit 1 (Announcement Bar v2 Upgrade, Upgrader Contract & Fixture - 11 Files)**:
    - Files:
      - `app/Domain/Content/Contracts/BlockPayloadUpgrader.php`
      - `app/Domain/Content/Blocks/AnnouncementBar/AnnouncementBarV1ToV2Upgrader.php`
@@ -1675,11 +1675,11 @@ The contract documentation in `docs/contracts/content-api.md` will be updated to
      - `app/Filament/Blocks/AnnouncementBarForm.php`
      - `tests/Fixtures/contracts/content-layout-v1.json` (announcement bar v2 only)
      - `tests/Unit/Domain/Content/Blocks/AnnouncementBarV1ToV2UpgraderTest.php`
-     - `tests/Unit/Domain/Content/Blocks/AnnouncementBarDataTest.php`
      - `tests/Feature/Content/BlockFormRegistryTest.php`
      - `tests/Feature/Domain/Content/Actions/CreateContentBlockTest.php`
      - `tests/Feature/Domain/Content/Actions/GetLayoutContentTest.php`
      - `tests/Feature/Domain/Content/Actions/UpdateContentBlockTest.php`
+     *(Note: `tests/Feature/Domain/Content/Blocks/AnnouncementBarDataTest.php` was created in Step 2a and was not modified in P1-S2)*
    - Verification command: `composer check`
    - Message: `feat(content): upgrade announcement bar block to schema v2 with v1 upgrader`
 
@@ -1800,6 +1800,25 @@ The contract documentation in `docs/contracts/content-api.md` will be updated to
    - Verification command: `composer check`
    - Message: `fix(content): make table filters dynamic, add sort order bounds, and harden seeder and views`
 
+9. **Commit 9 (Refinements: Sort Order Constants, Placement Labels, Seeder Exception & View Tests - 14 Files)**:
+   - Files:
+     - `app/Domain/Content/Models/ContentBlock.php` (defines MIN_SORT_ORDER and MAX_SORT_ORDER)
+     - `app/Domain/Content/Enums/Placement.php` (defines Placement::label() helper)
+     - `app/Domain/Content/Actions/CreateContentBlock.php` (uses ContentBlock constants)
+     - `app/Domain/Content/Actions/UpdateContentBlock.php` (uses ContentBlock constants)
+     - `app/Filament/Admin/Resources/ContentBlockResource/Schemas/ContentBlockForm.php` (uses Placement::label() and ContentBlock constants)
+     - `app/Filament/Admin/Resources/ContentBlockResource/Tables/ContentBlockTable.php` (uses Placement::label())
+     - `database/seeders/ContentSeeder.php` (throws RuntimeException instead of abort(403))
+     - `tests/Feature/Database/ContentSeederTest.php` (tests RuntimeException and archived placement bypass)
+     - `tests/Feature/Domain/Content/Actions/CreateContentBlockTest.php` (tests 0 and 2147483647 acceptance)
+     - `tests/Feature/Domain/Content/Actions/UpdateContentBlockTest.php` (tests 0 and 2147483647 acceptance)
+     - `tests/Feature/Admin/ContentBlock/ListContentBlocksTableTest.php` (compares type filter dynamically with BlockRegistry::all())
+     - `tests/Feature/Storefront/DemoHomeTest.php` (tests admin payload and sort_order mutations across homepage blocks on GET /)
+     - `tests/Feature/Admin/ContentBlock/ContentBlockViewTest.php` (tests ViewContentBlock rendering for promo_slide and brand_strip repeater array)
+     - `tests/Unit/Domain/Content/Enums/PlacementTest.php` (tests Placement::label())
+   - Verification command: `composer check`
+   - Message: `fix(content): refine sort order bounds, placement labels, seeder exceptions, and view tests`
+
 *Checkpoint CP-B Verification*: Full test suite passing via `composer check`, followed by execution of the manual verification script.
 
 ---
@@ -1817,7 +1836,7 @@ The contract documentation in `docs/contracts/content-api.md` will be updated to
 8. **D-h (Sort Order Integer Range Boundary - m1)**: `sort_order` is validated in `CreateContentBlock` and `UpdateContentBlock` to be within `[0, 2147483647]` and bound by `maxValue(2147483647)` in `ContentBlockForm` to prevent 32-bit signed integer overflow in Postgres.
 9. **D-i (maxCount Enforcement at Output Serving - m2)**: `maxCount()` is deliberately enforced at the layout output serving layer (`GetLayoutContent.php`), ordering by `sort_order` ASC and tie-breaking by `id` ASC. Creating extra blocks beyond `maxCount` is permitted by design (e.g. staging upcoming promotions or draft variants) and does not prevent publishing, but excess blocks are excluded from `GetLayoutContent`.
 10. **D-j (Free-Delivery Text & Dynamic CMS Fields - m3)**: `free_delivery_minor` in `config/storefront.php` was legacy static configuration. The storefront announcement bar reads `secondary_text` directly from the CMS block payload (`"Free delivery on orders over Rs. 25,000"`), making threshold text fully admin-controllable without deployments.
-11. **D-k (Seeder Environment Guard - m4)**: `ContentSeeder::run()` executes `abort(403, ...)` if executed outside `local` or `testing` environments, preventing accidental resets of admin-managed content in production.
+11. **D-k (Seeder Environment Guard - m4)**: `ContentSeeder::run()` throws `\RuntimeException` if executed outside `local` or `testing` environments, preventing accidental resets of admin-managed content in production.
 12. **D-l (Storefront Asset Helpers & Description Formatting - m5)**: All banner image URLs in Blade views (`promo-carousel.blade.php`, `home.blade.php`) use `asset($imageUrl)`. `ContentSeeder` formats the collection banner description with a newline `\n` after `essentials.` so `nl2br(e(...))` mirrors the original layout `<br>`.
 13. **D-m (Legacy config/promotions.php - m6)**: `config/promotions.php` is legacy static demo config with 0 references across `app/`, `resources/`, and `tests/`. Hero carousel autoplay and interval are declared as Blade component defaults on `<x-promo-carousel>` (`@props(['autoplay' => true, 'interval' => 6000])`) and may be moved to Spatie layout settings in a future phase.
 
@@ -1827,6 +1846,10 @@ None.
 ### Technical Debt Recorded
 1. **Debt 1 (`trigger_upgrade_failure` test hook in `AnnouncementBarBlock`)**:
    `AnnouncementBarBlock::upgradePayload` currently contains an inline check `if (isset($payload['trigger_upgrade_failure']))`. This test hook is preserved as-is to keep existing serving health action tests passing, but is recorded here as technical debt to be replaced in a future refactor with a dedicated test block definition.
+2. **Debt 2 (Dead `config/promotions.php` and `STOREFRONT_FREE_DELIVERY_MINOR`)**:
+   `config/promotions.php` is legacy static demo configuration retained for reference but has 0 consumers across the codebase. `STOREFRONT_FREE_DELIVERY_MINOR` in `config/storefront.php` is dead config as announcement bar copy is now fully dynamic from the CMS payload. Both will be removed during demo teardown.
+3. **Debt 3 (`maxCount()` Enforced Only When Serving)**:
+   `maxCount()` constraints on `Placement` are strictly enforced at layout serving time in `GetLayoutContent.php`, taking the lowest `sort_order` records first. Block creation and publishing do not reject blocks exceeding `maxCount()`. Validation on create/publish is deferred to Phase 2.
 
 ### Traps & Architectural Discoveries
 1. **Trap 1 (`ContentBlockForm` Dynamic Type Whitelist)**:
