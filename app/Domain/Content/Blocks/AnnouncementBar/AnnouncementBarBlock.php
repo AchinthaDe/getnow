@@ -39,9 +39,4 @@ final class AnnouncementBarBlock implements BlockDefinition
 
         return $payload;
     }
-
-    public function defaultMaxLivePerPlacement(): int
-    {
-        return 1;
-    }
 }

@@ -261,11 +261,6 @@ it('skips blocks whose type is not permitted for the placement', function (): vo
         {
             return $payload;
         }
-
-        public function defaultMaxLivePerPlacement(): int
-        {
-            return 1;
-        }
     };
     $registry->register($otherDefinition);
 

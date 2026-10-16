@@ -42,3 +42,15 @@ it('returns headline labels for all placements', function () {
         ->and(Placement::HOME_HERO_CAROUSEL->label())->toBe('Home Hero Carousel')
         ->and(Placement::HOME_BRAND_STRIP->label())->toBe('Home Brand Strip');
 });
+
+it('pins maxCount per placement to 1 for seven singleton placements, 5 for carousel, and 4 for service strip', function () {
+    expect(Placement::ANNOUNCEMENT_BAR->maxCount())->toBe(1)
+        ->and(Placement::HOME_HERO_SIDE->maxCount())->toBe(1)
+        ->and(Placement::HOME_CATEGORIES_HEADER->maxCount())->toBe(1)
+        ->and(Placement::HOME_FEATURED_HEADER->maxCount())->toBe(1)
+        ->and(Placement::HOME_COLLECTION_BANNER->maxCount())->toBe(1)
+        ->and(Placement::HOME_NEW_ARRIVALS_HEADER->maxCount())->toBe(1)
+        ->and(Placement::HOME_BRAND_STRIP->maxCount())->toBe(1)
+        ->and(Placement::HOME_HERO_CAROUSEL->maxCount())->toBe(5)
+        ->and(Placement::HOME_SERVICE_STRIP->maxCount())->toBe(4);
+});

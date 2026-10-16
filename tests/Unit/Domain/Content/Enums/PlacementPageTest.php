@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Domain\Content\Contracts\BlockRegistry;
 use App\Domain\Content\Enums\Placement;
 use App\Domain\Content\Enums\PlacementPage;
 
@@ -46,27 +45,4 @@ it('maps every placement to a placement page and provides shortLabel', function 
     $homePlacements = Placement::forPage(PlacementPage::HOME);
     expect($homePlacements)->toHaveCount(8)
         ->and($homePlacements)->not->toContain(Placement::ANNOUNCEMENT_BAR);
-});
-
-it('declares defaultMaxLivePerPlacement on all block definitions', function () {
-    /** @var BlockRegistry $registry */
-    $registry = app(BlockRegistry::class);
-
-    $announcementBar = $registry->get('announcement_bar');
-    expect($announcementBar->defaultMaxLivePerPlacement())->toBe(1);
-
-    $promoSlide = $registry->get('promo_slide');
-    expect($promoSlide->defaultMaxLivePerPlacement())->toBe(5);
-
-    $featureBanner = $registry->get('feature_banner');
-    expect($featureBanner->defaultMaxLivePerPlacement())->toBe(1);
-
-    $serviceItem = $registry->get('service_item');
-    expect($serviceItem->defaultMaxLivePerPlacement())->toBe(4);
-
-    $sectionHeader = $registry->get('section_header');
-    expect($sectionHeader->defaultMaxLivePerPlacement())->toBe(1);
-
-    $brandStrip = $registry->get('brand_strip');
-    expect($brandStrip->defaultMaxLivePerPlacement())->toBe(1);
 });

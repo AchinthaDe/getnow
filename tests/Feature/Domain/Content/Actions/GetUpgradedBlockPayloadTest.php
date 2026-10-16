@@ -57,11 +57,6 @@ class FakeBlockDefinition implements BlockDefinition
 
         return $payload;
     }
-
-    public function defaultMaxLivePerPlacement(): int
-    {
-        return 1;
-    }
 }
 
 it('upgrades sequentially from v1 to v2 to v3', function () {

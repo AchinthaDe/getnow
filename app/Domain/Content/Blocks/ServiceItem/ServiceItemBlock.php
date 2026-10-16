@@ -31,9 +31,4 @@ final class ServiceItemBlock implements BlockDefinition
     {
         return $payload;
     }
-
-    public function defaultMaxLivePerPlacement(): int
-    {
-        return 4;
-    }
 }
