@@ -4,6 +4,17 @@
     font-size:.75rem
 }
 
+.announcement--link {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    transition: opacity .15s ease;
+}
+
+.announcement--link:hover {
+    opacity: .92;
+}
+
 .announcement .container {
     min-height:35px;
     display:flex;

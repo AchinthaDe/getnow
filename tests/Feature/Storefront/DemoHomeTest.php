@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Tests\Feature\Storefront;
 
 use App\Domain\Content\Actions\DisableContentBlock;
+use App\Domain\Content\Actions\UpdateContentBlock;
 use App\Domain\Content\Actions\UpdateMenu;
+use App\Domain\Content\Data\UpdateContentBlockData;
 use App\Domain\Content\Data\UpdateMenuData;
 use App\Domain\Content\Enums\MenuKey;
 use App\Domain\Content\Enums\Placement;
@@ -51,6 +53,103 @@ it('dynamically renders seeded CMS settings, announcement bar, and navigation me
     $response->assertSee('announcement--info');
 });
 
+it('renders full-bar clickable link target when announcement link_url is present', function (): void {
+    (new ContentSeeder)->run();
+
+    $block = ContentBlock::where('placement', Placement::ANNOUNCEMENT_BAR->value)->firstOrFail();
+    $payload = $block->payload;
+    $payload['link_url'] = '/shop?deals=1';
+
+    app(UpdateContentBlock::class)($block->id, new UpdateContentBlockData(starts_at: null, ends_at: null), $payload);
+
+    $response = get('/');
+
+    $response->assertOk();
+    $response->assertSee('<a href="/shop?deals=1" class="announcement announcement--info announcement--link">', false);
+});
+
+it('renders secondary and locale text dynamically on announcement bar', function (): void {
+    (new ContentSeeder)->run();
+
+    $response = get('/');
+
+    $response->assertOk();
+    $response->assertSee('Free delivery on orders over Rs. 25,000');
+    $response->assertSee('Sri Lanka / LKR');
+});
+
+it('dynamically renders all 8 homepage CMS placements from GetLayoutContent', function (): void {
+    (new ContentSeeder)->run();
+
+    $response = get('/');
+
+    $response->assertOk();
+    $response->assertSee('FIND YOUR FREQUENCY');
+    $response->assertSee('THE NEXT CHAPTER');
+    $response->assertSee('READY FOR EVERY DAY');
+    $response->assertSee('MAKE ROOM FOR GREAT SOUND');
+    $response->assertSee('Islandwide delivery');
+    $response->assertSee('Cash on delivery');
+    $response->assertSee('Shop with confidence');
+    $response->assertSee('Here to help');
+    $response->assertSee('FIND YOUR THING');
+    $response->assertSee('THE ONES TO KNOW');
+    $response->assertSee('FRESH ON THE SHELF');
+    $response->assertSee('POWER YOUR EVERYDAY');
+    $response->assertSee('GOOD COMPANY');
+    $response->assertSee('Apple');
+    $response->assertSee('Samsung');
+    $response->assertSee('Anker');
+    $response->assertSee('JBL');
+    $response->assertSee('Marshall');
+    $response->assertSee('Sony');
+});
+
+it('renders full-card clickable links on banners and linked service items', function (): void {
+    (new ContentSeeder)->run();
+
+    $response = get('/');
+
+    $response->assertOk();
+    $response->assertSee('banner-stretched-link', false);
+    $response->assertSee('<a href="/help">', false);
+    $response->assertSee('<div>'."\n".'                        <svg', false);
+});
+
+it('omits placements cleanly without crashing when blocks are disabled or empty', function (): void {
+    (new ContentSeeder)->run();
+
+    foreach (ContentBlock::where('placement', Placement::HOME_HERO_CAROUSEL->value)->get() as $slide) {
+        app(DisableContentBlock::class)($slide->id);
+    }
+
+    $response = get('/');
+    $response->assertOk();
+    $response->assertSee('hero-grid--single');
+
+    foreach (ContentBlock::where('placement', Placement::HOME_SERVICE_STRIP->value)->get() as $serviceItem) {
+        app(DisableContentBlock::class)($serviceItem->id);
+    }
+
+    $response = get('/');
+    $response->assertOk();
+    $response->assertDontSee('service-strip');
+
+    $collectionBanner = ContentBlock::where('placement', Placement::HOME_COLLECTION_BANNER->value)->firstOrFail();
+    app(DisableContentBlock::class)($collectionBanner->id);
+
+    $response = get('/');
+    $response->assertOk();
+    $response->assertDontSee('collection-banner');
+
+    $brandStrip = ContentBlock::where('placement', Placement::HOME_BRAND_STRIP->value)->firstOrFail();
+    app(DisableContentBlock::class)($brandStrip->id);
+
+    $response = get('/');
+    $response->assertOk();
+    $response->assertDontSee('brand-strip');
+});
+
 it('reflects admin mutations and omits disabled announcement bar without crashing', function (): void {
     (new ContentSeeder)->run();
 
@@ -60,7 +159,7 @@ it('reflects admin mutations and omits disabled announcement bar without crashin
     $response = get('/');
 
     $response->assertOk();
-    $response->assertDontSee('<div class="announcement', false);
+    $response->assertDontSee('class="announcement', false);
     $response->assertDontSee('Good tech. Better everyday.');
 });
 

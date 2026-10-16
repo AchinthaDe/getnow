@@ -202,10 +202,8 @@ final class DemoHomeController extends Controller
             ],
         ];
 
-        /** @var array<string, mixed> $promotions */
-        $promotions = (array) config('promotions');
         $cartCount = 0;
 
-        return view('storefront.home', compact('layout', 'featured', 'newProducts', 'categories', 'promotions', 'cartCount'));
+        return view('storefront.home', compact('layout', 'featured', 'newProducts', 'categories', 'cartCount'));
     }
 }
