@@ -20,7 +20,15 @@
             "tone": "info"
           }
         }
-      ]
+      ],
+      "home_hero_carousel": [],
+      "home_hero_side": [],
+      "home_service_strip": [],
+      "home_categories_header": [],
+      "home_featured_header": [],
+      "home_collection_banner": [],
+      "home_new_arrivals_header": [],
+      "home_brand_strip": []
     },
     "menus": {
       "main_nav": {

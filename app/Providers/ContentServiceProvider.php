@@ -6,6 +6,11 @@ namespace App\Providers;
 
 use App\Domain\Content\Actions\GetBlockServingStatus;
 use App\Domain\Content\Blocks\AnnouncementBar\AnnouncementBarBlock;
+use App\Domain\Content\Blocks\BrandStrip\BrandStripBlock;
+use App\Domain\Content\Blocks\FeatureBanner\FeatureBannerBlock;
+use App\Domain\Content\Blocks\PromoSlide\PromoSlideBlock;
+use App\Domain\Content\Blocks\SectionHeader\SectionHeaderBlock;
+use App\Domain\Content\Blocks\ServiceItem\ServiceItemBlock;
 use App\Domain\Content\Contracts\BlockRegistry;
 use App\Domain\Content\Models\ContentBlock;
 use App\Domain\Content\Models\Menu;
@@ -32,5 +37,10 @@ class ContentServiceProvider extends ServiceProvider
         $registry = $this->app->make(BlockRegistry::class);
 
         $registry->register(new AnnouncementBarBlock);
+        $registry->register(new PromoSlideBlock);
+        $registry->register(new FeatureBannerBlock);
+        $registry->register(new ServiceItemBlock);
+        $registry->register(new SectionHeaderBlock);
+        $registry->register(new BrandStripBlock);
     }
 }
