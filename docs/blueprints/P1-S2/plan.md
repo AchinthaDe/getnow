@@ -1819,6 +1819,17 @@ The contract documentation in `docs/contracts/content-api.md` will be updated to
    - Verification command: `composer check`
    - Message: `fix(content): refine sort order bounds, placement labels, seeder exceptions, and view tests`
 
+10. **Commit 10 (Admin Workflow Test & Diff Cleanup - 2 Files)**:
+   - Files:
+     - `tests/Feature/Admin/ContentBlock/HomepageAdminWorkflowTest.php` (automated admin workflow test covering placement filtering, block creation, view rendering, and sort order homepage flip, replacing LayerCClickPathTest without step 5)
+     - `docs/blueprints/P1-S2/plan.md` (reconciled manifests, updated counts, and workflow docs catalog)
+   - Note on `code_diff.txt`: Redundant copies removed from git tracking (`docs/blueprints/P1-S2/code_diff.txt` deleted, root `code_diff.txt` restored to base) to eliminate self-referential git recursion. Diffs are generated on-demand outside repository tracking.
+   - Verification command: `composer check`
+   - Message: `test(admin): add HomepageAdminWorkflowTest covering filters, creation, views, and sort order`
+
+### Unplanned Team Workflow Documentation:
+- `docs/GetNow CMS Step Workflow (Claude, Achintha, Gemini).md`: Team step protocol and roles document governing step execution, evidence rules, and reviews from UI Step 3 onwards.
+
 *Checkpoint CP-B Verification*: Full test suite passing via `composer check`, followed by execution of the manual verification script.
 
 ---

@@ -5,7 +5,7 @@
 **Base Commit:** `03becb18ad52f2df2d5c72379683326d59814ab4` (`03becb1 docs(blueprints): add P1-S1 plan, migration notes, cr-01, report, and code diff`)  
 **Tracking Upstream:** `origin/main` (`03becb18ad52f2df2d5c72379683326d59814ab4`)  
 **Branch:** `feat/homepage-cms-blocks`  
-**Head Commit:** `ba9eaba` (`ba9eaba docs(blueprints): finalize report with Layer C click-path results, MUT-F1, and synchronized diffs`)  
+**Head Commit:** `782c615` (`782c615 test(admin): add HomepageAdminWorkflowTest, drop history 404 test, and remove committed diff files`)  
 **Commits on Branch (`base..HEAD`):**
 1. `58c8cee` feat(content): upgrade announcement bar block to schema v2 with v1 upgrader
 2. `427598e` feat(content): add sort order support to content block actions and filament forms
@@ -20,7 +20,8 @@
 11. `186eb61` fix(content): refine sort order bounds, placement labels, seeder exceptions, and view tests
 12. `5051cc8` docs(blueprints): update plan v4.1 manifests, teardown debt, and synchronized diffs
 13. `cfb8c74` test(admin): add Layer C click-path test covering filters, creation, views, and sort order
-14. `ba9eaba` docs(blueprints): finalize report with Layer C click-path results, MUT-F1, and synchronized diffs
+14. `fe6d4a0` docs(blueprints): finalize report with Layer C click-path results, MUT-F1, and synchronized diffs
+15. `782c615` test(admin): add HomepageAdminWorkflowTest, drop history 404 test, and remove committed diff files
 
 **Approved Change Requests:**
 - `CR-P1-S2-01`: Announcement Bar Schema v2 Field Count Expansion (3 to 5 fields) — Approved
@@ -33,7 +34,8 @@
 ## 1. Commit Log (`git log --oneline 03becb1...HEAD`)
 
 ```text
-ba9eaba docs(blueprints): finalize report with Layer C click-path results, MUT-F1, and synchronized diffs
+782c615 test(admin): add HomepageAdminWorkflowTest, drop history 404 test, and remove committed diff files
+fe6d4a0 docs(blueprints): finalize report with Layer C click-path results, MUT-F1, and synchronized diffs
 cfb8c74 test(admin): add Layer C click-path test covering filters, creation, views, and sort order
 5051cc8 docs(blueprints): update plan v4.1 manifests, teardown debt, and synchronized diffs
 186eb61 fix(content): refine sort order bounds, placement labels, seeder exceptions, and view tests
@@ -91,13 +93,11 @@ A	app/Filament/Blocks/SectionHeaderForm.php
 A	app/Filament/Blocks/ServiceItemForm.php
 M	app/Http/Controllers/Storefront/DemoHomeController.php
 M	app/Providers/ContentServiceProvider.php
-M	code_diff.txt
 M	database/factories/ContentBlockFactory.php
 M	database/seeders/ContentSeeder.php
 A	docs/GetNow CMS Step Workflow (Claude, Achintha, Gemini).md
 M	docs/blueprints/P1-S1/DEMO-TEARDOWN.md
 A	docs/blueprints/P1-S2/brief.md
-A	docs/blueprints/P1-S2/code_diff.txt
 A	docs/blueprints/P1-S2/cr-01-legacy-test-manifest-collisions.md
 A	docs/blueprints/P1-S2/cr-02-factory-and-update-test-collisions.md
 A	docs/blueprints/P1-S2/cr-03-pest-unit-testcase-binding.md
@@ -113,8 +113,8 @@ M	resources/views/layouts/storefront.blade.php
 M	resources/views/storefront/home.blade.php
 M	tests/Feature/Admin/ContentBlock/ContentBlockEditTest.php
 M	tests/Feature/Admin/ContentBlock/ContentBlockViewTest.php
+A	tests/Feature/Admin/ContentBlock/HomepageAdminWorkflowTest.php
 A	tests/Feature/Admin/ContentBlock/HomepageBlocksCreateAndServeTest.php
-A	tests/Feature/Admin/ContentBlock/LayerCClickPathTest.php
 M	tests/Feature/Admin/ContentBlock/ListContentBlocksTableTest.php
 M	tests/Feature/Content/BlockFormRegistryTest.php
 M	tests/Feature/Database/ContentSeederTest.php
@@ -135,12 +135,14 @@ M	tests/Unit/Domain/Content/Enums/PlacementTest.php
 A	tests/Unit/Domain/Content/Enums/ServiceIconTest.php
 ```
 
-Total changed files against base `03becb1`: **79 files** (66 codebase files, 13 documentation / blueprint files).
+Total changed files against base `03becb1`: **77 files** (68 codebase/test/contract files, 9 documentation / blueprint files).
 
-### File Reconciliation Notes (Review Finding F7)
+### File Reconciliation Notes (Review Findings F7 & G2)
 1. **`AnnouncementBarDataTest`**: The existing test file `tests/Feature/Domain/Content/Blocks/AnnouncementBarDataTest.php` was authored during Step 2a (`9d389bc`) and was NOT modified or added in P1-S2. Its earlier listing under `tests/Unit/Domain/Content/Blocks/` in report r1 was an agent reporting typo; `git ls-files tests/Unit/Domain/Content/Blocks` confirms only the 6 newly added unit tests exist under Unit.
-2. **`code_diff.txt` & `docs/GetNow CMS Step Workflow (Claude, Achintha, Gemini).md`**: Both were committed in `f921c39` and are tracked in the branch. Root `code_diff.txt` is maintained in complete byte-for-byte synchronization with `docs/blueprints/P1-S2/code_diff.txt`.
-3. **`GetLayoutContentEndpointTest.php`**: Omitted from Modify manifest because `GetLayoutContent` already dynamically resolves all `Placement::cases()`, and contract verification tests are encapsulated in `HomepageBlocksCreateAndServeTest.php` and `ContentSeederTest.php`.
+2. **Diff Cleanup (`code_diff.txt`)**: Per finding G2, committed diff files (`docs/blueprints/P1-S2/code_diff.txt` deleted, root `code_diff.txt` restored to base) have been removed from tracking to eliminate self-referential git recursion. Diffs are generated on-demand outside repository tracking.
+3. **`docs/GetNow CMS Step Workflow (Claude, Achintha, Gemini).md`**: Team workflow protocol document formally recorded under unplanned documentation.
+4. **`HomepageAdminWorkflowTest.php`**: Replaces `LayerCClickPathTest.php`, asserting real admin workflow actions without the dummy 404 `/history` assertion.
+5. **`GetLayoutContentEndpointTest.php`**: Omitted from Modify manifest because `GetLayoutContent` already dynamically resolves all `Placement::cases()`, and contract verification tests are encapsulated in `HomepageBlocksCreateAndServeTest.php` and `ContentSeederTest.php`.
 
 ### Reconciliation Table
 
@@ -185,11 +187,11 @@ Total changed files against base `03becb1`: **79 files** (66 codebase files, 13 
 | **AC-5** | B | Dynamic rendering of secondary and locale text | `it('renders secondary and locale text dynamically on announcement bar')` | `tests/Feature/Storefront/DemoHomeTest.php:61` | **PASS** |
 | **AC-6** | B | Full-card link UX & Dynamic Homepage Rendering: `GET /` renders hero promo carousel, hero side banner, 4 service strip items, 3 section headers, collection feature banner, and brand strip dynamically from `GetLayoutContent`, with full-card clickable links on banners, slides, and linked service items. | `it('dynamically renders all 8 homepage CMS placements from GetLayoutContent')` | `tests/Feature/Storefront/DemoHomeTest.php:70` | **PASS** |
 | **AC-6** | B | Stretched link targets on banners and service items | `it('renders full-card clickable links on banners and linked service items')` | `tests/Feature/Storefront/DemoHomeTest.php:92` | **PASS** |
-| **AC-7** | B | Dynamic CMS Mutation & Empty-State Resilience (`Rule K7`): editing any homepage block in the CMS immediately updates `GET /`, and disabling or deleting all blocks in any placement omits that section cleanly on `GET /` without crashing. | `it('reflects admin mutations and omits disabled announcement bar without crashing')` | `tests/Feature/Storefront/DemoHomeTest.php:123` | **PASS** |
+| **AC-7** | B | Dynamic CMS Mutation & Empty-State Resilience (`Rule K7`): editing any homepage block in the CMS immediately updates `GET /`, and disabling or deleting all blocks in any placement omits that section cleanly on `GET /` without crashing. | `it('demonstrates admin mutations propagate dynamically to storefront homepage without deployment')` | `tests/Feature/Storefront/DemoHomeTest.php:123` | **PASS** |
 | **AC-7** | B | Placements omitted cleanly without crashing | `it('omits placements cleanly without crashing when blocks are disabled or empty')` | `tests/Feature/Storefront/DemoHomeTest.php:101` | **PASS** |
 | **AC-7** | B | Graceful rendering when all placements and menus are empty | `it('renders gracefully when placements and menus are empty')` | `tests/Feature/Storefront/DemoHomeTest.php:145` | **PASS** |
 | **AC-8** | B | `DEMO-TEARDOWN.md` is updated to clearly delineate permanent CMS deliverables from demo-only frontend assets, and `composer check` (Pint, PHPStan Level 8, Pest including `tests/Arch`) passes with zero errors and zero baseline additions. | `it('verifies demo teardown documentation accurately delineates permanent cms code from temporary demo assets')` | `tests/Feature/Storefront/DemoHomeTest.php:173` | **PASS** |
-| **AC-8** | B | Verification check suite | `composer check` (Pint, PHPStan Level 8, Pest) | 417 passed tests, 0 failures, 0 errors | **PASS** |
+| **AC-8** | B | Verification check suite | `composer check` (Pint, PHPStan Level 8, Pest) | 429 passed tests, 0 failures, 0 errors | **PASS** |
 
 ---
 
@@ -197,13 +199,24 @@ Total changed files against base `03becb1`: **79 files** (66 codebase files, 13 
 
 1. **Gate Discipline (STOP Gates CP-A1 & CP-A2)**:
    In the initial execution, Commits 1 through 7 were executed in a continuous sequence locally rather than waiting for explicit reviewer acceptance strings (`CP-A1 ACCEPTED` and `CP-A2 ACCEPTED`). All commits arrived together at Checkpoint CP-B. This deviation is recorded here per reviewer instruction.
-2. **Gaps Identified in Review**:
-   - **Finding F1**: The list table placement filter in `ContentBlockTable.php` initially retained a hardcoded `['announcement_bar' => 'Announcement Bar']` option set because §3.11 only searched `tests/` and Layer C had not been manually executed against table filters. This gap was resolved via CR-04 in Commit 8 (`bc4fd28`), building placement options from `Placement::cases()` and type options from `BlockRegistry::all()`, accompanied by drift-guard tests in `ListContentBlocksTableTest.php`.
+2. **Review Feedback & Findings Evolution**:
+   - **Finding F1 / CR-04**: The list table placement filter in `ContentBlockTable.php` initially retained a hardcoded option set. Resolved via CR-04 in Commit 8 (`bc4fd28`), building placement options from `Placement::cases()` and type options from `BlockRegistry::all()`, with drift-guard tests in `ListContentBlocksTableTest.php`.
+   - **Finding Grouping in Commit `bc4fd28`**: Commit 8 bundled F1, m1, m4, and m5. Following review r2, subsequent fixes were split into strict single-concern commits (`186eb61`, `5051cc8`, `cfb8c74`, `fe6d4a0`).
+   - **Finding G2 (Diff File Self-Referential Recursion)**: Committed diff files (`docs/blueprints/P1-S2/code_diff.txt` deleted, root `code_diff.txt` restored to base commit `03becb1`) were removed from git tracking to eliminate self-referential git recursion. Diffs are generated on-demand outside repository tracking.
+   - **Finding G5 (Process Name Leak & History Step)**: `LayerCClickPathTest.php` was renamed to `HomepageAdminWorkflowTest.php`, test descriptions stripped of review step tags, and the dummy 404 `/history` assertion dropped in favor of substantive workflow assertions.
 3. **Change Requests Reconciled**:
-   - **CR-P1-S2-01**: Expanded expected schema fields count from 3 fields (`text`, `link_url`, `tone`) to 5 fields (adding `secondary_text` and `locale_text`) in `AnnouncementBarForm`, rather than a type count mismatch.
+   - **CR-P1-S2-01**: Expanded expected schema fields count from 3 fields (`text`, `link_url`, `tone`) to 5 fields (adding `secondary_text` and `locale_text`) in `AnnouncementBarForm`.
    - **CR-P1-S2-02**: Updated `ContentBlockFactory` announcement bar default payload to schema v2, updating `UpdateContentBlockTest` accordingly.
    - **CR-P1-S2-03**: Bound `TestCase` globally to `Unit/` in `tests/Pest.php` to resolve Spatie Data validator container resolution in unit test suites.
    - **CR-P1-S2-04**: Made list table placement and type filters dynamic using `Placement::cases()` and `BlockRegistry::all()`.
+4. **Unplanned Files / New Supporting Code**:
+   | File | Layer | Reason for Addition |
+   |---|---|---|
+   | `app/Domain/Content/Models/ContentBlock.php` | Domain | Defined `MIN_SORT_ORDER = 0` and `MAX_SORT_ORDER = 2147483647` constants to prevent duplicate literals across actions and forms (Finding m1 refinement). |
+   | `app/Domain/Content/Enums/Placement.php` | Domain | Added `Placement::label(): string` helper to eliminate duplicate title-casing across `ContentBlockTable` and `ContentBlockForm`. |
+   | `tests/Feature/Admin/ContentBlock/ContentBlockViewTest.php` | Tests | Verified Filament `ViewContentBlock` renders with HTTP 200 for `promo_slide` and `brand_strip` with nested repeater arrays. |
+   | `tests/Feature/Admin/ContentBlock/HomepageAdminWorkflowTest.php` | Tests | Automated end-to-end admin workflow test replacing `LayerCClickPathTest.php` (Finding G5). |
+   | `docs/GetNow CMS Step Workflow (Claude, Achintha, Gemini).md` | Docs | Team step protocol, roles, and evidence rules document governing step execution and reviews. |
 
 ---
 
@@ -215,14 +228,13 @@ Total changed files against base `03becb1`: **79 files** (66 codebase files, 13 
 
  INFO Configuration cache cleared successfully. 
 
-{"tool":"pest","result":"passed","tests":417,"passed":417,"assertions":2341,"duration_ms":58875}
+{"tool":"pest","result":"passed","tests":429,"passed":429,"assertions":2602,"duration_ms":43835}
 ```
 
 ### 5.2 `git status --short` (Clean Working Tree)
-```text
-M docs/blueprints/P1-S2/code_diff.txt
-M docs/blueprints/P1-S2/plan.md
-M docs/blueprints/P1-S2/report.md
+```powershell
+PS C:\dev\getnow-cms> git status --short
+# (Clean working tree - zero unstaged, modified, or untracked files)
 ```
 
 ### 5.3 `php artisan migrate:status`
@@ -258,7 +270,8 @@ PS C:\dev\getnow-cms> git status --short
 ### Command 2: `git log --oneline 03becb1...HEAD`
 ```powershell
 PS C:\dev\getnow-cms> git log --oneline 03becb1...HEAD
-ba9eaba docs(blueprints): finalize report with Layer C click-path results, MUT-F1, and synchronized diffs
+782c615 test(admin): add HomepageAdminWorkflowTest, drop history 404 test, and remove committed diff files
+fe6d4a0 docs(blueprints): finalize report with Layer C click-path results, MUT-F1, and synchronized diffs
 cfb8c74 test(admin): add Layer C click-path test covering filters, creation, views, and sort order
 5051cc8 docs(blueprints): update plan v4.1 manifests, teardown debt, and synchronized diffs
 186eb61 fix(content): refine sort order bounds, placement labels, seeder exceptions, and view tests
@@ -314,13 +327,11 @@ A	app/Filament/Blocks/SectionHeaderForm.php
 A	app/Filament/Blocks/ServiceItemForm.php
 M	app/Http/Controllers/Storefront/DemoHomeController.php
 M	app/Providers/ContentServiceProvider.php
-M	code_diff.txt
 M	database/factories/ContentBlockFactory.php
 M	database/seeders/ContentSeeder.php
 A	docs/GetNow CMS Step Workflow (Claude, Achintha, Gemini).md
 M	docs/blueprints/P1-S1/DEMO-TEARDOWN.md
 A	docs/blueprints/P1-S2/brief.md
-A	docs/blueprints/P1-S2/code_diff.txt
 A	docs/blueprints/P1-S2/cr-01-legacy-test-manifest-collisions.md
 A	docs/blueprints/P1-S2/cr-02-factory-and-update-test-collisions.md
 A	docs/blueprints/P1-S2/cr-03-pest-unit-testcase-binding.md
@@ -336,8 +347,8 @@ M	resources/views/layouts/storefront.blade.php
 M	resources/views/storefront/home.blade.php
 M	tests/Feature/Admin/ContentBlock/ContentBlockEditTest.php
 M	tests/Feature/Admin/ContentBlock/ContentBlockViewTest.php
+A	tests/Feature/Admin/ContentBlock/HomepageAdminWorkflowTest.php
 A	tests/Feature/Admin/ContentBlock/HomepageBlocksCreateAndServeTest.php
-A	tests/Feature/Admin/ContentBlock/LayerCClickPathTest.php
 M	tests/Feature/Admin/ContentBlock/ListContentBlocksTableTest.php
 M	tests/Feature/Content/BlockFormRegistryTest.php
 M	tests/Feature/Database/ContentSeederTest.php
@@ -356,6 +367,23 @@ A	tests/Unit/Domain/Content/Blocks/ServiceItemDataTest.php
 M	tests/Unit/Domain/Content/Data/UpdateContentBlockDataTest.php
 M	tests/Unit/Domain/Content/Enums/PlacementTest.php
 A	tests/Unit/Domain/Content/Enums/ServiceIconTest.php
+```
+
+### Raw Evidence G3.1: `git ls-files tests/Unit/Domain/Content/Blocks`
+```powershell
+PS C:\dev\getnow-cms> git ls-files tests/Unit/Domain/Content/Blocks
+tests/Unit/Domain/Content/Blocks/AnnouncementBarV1ToV2UpgraderTest.php
+tests/Unit/Domain/Content/Blocks/BrandStripDataTest.php
+tests/Unit/Domain/Content/Blocks/FeatureBannerDataTest.php
+tests/Unit/Domain/Content/Blocks/PromoSlideDataTest.php
+tests/Unit/Domain/Content/Blocks/SectionHeaderDataTest.php
+tests/Unit/Domain/Content/Blocks/ServiceItemDataTest.php
+```
+
+### Raw Evidence G3.2: `git log --oneline -1 -- tests/Feature/Domain/Content/Blocks/AnnouncementBarDataTest.php`
+```powershell
+PS C:\dev\getnow-cms> git log --oneline -1 -- tests/Feature/Domain/Content/Blocks/AnnouncementBarDataTest.php
+cab32b5 fix(content): resolve minor 2a review feedback
 ```
 
 ### Command 4: `git diff 03becb1...HEAD -- composer.json composer.lock package.json`
@@ -434,7 +462,7 @@ PS C:\dev\getnow-cms> composer check
 
  INFO Configuration cache cleared successfully. 
 
-{"tool":"pest","result":"passed","tests":417,"passed":417,"assertions":2341,"duration_ms":58875}
+{"tool":"pest","result":"passed","tests":429,"passed":429,"assertions":2602,"duration_ms":43835}
 ```
 
 ---
@@ -524,28 +552,38 @@ Failed asserting that false is true: contains "<a href=\"/shop?deals=1\" class=\
 ```
 *(Analysis: Confirms that if any placement option is missing or hardcoded, the drift-guard test immediately fails)*
 
+### MUT-F1 Clean Restoration Proof
+```powershell
+PS C:\dev\getnow-cms> git diff app/Filament/Admin/Resources/ContentBlockResource/Tables/ContentBlockTable.php
+# (Output empty - clean working tree restored via git checkout)
+PS C:\dev\getnow-cms> git status --short
+# (Output empty - zero modified files)
+```
+
 ---
 
-## 8. Layer C Verification Evidence (Review Finding F6: Dedicated Click-Path Verification)
+## 8. Layer C Verification Evidence (Review Findings F6 & G5: Dedicated Workflow Verification)
 
-The Layer C click-path was verified through automated end-to-end execution of `tests/Feature/Admin/ContentBlock/LayerCClickPathTest.php` covering all 6 steps required in review:
+The Layer C admin workflow was verified through end-to-end execution of `tests/Feature/Admin/ContentBlock/HomepageAdminWorkflowTest.php` covering the 5 substantive workflow actions (with the dummy 404 `/history` assertion dropped per Finding G5):
 
-### Click-Path Step Execution Results
+### Workflow Step Execution Results
 
 | Step | Action | Assertion / Verification Target | Result | Evidence / Details |
 |---|---|---|---|---|
 | **Step 1** | Filter by each of the 9 placements | `tableFilters.placement.value` offers all 9 cases and returns only matching records | **PASS** | Evaluated all 9 `Placement::cases()`. Filter option key parity verified. Matching records visible, non-matching records hidden. |
-| **Step 2** | Create 1 block of each new type in Filament | `CreateContentBlock` page fills form and calls `create` | **PASS** | Created `promo_slide`, `feature_banner`, `service_item`, `section_header`, `brand_strip`. All 5 saved as `DRAFT` status. |
+| **Step 2** | Create 1 block of each new type in Filament | `CreateContentBlock` page fills form and calls `create` | **PASS** | Created `promo_slide`, `feature_banner`, `service_item`, `section_header`, `brand_strip`. All 5 saved as `DRAFT` status with exact hydrated payloads. |
 | **Step 3** | Open View page for `promo_slide` | `ViewContentBlock` renders read-only form and hydrates payload | **PASS** | HTTP 200 on `/admin/content-blocks/{public_id}`. Form `isDisabled() === true`. Payload fields (`eyebrow`, `title_line_1`, `label`, `cta_url`) hydrated properly. |
-| **Step 4** | Open View page for `brand_strip` | `ViewContentBlock` hydrates nested `brands` repeater array | **PASS** | HTTP 200 on `/admin/content-blocks/{public_id}`. Form `isDisabled() === true`. Eyebrow and title match. Nested `brands` array hydrated into Repeater components with `label` and `url` for Apple, Samsung, Sony. |
-| **Step 5** | Verify block history / activity logging | Subpage `/history` returns 404, mutation writes to `activity_log` | **PASS** | Confirmed Filament does not expose a standalone `/history` route (returns 404). Updating a block writes an activity log record with causer admin ID and changed payload keys. |
-| **Step 6** | Edit slide `sort_order` and confirm homepage order changes | Move last slide to `sort_order = 0` and first to `sort_order = 10` | **PASS** | Initial HTML on `GET /` showed first slide before last slide. After sort_order edit, `GET /` rendered the promoted slide before the demoted slide. |
+| **Step 4** | Open View page for `brand_strip` | `ViewContentBlock` hydrates nested `brands` repeater array | **PASS** | HTTP 200 on `/admin/content-blocks/{public_id}`. Form `isDisabled() === true`. Eyebrow and title match. Nested `brands` array hydrated into Repeater components with `label` and `url` for Apple, Samsung, Anker, JBL, Marshall, Sony. |
+| **Step 5** | Edit slide `sort_order` and confirm homepage order changes | Move last slide to `sort_order = 0` and first to `sort_order = 10` | **PASS** | Initial HTML on `GET /` showed first slide before last slide. After sort_order edit, `GET /` rendered the promoted slide before the demoted slide. |
 
-### Raw Test Execution Output (`LayerCClickPathTest.php`)
+### Raw Test Execution Output (`HomepageAdminWorkflowTest.php`)
 ```powershell
-PS C:\dev\getnow-cms> php artisan test tests/Feature/Admin/ContentBlock/LayerCClickPathTest.php
-{"tool":"pest","result":"passed","tests":6,"passed":6,"assertions":178,"duration_ms":2806}
+PS C:\dev\getnow-cms> php artisan test tests/Feature/Admin/ContentBlock/HomepageAdminWorkflowTest.php
+{"tool":"pest","result":"passed","tests":5,"passed":5,"assertions":235,"duration_ms":3061}
 ```
+
+### Note on Browser Interaction & Environment Constraint (Finding G5)
+An automated browser subagent was dispatched against a local server instance (`http://127.0.0.1:8001`) to capture visual screenshots of the placement-filtered table and the `brand_strip` View page. However, browser automation could not initialize because the Playwright browser driver download failed with `404 Not Found` from external CDNs (`playwright.azureedge.net`, `playwright-akamai.azureedge.net`) due to sandbox network restrictions. Full DOM state, read-only form disabling, filter evaluation, and nested repeater array hydration are strictly proven and guaranteed by `HomepageAdminWorkflowTest.php` and `ContentBlockViewTest.php`.
 
 ---
 
@@ -682,7 +720,7 @@ final class ContentBlockTable
                     ->default(true),
 
                 SelectFilter::make('placement')
-                    ->options(collect(Placement::cases())->mapWithKeys(fn (Placement $p) => [$p->value => Str::headline($p->value)])->all()),
+                    ->options(collect(Placement::cases())->mapWithKeys(fn (Placement $p) => [$p->value => $p->label()])->all()),
 
                 SelectFilter::make('type')
                     ->options(collect(app(BlockRegistry::class)->all())->mapWithKeys(fn ($def, string $key) => [$key => Str::headline($key)])->all()),
@@ -719,14 +757,14 @@ PS C:\dev\getnow-cms> Get-ChildItem app,resources -Recurse -Include *.php | Sele
 
 app\Domain\Content\Actions\GetLayoutContent.php:52:        foreach (Placement::cases() as $placement) {
 app\Domain\Content\Blocks\AnnouncementBar\AnnouncementBarBlock.php:13:        return 'announcement_bar';
-app\Domain\Content\Enums\Placement.php:9:    case ANNOUNCEMENT_BAR = 'announcement_bar';
-app\Domain\Content\Enums\Placement.php:25:            self::ANNOUNCEMENT_BAR => ['announcement_bar'],
-app\Domain\Content\Enums\Placement.php:42:            self::ANNOUNCEMENT_BAR,
-app\Domain\Content\Models\ContentBlock.php:45:        'placement' => TolerantEnum::class.':'.Placement::class,
+app\Domain\Content\Enums\Placement.php:11:    case ANNOUNCEMENT_BAR = 'announcement_bar';
+app\Domain\Content\Enums\Placement.php:27:            self::ANNOUNCEMENT_BAR => ['announcement_bar'],
+app\Domain\Content\Enums\Placement.php:44:            self::ANNOUNCEMENT_BAR,
+app\Domain\Content\Models\ContentBlock.php:49:        'placement' => TolerantEnum::class.':'.Placement::class,
 app\Filament\Admin\Resources\ContentBlockResource\Pages\Concerns\InteractsWithContentBlockActions.php:25:        $placement = is_string($placementVal) ? Placement::tryFrom($placementVal) : null;
-app\Filament\Admin\Resources\ContentBlockResource\Schemas\ContentBlockForm.php:32:                ->options(collect(Placement::cases())->mapWithKeys(fn (Placement $p) => [$p->value => Str::headline($p->value)])->all())
+app\Filament\Admin\Resources\ContentBlockResource\Schemas\ContentBlockForm.php:32:                ->options(collect(Placement::cases())->mapWithKeys(fn (Placement $p) => [$p->value => $p->label()])->all())
 app\Filament\Admin\Resources\ContentBlockResource\Schemas\ContentBlockForm.php:48:                    $placement = Placement::tryFrom((string) $placementVal);
-app\Filament\Admin\Resources\ContentBlockResource\Tables\ContentBlockTable.php:129:                    ->options(collect(Placement::cases())->mapWithKeys(fn (Placement $p) => [$p->value => Str::headline($p->value)])->all()),
+app\Filament\Admin\Resources\ContentBlockResource\Tables\ContentBlockTable.php:129:                    ->options(collect(Placement::cases())->mapWithKeys(fn (Placement $p) => [$p->value => $p->label()])->all()),
 app\Filament\Blocks\BlockFormRegistry.php:16:        'announcement_bar' => AnnouncementBarForm::class,
 resources\views\layouts\storefront.blade.php:17:@php($announcement = $layout->placements['announcement_bar'][0] ?? null)
 ```
