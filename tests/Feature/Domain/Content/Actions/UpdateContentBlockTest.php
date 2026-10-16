@@ -13,6 +13,7 @@ use App\Domain\Content\Exceptions\UnknownBlockTypeException;
 use App\Domain\Content\Exceptions\UnsupportedSchemaVersionException;
 use App\Domain\Content\Models\ContentBlock;
 use App\Domain\Content\Services\ContentBlockRegistry;
+use App\Domain\Content\Services\EnsurePlacementCapacity;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -21,8 +22,7 @@ use Mockery\MockInterface;
 use Spatie\Activitylog\Models\Activity;
 
 it('updates block and logs activity', function () {
-    $registry = app(BlockRegistry::class);
-    $action = new UpdateContentBlock($registry);
+    $action = app(UpdateContentBlock::class);
 
     $user = User::factory()->create();
     /** @var ContentBlock $block */
@@ -55,8 +55,7 @@ it('updates block and logs activity', function () {
 });
 
 it('rejects archived blocks', function () {
-    $registry = app(BlockRegistry::class);
-    $action = new UpdateContentBlock($registry);
+    $action = app(UpdateContentBlock::class);
 
     /** @var ContentBlock $block */
     $block = ContentBlock::factory()->archived()->create();
@@ -67,8 +66,7 @@ it('rejects archived blocks', function () {
 });
 
 it('rejects reversed dates', function () {
-    $registry = app(BlockRegistry::class);
-    $action = new UpdateContentBlock($registry);
+    $action = app(UpdateContentBlock::class);
 
     /** @var ContentBlock $block */
     $block = ContentBlock::factory()->create();
@@ -82,8 +80,7 @@ it('rejects reversed dates', function () {
 });
 
 it('does not log activity or update user if identical data is submitted', function () {
-    $registry = app(BlockRegistry::class);
-    $action = new UpdateContentBlock($registry);
+    $action = app(UpdateContentBlock::class);
 
     $user = User::factory()->create();
     $payload = AnnouncementBarData::validateAndCreate(['text' => 'same', 'tone' => 'info'])->toArray();
@@ -122,7 +119,7 @@ it('re-saves with new version if schema_version is stale but payload is identica
     $registry = new ContentBlockRegistry;
     $registry->register($definition);
 
-    $action = new UpdateContentBlock($registry);
+    $action = new UpdateContentBlock($registry, app(EnsurePlacementCapacity::class));
     $user = User::factory()->create();
     $payload = AnnouncementBarData::validateAndCreate(['text' => 'same', 'tone' => 'info'])->toArray();
 
@@ -149,8 +146,7 @@ it('re-saves with new version if schema_version is stale but payload is identica
 });
 
 it('throws UnknownBlockTypeException for unregistered type', function () {
-    $registry = app(BlockRegistry::class);
-    $action = new UpdateContentBlock($registry);
+    $action = app(UpdateContentBlock::class);
 
     /** @var ContentBlock $block */
     $block = ContentBlock::factory()->create([
@@ -165,8 +161,7 @@ it('throws UnknownBlockTypeException for unregistered type', function () {
 });
 
 it('writes nothing if identical data resubmitted but jsonb order differs', function () {
-    $registry = app(BlockRegistry::class);
-    $action = new UpdateContentBlock($registry);
+    $action = app(UpdateContentBlock::class);
 
     // Create via factory first to get defaults
     $seededUpdatedAt = now()->subDay();
@@ -197,8 +192,7 @@ it('writes nothing if identical data resubmitted but jsonb order differs', funct
 });
 
 it('converts timezones to UTC during update and detects dirtiness properly', function () {
-    $registry = app(BlockRegistry::class);
-    $action = new UpdateContentBlock($registry);
+    $action = app(UpdateContentBlock::class);
 
     /** @var ContentBlock $block */
     $block = ContentBlock::factory()->create([
@@ -254,7 +248,7 @@ it('throws UnsupportedSchemaVersionException if stored version is higher than co
     $registry = new ContentBlockRegistry;
     $registry->register($definition);
 
-    $action = new UpdateContentBlock($registry);
+    $action = new UpdateContentBlock($registry, app(EnsurePlacementCapacity::class));
     $payload = AnnouncementBarData::validateAndCreate(['text' => 'same', 'tone' => 'info'])->toArray();
 
     /** @var ContentBlock $block */
@@ -271,8 +265,7 @@ it('throws UnsupportedSchemaVersionException if stored version is higher than co
 });
 
 it('remaps payload validation errors correctly', function () {
-    $registry = app(BlockRegistry::class);
-    $action = new UpdateContentBlock($registry);
+    $action = app(UpdateContentBlock::class);
 
     /** @var ContentBlock $block */
     $block = ContentBlock::factory()->create();
@@ -300,7 +293,7 @@ it('remaps payload validation errors correctly', function () {
 
 it('logs specific changed properties', function () {
     $registry = app(BlockRegistry::class);
-    $action = new UpdateContentBlock($registry);
+    $action = new UpdateContentBlock($registry, app(EnsurePlacementCapacity::class));
     $user = User::factory()->create();
 
     // 1. Payload only
@@ -337,8 +330,7 @@ it('logs specific changed properties', function () {
 });
 
 it('rejects sort_order outside valid integer range [0, 2147483647]', function () {
-    $registry = app(BlockRegistry::class);
-    $action = new UpdateContentBlock($registry);
+    $action = app(UpdateContentBlock::class);
 
     /** @var ContentBlock $block */
     $block = ContentBlock::factory()->create();
@@ -357,8 +349,7 @@ it('rejects sort_order outside valid integer range [0, 2147483647]', function ()
 });
 
 it('accepts sort_order at valid boundary values 0 and 2147483647', function () {
-    $registry = app(BlockRegistry::class);
-    $action = new UpdateContentBlock($registry);
+    $action = app(UpdateContentBlock::class);
 
     /** @var ContentBlock $block */
     $block = ContentBlock::factory()->create();

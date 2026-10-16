@@ -6,7 +6,6 @@ use App\Domain\Content\Actions\GetBlockServingStatus;
 use App\Domain\Content\Contracts\BlockRegistry;
 use App\Domain\Content\Data\ServingHealthResult;
 use App\Domain\Content\Enums\Placement;
-use App\Domain\Content\Enums\PlacementPage;
 use App\Domain\Content\Enums\PublishStatus;
 use App\Domain\Content\Enums\ServingHealthOutcome;
 use App\Domain\Content\Models\ContentBlock;
@@ -492,7 +491,7 @@ it('filters list table by page tabs with badge counts', function () {
         ->assertCanNotSeeTableRecords([$homeBlock]);
 });
 
-it('renders page badge column and filters by page select', function () {
+it('renders page badge column', function () {
     /** @var User $admin */
     $admin = User::factory()->platformAdmin()->create();
 
@@ -506,7 +505,23 @@ it('renders page badge column and filters by page select', function () {
     Livewire::actingAs($admin)
         ->test(ListContentBlocks::class)
         ->assertTableColumnExists('page')
-        ->set('tableFilters.page.value', PlacementPage::HOME->value)
-        ->assertCanSeeTableRecords([$homeBlock])
-        ->assertCanNotSeeTableRecords([$globalBlock]);
+        ->assertCanSeeTableRecords([$globalBlock, $homeBlock]);
+});
+
+it('scopes placement filter options to active tab and resets placement filter on tab change', function () {
+    /** @var User $admin */
+    $admin = User::factory()->platformAdmin()->create();
+
+    $component = Livewire::actingAs($admin)
+        ->test(ListContentBlocks::class)
+        ->set('activeTab', 'home')
+        ->set('tableFilters.placement.value', Placement::HOME_HERO_CAROUSEL->value);
+
+    expect(data_get($component->get('tableFilters'), 'placement.value'))
+        ->toBe(Placement::HOME_HERO_CAROUSEL->value);
+
+    // Switch tab to global_layout
+    $component->set('activeTab', 'global_layout');
+
+    expect(data_get($component->get('tableFilters'), 'placement.value'))->toBeNull();
 });

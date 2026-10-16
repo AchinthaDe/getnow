@@ -17,7 +17,7 @@ final class EnableContentBlock
 {
     public function __construct(
         private readonly ResolveServablePayload $resolveServablePayload,
-        private readonly EnsurePlacementCapacity $ensurePlacementCapacity = new EnsurePlacementCapacity,
+        private readonly EnsurePlacementCapacity $ensurePlacementCapacity,
     ) {}
 
     public function __invoke(int $id, ?User $causer = null): ContentBlock

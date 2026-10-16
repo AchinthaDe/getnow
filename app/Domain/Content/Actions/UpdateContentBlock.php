@@ -21,7 +21,7 @@ final class UpdateContentBlock
 {
     public function __construct(
         private readonly BlockRegistry $registry,
-        private readonly EnsurePlacementCapacity $ensurePlacementCapacity = new EnsurePlacementCapacity,
+        private readonly EnsurePlacementCapacity $ensurePlacementCapacity,
     ) {}
 
     /**

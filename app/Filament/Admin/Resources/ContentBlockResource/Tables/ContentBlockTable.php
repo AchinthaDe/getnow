@@ -132,24 +132,17 @@ final class ContentBlockTable
                     })
                     ->default(true),
 
-                SelectFilter::make('page')
-                    ->label('Page')
-                    ->options(collect(PlacementPage::cases())->mapWithKeys(fn (PlacementPage $p) => [$p->value => $p->label()])->all())
-                    ->query(function (Builder $query, array $data): Builder {
-                        $state = $data['value'] ?? null;
-                        if (blank($state)) {
-                            return $query;
-                        }
-                        $page = PlacementPage::tryFrom((string) $state);
-                        if ($page === null) {
-                            return $query;
-                        }
-
-                        return $query->whereIn('placement', collect(Placement::forPage($page))->pluck('value'));
-                    }),
-
                 SelectFilter::make('placement')
-                    ->options(collect(Placement::cases())->mapWithKeys(fn (Placement $p) => [$p->value => $p->label()])->all()),
+                    ->options(function (Component $livewire): array {
+                        $activeTab = data_get($livewire, 'activeTab');
+                        $cases = match ($activeTab) {
+                            'home' => Placement::forPage(PlacementPage::HOME),
+                            'global_layout' => Placement::forPage(PlacementPage::GLOBAL_LAYOUT),
+                            default => Placement::cases(),
+                        };
+
+                        return collect($cases)->mapWithKeys(fn (Placement $p) => [$p->value => $p->label()])->all();
+                    }),
 
                 SelectFilter::make('type')
                     ->options(collect(app(BlockRegistry::class)->all())->mapWithKeys(fn ($def, string $key) => [$key => Str::headline($key)])->all()),

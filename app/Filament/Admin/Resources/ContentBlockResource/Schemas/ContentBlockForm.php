@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Admin\Resources\ContentBlockResource\Schemas;
 
+use App\Domain\Content\Actions\CountLiveBlocksForPlacement;
 use App\Domain\Content\Contracts\BlockRegistry;
 use App\Domain\Content\Enums\Placement;
 use App\Domain\Content\Enums\PlacementPage;
@@ -56,6 +57,20 @@ final class ContentBlockForm
                     }
 
                     return collect(Placement::forPage($page))->mapWithKeys(fn (Placement $p) => [$p->value => $p->shortLabel()])->all();
+                })
+                ->helperText(function (Get $get): ?string {
+                    $placementValue = $get('placement');
+                    if (blank($placementValue)) {
+                        return null;
+                    }
+                    $placement = Placement::tryFrom((string) $placementValue);
+                    if ($placement === null) {
+                        return null;
+                    }
+                    $liveCount = app(CountLiveBlocksForPlacement::class)($placement);
+                    $max = $placement->maxCount();
+
+                    return "Live capacity: {$liveCount} / {$max} active block(s).";
                 })
                 ->required()
                 ->live()

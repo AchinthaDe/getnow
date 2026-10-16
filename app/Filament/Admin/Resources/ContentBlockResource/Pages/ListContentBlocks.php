@@ -61,4 +61,9 @@ final class ListContentBlocks extends ListRecords
                 ->badge(ContentBlock::query()->whereIn('placement', $globalPlacements)->count()),
         ];
     }
+
+    public function updatedActiveTab(): void
+    {
+        data_set($this->tableFilters, 'placement.value', null);
+    }
 }
