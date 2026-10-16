@@ -31,4 +31,9 @@ final class FeatureBannerBlock implements BlockDefinition
     {
         return $payload;
     }
+
+    public function defaultMaxLivePerPlacement(): int
+    {
+        return 1;
+    }
 }

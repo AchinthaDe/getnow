@@ -65,6 +65,11 @@ it('updates schema_version properly during UpdateContentBlock', function () {
 
             return $payload;
         }
+
+        public function defaultMaxLivePerPlacement(): int
+        {
+            return 1;
+        }
     };
 
     app(BlockRegistry::class)->register($def);
@@ -138,6 +143,11 @@ it('updates schema_version properly using real validation during UpdateContentBl
             }
 
             return $payload;
+        }
+
+        public function defaultMaxLivePerPlacement(): int
+        {
+            return 1;
         }
     };
 

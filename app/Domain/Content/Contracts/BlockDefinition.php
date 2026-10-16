@@ -22,4 +22,6 @@ interface BlockDefinition
      * @return array<string, mixed>
      */
     public function upgradePayload(int $fromVersion, array $payload): array;
+
+    public function defaultMaxLivePerPlacement(): int;
 }

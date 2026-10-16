@@ -31,4 +31,9 @@ final class PromoSlideBlock implements BlockDefinition
     {
         return $payload;
     }
+
+    public function defaultMaxLivePerPlacement(): int
+    {
+        return 5;
+    }
 }

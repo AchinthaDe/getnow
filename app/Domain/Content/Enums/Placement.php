@@ -55,4 +55,45 @@ enum Placement: string
     {
         return Str::headline($this->value);
     }
+
+    public function page(): PlacementPage
+    {
+        return match ($this) {
+            self::ANNOUNCEMENT_BAR => PlacementPage::GLOBAL_LAYOUT,
+            self::HOME_HERO_CAROUSEL,
+            self::HOME_HERO_SIDE,
+            self::HOME_SERVICE_STRIP,
+            self::HOME_CATEGORIES_HEADER,
+            self::HOME_FEATURED_HEADER,
+            self::HOME_COLLECTION_BANNER,
+            self::HOME_NEW_ARRIVALS_HEADER,
+            self::HOME_BRAND_STRIP => PlacementPage::HOME,
+        };
+    }
+
+    public function shortLabel(): string
+    {
+        return match ($this) {
+            self::ANNOUNCEMENT_BAR => 'Announcement Bar',
+            self::HOME_HERO_CAROUSEL => 'Hero Carousel',
+            self::HOME_HERO_SIDE => 'Hero Side Banner',
+            self::HOME_SERVICE_STRIP => 'Service Strip',
+            self::HOME_CATEGORIES_HEADER => 'Categories Header',
+            self::HOME_FEATURED_HEADER => 'Featured Products Header',
+            self::HOME_COLLECTION_BANNER => 'Collection Banner',
+            self::HOME_NEW_ARRIVALS_HEADER => 'New Arrivals Header',
+            self::HOME_BRAND_STRIP => 'Brand Strip',
+        };
+    }
+
+    /**
+     * @return array<int, self>
+     */
+    public static function forPage(PlacementPage $page): array
+    {
+        return array_values(array_filter(
+            self::cases(),
+            fn (self $placement): bool => $placement->page() === $page
+        ));
+    }
 }

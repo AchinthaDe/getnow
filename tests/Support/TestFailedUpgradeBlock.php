@@ -42,4 +42,9 @@ final class TestFailedUpgradeBlock implements BlockDefinition
 
         return $payload;
     }
+
+    public function defaultMaxLivePerPlacement(): int
+    {
+        return 1;
+    }
 }
