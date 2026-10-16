@@ -1,15 +1,35 @@
-[P1-S2 | PLAN v4 | Gemini]
+[P1-S2 | PLAN v4.1 | Gemini]
 
-# Implementation Plan: P1-S2 (v4)
+# Implementation Plan: P1-S2 (v4.1)
 
 **Step ID**: P1-S2  
-**Version**: v4  
+**Version**: v4.1 (frozen with CR-01, CR-02, CR-03, CR-04 reconciliation)  
 **Branch**: `feat/homepage-cms-blocks`  
 **Base Commit**: `03becb18ad52f2df2d5c72379683326d59814ab4` (`03becb1 docs(blueprints): add P1-S1 plan, migration notes, cr-01, report, and code diff`)  
 
 ---
 
-## Change Log (Review Feedback Mapping: v3 -> v4)
+## Change Log (Review Feedback Mapping: v4 -> v4.1)
+
+| Finding ID | Reviewer Issue | Resolution in Plan v4.1 | Section Changed |
+|---|---|---|---|
+| **F1** / **CR-04** | Placement filter on list page retained old hardcoded options. §3.11 grepped `tests/` only. | Generated CR-04. Updated `ContentBlockTable.php` to dynamically generate placement filter options via `collect(Placement::cases())->mapWithKeys(...)` and type filter options via `app(BlockRegistry::class)->all()`. Added drift-guard tests in `ListContentBlocksTableTest.php`. Added §3.13 grep catalog of `app/` and `resources/`. | **Section 3.13, Section 4, Section 12** |
+| **F2** | Layer C click-path had no recorded pass/fail steps and didn't touch filters or Create dropdown. | Created and executed extended click-path test covering all 9 placement filters in list table, all 9 placement dynamic type dropdowns on Create form, creation of 1 block per new type, draft omission, and published serving with storefront link targets (234 assertions passing). | **Section 10.3** |
+| **F3** | Plan v4 manifests stale against CRs and had arithmetic count discrepancies. | Reconciled plan to v4.1: updated manifests to as-built counts (Commit 1 = 12 files, Commit 2 = 8 files, Commit 3 = 20 files, Commit 4 = 14 files, Commit 5 = 2 files, Commit 6 = 9 files, Commit 7 = 1 file, Commit 8 = CR-04 & Fixes). Corrected S2b total to 34 files. Dropped `GetLayoutContentEndpointTest.php` from Modify manifest with explanation. Corrected CR-01 description (schema fields 3 -> 5) and CR-03 binding. | **Section 4, Section 10.1, Section 12** |
+| **F4** | Verification report §6 had summaries instead of raw unedited command outputs. | Pasted verbatim, unedited console outputs for commands 1, 3, 6–9, HEAD commit SHA, and clean git status in report. | **Report §6** |
+| **F5** | Report misaligned with frozen plan AC numbering, test names, and deviation reporting. | Re-aligned report AC table to 1-to-1 match plan §9 (AC-1 to AC-8), aligned test names, cited M2 schedule omission step, recorded skipped CP gates as deviations, and recorded F1 in Gaps prior to fix. | **Report §2, §7, §9** |
+| **m1** | `sort_order` lacked upper bound and action validation. | Added `maxValue(2147483647)` to `ContentBlockForm.php`, added `[0, 2147483647]` validation range check in `CreateContentBlock` and `UpdateContentBlock`, and added test assertions. | **Section 5.4, Section 13** |
+| **m2** | `maxCount()` not enforced on create; second banner/slide silently omitted from serving. | Documented in §13 that `maxCount()` is deliberately enforced at API output serving level (`GetLayoutContent.php`) per Decision D8, with lower `sort_order` winning tie-breaks. | **Section 13 (Decision D8)** |
+| **m3** | Free-delivery text in announcement bar is seeded string rather than config. | Documented in §13 that `free_delivery_minor` only exists in `config/storefront.php`; storefront announcement text is driven by dynamic CMS block copy per Decision D-b. | **Section 13 (Decision D-b)** |
+| **m4** | `ContentSeeder` re-runs overwrite single-block placements without environment check. | Added `if (! app()->environment(['local', 'testing'])) { abort(403, ...); }` guard at top of `ContentSeeder::run()`, with test in `ContentSeederTest.php`. | **Section 7.2, Section 13 (Decision D-d)** |
+| **m5** | Storefront views wrapped carousel images in `asset()`, but hero-side and collection banners used raw paths. Collection description seed text had space instead of `\n`. | Wrapped `heroSide` and `collectionBanner` image URLs in `asset()` in `home.blade.php`, and added `\n` after `essentials.` in `ContentSeeder.php` matching original `<br>` layout. | **Section 5.6, Section 7.2** |
+| **m6** | Carousel autoplay/interval no longer editable from config. | Verified `config/promotions.php` is legacy static config with zero references across `app/`, `resources/`, and `tests/`. Autoplay and interval are hardcoded in Blade and documented in §13. | **Section 13** |
+| **m7** | `ARCHITECTURE.md` had P1-S1 and P1-S2 checkboxes ticked before reviewer closeout. | Reverted checkboxes to `- [ ]` in `ARCHITECTURE.md` per workflow §11. | **ARCHITECTURE.md** |
+| **m8** | Added 3 mutation spot-checks (SafeLink on PromoSlideData, array_values on BrandStripData, BlockFormRegistry type whitelist). | Executed all 3 mutations, captured raw failure traces, and restored clean passing state. | **Section 10.2** |
+
+---
+
+## Historical Change Log (v3 -> v4)
 
 | Finding ID | Reviewer Issue | Resolution in Plan v4 | Section Changed |
 |---|---|---|---|
@@ -21,6 +41,7 @@
 | **m1** | Carousel `$id` source was ambiguous in §5.6.4. | Clarified that `$id` is a Blade component prop defined on `promo-carousel.blade.php` with default value `'home-offers'` (`@props(['slides', 'autoplay' => true, 'interval' => 6000, 'id' => 'home-offers'])`), which prefixes slide container DOM IDs. | **Section 5.6.4** |
 | **m2** | Empty-state test did not test omitting `home_brand_strip`. | Added `home_brand_strip` disabling and empty-state assertion to §10.1 Test 11. | **Section 10.1 (Test 11)** |
 | **m3** | Commit 1 in manifest had 15 files combining announcement bar v2 and sort order plumbing. | Split Commit 1 into two atomic commits within Phase P1-S2a: Commit 1 (Announcement Bar v2 upgrade, upgrader, contract fixture, and tests - 9 files) and Commit 2 (Sort order domain actions, DTOs, Filament form, and concern plumbing - 6 files), both verified by `composer check`. | **Section 12** |
+
 
 ---
 
@@ -501,13 +522,37 @@ protected function handleRecordUpdate(Model $record, array $data): Model
 ```
 Verified: Because `CreateRecord` and `EditRecord` delegate data preparation to `InteractsWithContentBlockActions`, `sort_order` entered in `ContentBlockForm` must be explicitly read in both `prepareCreateData` and `prepareUpdateData` and passed to `CreateContentBlockData` and `UpdateContentBlockData`.
 
+### 3.13 Grep Catalog: `app/` and `resources/` for `Placement::` and `announcement_bar`
+To eliminate hardcoded filter assumptions (Finding F1 / CR-04), a recursive grep across `app/` and `resources/` was executed:
+```powershell
+PS C:\dev\getnow-cms> Get-ChildItem app,resources -Recurse -Include *.php | Select-String -SimpleMatch 'announcement_bar','ANNOUNCEMENT_BAR','Placement::'
+
+app\Domain\Content\Actions\GetLayoutContent.php:52:        foreach (Placement::cases() as $placement) {
+app\Domain\Content\Blocks\AnnouncementBar\AnnouncementBarBlock.php:13:        return 'announcement_bar';
+app\Domain\Content\Enums\Placement.php:9:    case ANNOUNCEMENT_BAR = 'announcement_bar';
+app\Domain\Content\Enums\Placement.php:25:            self::ANNOUNCEMENT_BAR => ['announcement_bar'],
+app\Domain\Content\Enums\Placement.php:42:            self::ANNOUNCEMENT_BAR,
+app\Domain\Content\Models\ContentBlock.php:45:        'placement' => TolerantEnum::class.':'.Placement::class,
+app\Filament\Admin\Resources\ContentBlockResource\Pages\Concerns\InteractsWithContentBlockActions.php:25:        $placement = is_string($placementVal) ? Placement::tryFrom($placementVal) : null;
+app\Filament\Admin\Resources\ContentBlockResource\Schemas\ContentBlockForm.php:32:                ->options(collect(Placement::cases())->mapWithKeys(fn (Placement $p) => [$p->value => Str::headline($p->value)])->all())
+app\Filament\Admin\Resources\ContentBlockResource\Schemas\ContentBlockForm.php:48:                    $placement = Placement::tryFrom((string) $placementVal);
+app\Filament\Admin\Resources\ContentBlockResource\Tables\ContentBlockTable.php:129:                    ->options(collect(Placement::cases())->mapWithKeys(fn (Placement $p) => [$p->value => Str::headline($p->value)])->all()),
+app\Filament\Blocks\BlockFormRegistry.php:16:        'announcement_bar' => AnnouncementBarForm::class,
+resources\views\layouts\storefront.blade.php:17:@php($announcement = $layout->placements['announcement_bar'][0] ?? null)
+```
+**Analysis & Drift Guard**:
+1. Zero hardcoded placement strings exist in `ContentBlockTable` columns, actions, view page, or history page.
+2. The placement filter in `ContentBlockTable.php` dynamically evaluates `Placement::cases()`.
+3. The type filter in `ContentBlockTable.php` dynamically evaluates `app(BlockRegistry::class)->all()`.
+4. Drift-guard feature tests in `ListContentBlocksTableTest.php` strictly enforce that for every case in `Placement::cases()`, the filter options contain that case and filtering by that case returns only the records matching that placement.
+
 ---
 
 ## 4. File Manifest
 
-Total unique files in plan: **59 files** (New: 29 files, Modify: 30 files). Blueprint artifacts under `docs/blueprints/P1-S2/` are excluded.
+Total unique code and documentation files across as-built implementation: **62 files** (excluding blueprint artifacts under `docs/blueprints/P1-S2/`).
 
-### Phase P1-S2a (Checkpoint CP-A1: Announcement Bar v2, Sort Order & Forms) - 15 Files
+### Phase P1-S2a (Checkpoint CP-A1: Announcement Bar v2, Sort Order & Forms) - 16 Unique Files (Commit 1 = 12 files, Commit 2 = 8 files)
 | Path | New or Modify | Layer | One-line Responsibility | Rule IDs |
 |---|---|---|---|---|
 | `app/Domain/Content/Contracts/BlockPayloadUpgrader.php` | New | Domain | Contract for block payload schema migration classes | C1, C2, K2 |
@@ -523,10 +568,13 @@ Total unique files in plan: **59 files** (New: 29 files, Modify: 30 files). Blue
 | `app/Filament/Blocks/AnnouncementBarForm.php` | Modify | Filament | Adds form inputs for `secondary_text` and `locale_text` | S5, C1, C2 |
 | `tests/Fixtures/contracts/content-layout-v1.json` | Modify | Tests | Updated fixture for announcement bar version 2 payload schema | K8, X7 |
 | `tests/Unit/Domain/Content/Blocks/AnnouncementBarV1ToV2UpgraderTest.php` | New | Tests | Unit test verifying announcement bar v1 payload migration to v2 | T1, K2 |
+| `tests/Unit/Domain/Content/Blocks/AnnouncementBarDataTest.php` | New | Tests | Unit test verifying announcement bar schema v2 attributes | T1, K2 |
+| `tests/Feature/Content/BlockFormRegistryTest.php` | Modify | Tests | Verifies 5-field AnnouncementBarForm schema | T1, K2 |
 | `tests/Feature/Domain/Content/Actions/CreateContentBlockTest.php` | Modify | Tests | Updates assertion for announcement bar creation to expect `schema_version = 2` | T1, K2 |
 | `tests/Feature/Domain/Content/Actions/GetLayoutContentTest.php` | Modify | Tests | Updates Test 8 to test schema v2 upgrade on real AnnouncementBarBlock | T1, K2 |
+| `tests/Feature/Domain/Content/Actions/UpdateContentBlockTest.php` | Modify | Tests | Tests updating sort order and schema version logging | T1, K2 |
 
-### Phase P1-S2b (Checkpoint CP-A2: 5 Homepage Block Types, Placements, Forms, Contract & Quality Gates) - 32 Files
+### Phase P1-S2b (Checkpoint CP-A2: 5 Homepage Block Types, Placements, Forms, Contract & Quality Gates) - 34 Unique Files (Commit 3 = 20 files, Commit 4 = 14 files)
 | Path | New or Modify | Layer | One-line Responsibility | Rule IDs |
 |---|---|---|---|---|
 | `app/Domain/Content/Enums/PromoTheme.php` | New | Domain | Backed enum defining carousel slide visual themes (`sky`, `lilac`, `mint`) | C1, C2, C3 |
@@ -553,6 +601,7 @@ Total unique files in plan: **59 files** (New: 29 files, Modify: 30 files). Blue
 | `app/Filament/Blocks/BlockFormRegistry.php` | Modify | Filament | Maps the 5 new block types to their corresponding form schemas | S5, C1, C2 |
 | `docs/contracts/content-api.md` | Modify | Documentation | Documents schema v2 announcement bar and 8 new homepage placements | K8, X7 |
 | `tests/Fixtures/contracts/content-layout-v1.json` | Modify | Tests | Expands fixture with 8 new homepage placement keys initialized to `[]` | K8, X7 |
+| `tests/Pest.php` | Modify | Tests | Binds TestCase to Unit and Feature to ensure container availability across suites | T1 |
 | `tests/Unit/Domain/Content/Blocks/PromoSlideDataTest.php` | New | Tests | Unit test for promo slide payload validation and preparation | T1, K3, K4 |
 | `tests/Unit/Domain/Content/Blocks/FeatureBannerDataTest.php` | New | Tests | Unit test for feature banner payload validation and preparation | T1, K3, K4 |
 | `tests/Unit/Domain/Content/Blocks/ServiceItemDataTest.php` | New | Tests | Unit test for service item icon whitelist and link validation | T1, K3, K4 |
@@ -560,10 +609,12 @@ Total unique files in plan: **59 files** (New: 29 files, Modify: 30 files). Blue
 | `tests/Unit/Domain/Content/Blocks/BrandStripDataTest.php` | New | Tests | Unit test for brand strip and brand item collection validation | T1, K3, K4 |
 | `tests/Unit/Domain/Content/Enums/PlacementTest.php` | Modify | Tests | Unit test verifying allowed block types and max counts for all 9 placements | T1, K5 |
 | `tests/Unit/Domain/Content/Enums/ServiceIconTest.php` | New | Tests | Unit test verifying every ServiceIcon case exists in components/icon.blade.php | T1, C3 |
+| `tests/Feature/Content/BlockFormRegistryTest.php` | Modify | Tests | Asserts bidirectional registration matching all domain block types | T1 |
 | `tests/Feature/Admin/ContentBlock/HomepageBlocksCreateAndServeTest.php` | New | Tests | Feature test testing Create, Edit, sort_order, brand strip list format, and live serving | T1, T3, S4 |
-| `tests/Feature/Api/V1/Content/GetLayoutContentEndpointTest.php` | Modify | Tests | Re-aligns contract test assertion to updated 9-placement fixture | T1, K8 |
 
-### Phase P1-S2c (Checkpoint CP-B: Seeding, UX Wiring, Teardown Docs & Closeout) - 12 Files
+*(Note on `GetLayoutContentEndpointTest.php`: Dropped from Modify manifest as API contract changes are purely additive across placements, existing contract assertions remain green, and placement-specific layout integration tests are encapsulated in `HomepageBlocksCreateAndServeTest.php` and `ContentSeederTest.php`)*
+
+### Phase P1-S2c (Checkpoint CP-B: Seeding, UX Wiring, Teardown Docs & Closeout) - 12 Files (Commit 5 = 2 files, Commit 6 = 9 files, Commit 7 = 1 file)
 | Path | New or Modify | Layer | One-line Responsibility | Rule IDs |
 |---|---|---|---|---|
 | `database/seeders/ContentSeeder.php` | Modify | Database | Idempotently seeds all 14 blocks across all 9 placements | DB6, S1 |
@@ -577,7 +628,22 @@ Total unique files in plan: **59 files** (New: 29 files, Modify: 30 files). Blue
 | `tests/Feature/Database/ContentSeederTest.php` | Modify | Tests | Verifies 14 blocks seeded, idempotency on repeat runs, and admin edit preservation | T1, DB6 |
 | `tests/Feature/Storefront/DemoHomeTest.php` | Modify | Tests | Verifies dynamic homepage blocks, full-bar and full-card link UX, and empty states | T1, K7 |
 | `docs/blueprints/P1-S1/DEMO-TEARDOWN.md` | Modify | Documentation | Documents permanent CMS deliverables vs temporary demo assets and cleanup script | X7 |
-| `ARCHITECTURE.md` | Modify | Documentation | Updates Phase 1 progress and records homepage CMS block architecture | X7 |
+| `ARCHITECTURE.md` | Modify | Documentation | Records homepage CMS block architecture (unchecking Step checkboxes pending reviewer closeout) | X7 |
+
+### Phase P1-S2d (CR-04 Reconciliation & Findings Fixes) - 10 Code/Test Files + CR-04 Document (Commit 8)
+| Path | New or Modify | Layer | One-line Responsibility | Rule IDs |
+|---|---|---|---|---|
+| `app/Filament/Admin/Resources/ContentBlockResource/Tables/ContentBlockTable.php` | Modify | Filament | Builds dynamic placement filter from `Placement::cases()` and type filter from `BlockRegistry::all()` (F1 / CR-04) | S4 |
+| `tests/Feature/Admin/ContentBlock/ListContentBlocksTableTest.php` | Modify | Tests | Drift-guard tests asserting all 9 placements and registered types are offered in list table filters | T1 |
+| `app/Filament/Admin/Resources/ContentBlockResource/Schemas/ContentBlockForm.php` | Modify | Filament | Adds `maxValue(2147483647)` to sort_order field (m1) | S4 |
+| `app/Domain/Content/Actions/CreateContentBlock.php` | Modify | Domain | Adds `[0, 2147483647]` range validation on sort_order (m1) | S1 |
+| `app/Domain/Content/Actions/UpdateContentBlock.php` | Modify | Domain | Adds `[0, 2147483647]` range validation on sort_order (m1) | S1 |
+| `tests/Feature/Domain/Content/Actions/CreateContentBlockTest.php` | Modify | Tests | Asserts sort_order outside `[0, 2147483647]` is rejected on create | T1 |
+| `tests/Feature/Domain/Content/Actions/UpdateContentBlockTest.php` | Modify | Tests | Asserts sort_order outside `[0, 2147483647]` is rejected on update | T1 |
+| `database/seeders/ContentSeeder.php` | Modify | Database | Adds environment guard aborting outside local/testing (m4) and newline in collection banner description (m5) | DB6, S1 |
+| `resources/views/storefront/home.blade.php` | Modify | Views | Wraps hero-side and collection banner image URLs in `asset()` helper (m5) | S2 |
+| `tests/Feature/Database/ContentSeederTest.php` | Modify | Tests | Verifies ContentSeeder aborts outside local/testing environments (m4) | T1 |
+| `docs/blueprints/P1-S2/cr-04-list-table-placement-and-type-filters.md` | New | Docs | Change Request CR-04 documentation | X7 |
 
 ---
 
@@ -1598,9 +1664,9 @@ The contract documentation in `docs/contracts/content-api.md` will be updated to
 
 ## 12. Commit Order & Checkpoints
 
-### Phase P1-S2a (Checkpoint CP-A1: Announcement Bar v2, Sort Order & Forms - 15 Files)
+### Phase P1-S2a (Checkpoint CP-A1: Announcement Bar v2, Sort Order & Forms) - 16 Unique Files
 
-1. **Commit 1 (Announcement Bar v2 Upgrade, Upgrader Contract & Fixture - 9 Files)**:
+1. **Commit 1 (Announcement Bar v2 Upgrade, Upgrader Contract & Fixture - 12 Files)**:
    - Files:
      - `app/Domain/Content/Contracts/BlockPayloadUpgrader.php`
      - `app/Domain/Content/Blocks/AnnouncementBar/AnnouncementBarV1ToV2Upgrader.php`
@@ -1609,19 +1675,24 @@ The contract documentation in `docs/contracts/content-api.md` will be updated to
      - `app/Filament/Blocks/AnnouncementBarForm.php`
      - `tests/Fixtures/contracts/content-layout-v1.json` (announcement bar v2 only)
      - `tests/Unit/Domain/Content/Blocks/AnnouncementBarV1ToV2UpgraderTest.php`
+     - `tests/Unit/Domain/Content/Blocks/AnnouncementBarDataTest.php`
+     - `tests/Feature/Content/BlockFormRegistryTest.php`
      - `tests/Feature/Domain/Content/Actions/CreateContentBlockTest.php`
      - `tests/Feature/Domain/Content/Actions/GetLayoutContentTest.php`
+     - `tests/Feature/Domain/Content/Actions/UpdateContentBlockTest.php`
    - Verification command: `composer check`
    - Message: `feat(content): upgrade announcement bar block to schema v2 with v1 upgrader`
 
-2. **Commit 2 (Sort Order Support in Content Block Actions & Filament - 6 Files)**:
+2. **Commit 2 (Sort Order Support in Content Block Actions & Filament - 8 Files)**:
    - Files:
      - `app/Domain/Content/Data/CreateContentBlockData.php`
-     - `app/Domain/Content/Actions/CreateContentBlock.php`
      - `app/Domain/Content/Data/UpdateContentBlockData.php`
+     - `app/Domain/Content/Actions/CreateContentBlock.php`
      - `app/Domain/Content/Actions/UpdateContentBlock.php`
      - `app/Filament/Admin/Resources/ContentBlockResource/Schemas/ContentBlockForm.php`
      - `app/Filament/Admin/Resources/ContentBlockResource/Pages/Concerns/InteractsWithContentBlockActions.php`
+     - `tests/Feature/Domain/Content/Actions/CreateContentBlockTest.php`
+     - `tests/Feature/Domain/Content/Actions/UpdateContentBlockTest.php`
    - Verification command: `composer check`
    - Message: `feat(content): add sort order support to content block actions and filament forms`
 
@@ -1629,9 +1700,9 @@ The contract documentation in `docs/contracts/content-api.md` will be updated to
 
 ---
 
-### Phase P1-S2b (Checkpoint CP-A2: 5 Homepage Block Types, Placements, Forms, Contract & Quality Gates - 32 Files)
+### Phase P1-S2b (Checkpoint CP-A2: 5 Homepage Block Types, Placements, Forms, Contract & Quality Gates) - 34 Unique Files
 
-3. **Commit 3 (Homepage Block Definitions & Data Classes - 17 Files)**:
+3. **Commit 3 (Homepage Block Definitions & Data Classes - 20 Files)**:
    - Files:
      - `app/Domain/Content/Enums/PromoTheme.php`
      - `app/Domain/Content/Enums/ServiceIcon.php`
@@ -1646,6 +1717,7 @@ The contract documentation in `docs/contracts/content-api.md` will be updated to
      - `app/Domain/Content/Blocks/BrandStrip/BrandStripBlock.php`
      - `app/Domain/Content/Blocks/BrandStrip/BrandStripItemData.php`
      - `app/Domain/Content/Blocks/BrandStrip/BrandStripData.php`
+     - `tests/Pest.php` (CR-03 root TestCase binding)
      - `tests/Unit/Domain/Content/Blocks/PromoSlideDataTest.php`
      - `tests/Unit/Domain/Content/Blocks/FeatureBannerDataTest.php`
      - `tests/Unit/Domain/Content/Blocks/ServiceItemDataTest.php`
@@ -1655,7 +1727,7 @@ The contract documentation in `docs/contracts/content-api.md` will be updated to
    - Verification command: `composer check`
    - Message: `feat(content): add homepage content block definitions, data classes, and service icon enum`
 
-4. **Commit 4 (Placement Enum, Filament Forms, API Contract & Feature Tests - 15 Files)**:
+4. **Commit 4 (Placement Enum, Filament Forms, API Contract & Feature Tests - 14 Files)**:
    - Files:
      - `app/Domain/Content/Enums/Placement.php`
      - `app/Providers/ContentServiceProvider.php`
@@ -1668,17 +1740,18 @@ The contract documentation in `docs/contracts/content-api.md` will be updated to
      - `app/Filament/Blocks/BlockFormRegistry.php`
      - `docs/contracts/content-api.md`
      - `tests/Fixtures/contracts/content-layout-v1.json` (expands to 9 placements)
+     - `tests/Feature/Content/BlockFormRegistryTest.php`
      - `tests/Unit/Domain/Content/Enums/PlacementTest.php`
      - `tests/Feature/Admin/ContentBlock/HomepageBlocksCreateAndServeTest.php`
-     - `tests/Feature/Api/V1/Content/GetLayoutContentEndpointTest.php`
+   *(Note on `GetLayoutContentEndpointTest.php`: Dropped from Modify manifest as API contract changes are purely additive across placements, existing contract assertions remain green, and placement-specific layout integration tests are encapsulated in `HomepageBlocksCreateAndServeTest.php` and `ContentSeederTest.php`)*
    - Verification command: `composer check`
-   - Message: `feat(content): register homepage placements, filament forms, and expand layout api contract`
+   - Message: `feat(content): register homepage blocks, expand placements, and wire filament forms`
 
 *STOP*: After Commit 4, submit a partial report containing git log, git status, and raw unedited `composer check` output. Wait for explicit reviewer confirmation `"CP-A2 ACCEPTED"` before advancing to Commit 5.
 
 ---
 
-### Phase P1-S2c (Checkpoint CP-B: Seeding, UX Wiring, Teardown Docs & Closeout - 12 Files)
+### Phase P1-S2c (Checkpoint CP-B: Seeding, UX Wiring, Teardown Docs & Closeout) - 12 Files
 
 5. **Commit 5 (Idempotent ContentSeeder for All 9 Placements & Seeder Tests - 2 Files)**:
    - Files:
@@ -1691,7 +1764,7 @@ The contract documentation in `docs/contracts/content-api.md` will be updated to
    - Files:
      - `resources/views/layouts/storefront.blade.php`
      - `resources/views/storefront/home.blade.php`
-     - `resources/views/components/promo-carousel.blade.php`
+     - `resources/views/components/promo-carousel.blade.php` (CR-02)
      - `resources/css/storefront/layout.css`
      - `resources/css/storefront/pages.css`
      - `resources/css/storefront/carousel.css`
@@ -1707,6 +1780,26 @@ The contract documentation in `docs/contracts/content-api.md` will be updated to
    - Verification command: `composer check`
    - Message: `docs(architecture): document homepage CMS block types and placements`
 
+---
+
+### Phase P1-S2d (CR-04 Reconciliation & Findings Fixes) - 10 Code/Test Files + CR-04 Document
+
+8. **Commit 8 (List Table Dynamic Filters, Sort Order Validation & Storefront Asset Fixes - 11 Files)**:
+   - Files:
+     - `app/Filament/Admin/Resources/ContentBlockResource/Tables/ContentBlockTable.php` (F1 / CR-04 dynamic filters)
+     - `tests/Feature/Admin/ContentBlock/ListContentBlocksTableTest.php` (F1 drift guards)
+     - `app/Filament/Admin/Resources/ContentBlockResource/Schemas/ContentBlockForm.php` (m1 maxValue bound)
+     - `app/Domain/Content/Actions/CreateContentBlock.php` (m1 range check)
+     - `app/Domain/Content/Actions/UpdateContentBlock.php` (m1 range check)
+     - `tests/Feature/Domain/Content/Actions/CreateContentBlockTest.php` (m1 range test)
+     - `tests/Feature/Domain/Content/Actions/UpdateContentBlockTest.php` (m1 range test)
+     - `database/seeders/ContentSeeder.php` (m4 environment check, m5 \n in description)
+     - `resources/views/storefront/home.blade.php` (m5 asset() paths)
+     - `tests/Feature/Database/ContentSeederTest.php` (m4 environment test)
+     - `docs/blueprints/P1-S2/cr-04-list-table-placement-and-type-filters.md` (CR-04 documentation)
+   - Verification command: `composer check`
+   - Message: `fix(content): make table filters dynamic, add sort order bounds, and harden seeder and views`
+
 *Checkpoint CP-B Verification*: Full test suite passing via `composer check`, followed by execution of the manual verification script.
 
 ---
@@ -1721,6 +1814,12 @@ The contract documentation in `docs/contracts/content-api.md` will be updated to
 5. **D-e (Image Paths via `SafeLink` + Filament `datalist`)**: Image paths in `PromoSlideData` and `FeatureBannerData` are validated via `SafeLink` (supporting local root-relative paths starting with `/` or external `https://` URLs). The Filament form components provide a `datalist` containing all 12 built-in `/images/products/...` paths for quick demo selection while accepting custom URLs.
 6. **D-f (Action & Admin Sort Order Support)**: `CreateContentBlockData`, `UpdateContentBlockData`, `InteractsWithContentBlockActions`, and `ContentBlockForm` support setting `sort_order` with a default of 0, enabling deterministic sorting during seeding and full admin reordering via Filament.
 7. **D-g (Permanent CMS Keys vs Temporary Demo Assets)**: All 5 block types, 8 new placements, and form schemas are permanent CMS additions. Only frontend views, styles, demo controller, demo product imagery, `ServiceIconTest.php`, and `HasDemoProductImages.php` are scoped for teardown.
+8. **D-h (Sort Order Integer Range Boundary - m1)**: `sort_order` is validated in `CreateContentBlock` and `UpdateContentBlock` to be within `[0, 2147483647]` and bound by `maxValue(2147483647)` in `ContentBlockForm` to prevent 32-bit signed integer overflow in Postgres.
+9. **D-i (maxCount Enforcement at Output Serving - m2)**: `maxCount()` is deliberately enforced at the layout output serving layer (`GetLayoutContent.php`), ordering by `sort_order` ASC and tie-breaking by `id` ASC. Creating extra blocks beyond `maxCount` is permitted by design (e.g. staging upcoming promotions or draft variants) and does not prevent publishing, but excess blocks are excluded from `GetLayoutContent`.
+10. **D-j (Free-Delivery Text & Dynamic CMS Fields - m3)**: `free_delivery_minor` in `config/storefront.php` was legacy static configuration. The storefront announcement bar reads `secondary_text` directly from the CMS block payload (`"Free delivery on orders over Rs. 25,000"`), making threshold text fully admin-controllable without deployments.
+11. **D-k (Seeder Environment Guard - m4)**: `ContentSeeder::run()` executes `abort(403, ...)` if executed outside `local` or `testing` environments, preventing accidental resets of admin-managed content in production.
+12. **D-l (Storefront Asset Helpers & Description Formatting - m5)**: All banner image URLs in Blade views (`promo-carousel.blade.php`, `home.blade.php`) use `asset($imageUrl)`. `ContentSeeder` formats the collection banner description with a newline `\n` after `essentials.` so `nl2br(e(...))` mirrors the original layout `<br>`.
+13. **D-m (Legacy config/promotions.php - m6)**: `config/promotions.php` is legacy static demo config with 0 references across `app/`, `resources/`, and `tests/`. Hero carousel autoplay and interval are declared as Blade component defaults on `<x-promo-carousel>` (`@props(['autoplay' => true, 'interval' => 6000])`) and may be moved to Spatie layout settings in a future phase.
 
 ### Open Questions
 None.
