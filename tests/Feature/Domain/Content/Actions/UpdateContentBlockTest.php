@@ -42,7 +42,7 @@ it('updates block and logs activity', function () {
         causer: $user
     );
 
-    expect($updated->payload)->toBe(['text' => 'new text', 'link_url' => null, 'tone' => 'success'])
+    expect($updated->payload)->toBe(['text' => 'new text', 'secondary_text' => null, 'locale_text' => null, 'link_url' => null, 'tone' => 'success'])
         ->and($updated->updated_by)->toBe($user->id);
 
     \Pest\Laravel\assertDatabaseHas('activity_log', [
@@ -174,7 +174,7 @@ it('writes nothing if identical data resubmitted but jsonb order differs', funct
 
     // Overwrite payload using raw DB with reversed keys
     DB::update(
-        "UPDATE content_blocks SET payload = '{\"tone\": \"info\", \"text\": \"hello\", \"link_url\": null}'::jsonb WHERE id = ?",
+        "UPDATE content_blocks SET payload = '{\"tone\": \"info\", \"text\": \"hello\", \"link_url\": null, \"locale_text\": null, \"secondary_text\": null}'::jsonb WHERE id = ?",
         [$block->id]
     );
 

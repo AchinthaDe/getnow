@@ -11,9 +11,11 @@
         {
           "id": "<ulid>",
           "type": "announcement_bar",
-          "version": 1,
+          "version": 2,
           "data": {
             "text": "Welcome to GetNow Wholesale Electronics",
+            "secondary_text": null,
+            "locale_text": null,
             "link_url": null,
             "tone": "info"
           }

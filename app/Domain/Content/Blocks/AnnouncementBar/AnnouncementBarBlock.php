@@ -15,7 +15,7 @@ final class AnnouncementBarBlock implements BlockDefinition
 
     public function schemaVersion(): int
     {
-        return 1;
+        return 2;
     }
 
     public function dataClass(): string
@@ -33,7 +33,10 @@ final class AnnouncementBarBlock implements BlockDefinition
             throw new \Exception('Triggered upgrade failure for testing.');
         }
 
-        // No upgrades needed yet, version is 1.
+        if ($fromVersion === 1) {
+            return (new AnnouncementBarV1ToV2Upgrader)($payload);
+        }
+
         return $payload;
     }
 }

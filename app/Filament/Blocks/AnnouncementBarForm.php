@@ -23,6 +23,16 @@ final class AnnouncementBarForm implements BlockForm
                 ->trim()
                 ->maxLength(AnnouncementBarData::TEXT_MAX_LENGTH),
 
+            TextInput::make('secondary_text')
+                ->nullable()
+                ->trim()
+                ->maxLength(AnnouncementBarData::SECONDARY_TEXT_MAX_LENGTH),
+
+            TextInput::make('locale_text')
+                ->nullable()
+                ->trim()
+                ->maxLength(AnnouncementBarData::LOCALE_TEXT_MAX_LENGTH),
+
             TextInput::make('link_url')
                 ->nullable()
                 ->trim(),

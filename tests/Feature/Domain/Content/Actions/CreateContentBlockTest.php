@@ -34,9 +34,15 @@ it('creates block and logs activity', function () {
     );
 
     expect($block->status)->toBe(PublishStatus::DRAFT)
-        ->and($block->payload)->toBe(['text' => 'hello', 'link_url' => null, 'tone' => 'info'])
+        ->and($block->payload)->toBe([
+            'text' => 'hello',
+            'secondary_text' => null,
+            'locale_text' => null,
+            'link_url' => null,
+            'tone' => 'info',
+        ])
         ->and($block->created_by)->toBe($user->id)
-        ->and($block->schema_version)->toBe(1);
+        ->and($block->schema_version)->toBe(2);
 
     \Pest\Laravel\assertDatabaseHas('activity_log', [
         'subject_type' => ContentBlock::class,

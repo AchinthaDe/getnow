@@ -16,14 +16,24 @@ final class AnnouncementBarData extends BlockPayload
 {
     public const int TEXT_MAX_LENGTH = 120;
 
+    public const int SECONDARY_TEXT_MAX_LENGTH = 120;
+
+    public const int LOCALE_TEXT_MAX_LENGTH = 60;
+
     public function __construct(
         #[Min(1), Max(self::TEXT_MAX_LENGTH), Rule(new NoHtml)]
         public string $text,
 
-        #[Rule(new SafeLink)]
-        public ?string $link_url,
+        #[Max(self::SECONDARY_TEXT_MAX_LENGTH), Rule(new NoHtml)]
+        public ?string $secondary_text = null,
 
-        public Tone $tone,
+        #[Max(self::LOCALE_TEXT_MAX_LENGTH), Rule(new NoHtml)]
+        public ?string $locale_text = null,
+
+        #[Rule(new SafeLink)]
+        public ?string $link_url = null,
+
+        public Tone $tone = Tone::INFO,
     ) {}
 
     /**
@@ -32,6 +42,24 @@ final class AnnouncementBarData extends BlockPayload
      */
     public static function prepareForPipeline(array $payload): array
     {
+        if (isset($payload['text']) && is_string($payload['text'])) {
+            $payload['text'] = trim($payload['text']);
+        }
+
+        if (array_key_exists('secondary_text', $payload)) {
+            if (is_string($payload['secondary_text'])) {
+                $trimmed = trim($payload['secondary_text']);
+                $payload['secondary_text'] = $trimmed === '' ? null : $trimmed;
+            }
+        }
+
+        if (array_key_exists('locale_text', $payload)) {
+            if (is_string($payload['locale_text'])) {
+                $trimmed = trim($payload['locale_text']);
+                $payload['locale_text'] = $trimmed === '' ? null : $trimmed;
+            }
+        }
+
         if (isset($payload['link_url']) && is_string($payload['link_url'])) {
             $url = trim($payload['link_url']);
             if ($url === '') {
