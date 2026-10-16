@@ -13,6 +13,8 @@ use App\Filament\Admin\Resources\ContentBlockResource;
 use App\Filament\Admin\Resources\ContentBlockResource\Pages\ListContentBlocks;
 use App\Models\User;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Contracts\HasTable;
+use Filament\Tables\Filters\SelectFilter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Config;
@@ -391,4 +393,81 @@ it('executes transition actions and updates table state reactively', function ()
 
     $block->refresh();
     expect($block->status)->toBe(PublishStatus::PUBLISHED);
+});
+
+it('drift-guard: placement filter offers every Placement case and filters correctly', function () {
+    /** @var User $admin */
+    $admin = User::factory()->platformAdmin()->create();
+
+    $blocks = [];
+    foreach (Placement::cases() as $placement) {
+        $type = $placement->allowedBlockTypes()[0];
+        $blocks[$placement->value] = ContentBlock::factory()->published()->create([
+            'placement' => $placement->value,
+            'type' => $type,
+        ]);
+    }
+
+    $component = Livewire::actingAs($admin)->test(ListContentBlocks::class);
+
+    $instance = $component->instance();
+    if (! $instance instanceof HasTable) {
+        throw new RuntimeException('Expected ListContentBlocks to implement HasTable.');
+    }
+
+    $table = $instance->getTable();
+    $placementFilter = $table->getFilter('placement');
+    if (! $placementFilter instanceof SelectFilter) {
+        throw new RuntimeException('Expected placement filter to be a SelectFilter.');
+    }
+    expect($placementFilter->getOptions())->toHaveKeys(
+        collect(Placement::cases())->pluck('value')->all()
+    );
+
+    foreach (Placement::cases() as $placement) {
+        $component->set('tableFilters.placement.value', $placement->value)
+            ->assertCanSeeTableRecords([$blocks[$placement->value]])
+            ->assertCanNotSeeTableRecords(
+                collect($blocks)->except($placement->value)->values()->all()
+            );
+    }
+});
+
+it('drift-guard: type filter offers registered block types and filters correctly', function () {
+    /** @var User $admin */
+    $admin = User::factory()->platformAdmin()->create();
+
+    $block1 = ContentBlock::factory()->published()->create([
+        'placement' => Placement::ANNOUNCEMENT_BAR->value,
+        'type' => 'announcement_bar',
+    ]);
+    $block2 = ContentBlock::factory()->published()->create([
+        'placement' => Placement::HOME_HERO_CAROUSEL->value,
+        'type' => 'promo_slide',
+    ]);
+
+    $component = Livewire::actingAs($admin)->test(ListContentBlocks::class);
+
+    $instance = $component->instance();
+    if (! $instance instanceof HasTable) {
+        throw new RuntimeException('Expected ListContentBlocks to implement HasTable.');
+    }
+
+    $table = $instance->getTable();
+    $typeFilter = $table->getFilter('type');
+    if (! $typeFilter instanceof SelectFilter) {
+        throw new RuntimeException('Expected type filter to be a SelectFilter.');
+    }
+    expect($typeFilter->getOptions())->toHaveKeys([
+        'announcement_bar',
+        'promo_slide',
+        'feature_banner',
+        'service_item',
+        'section_header',
+        'brand_strip',
+    ]);
+
+    $component->set('tableFilters.type.value', 'promo_slide')
+        ->assertCanSeeTableRecords([$block2])
+        ->assertCanNotSeeTableRecords([$block1]);
 });

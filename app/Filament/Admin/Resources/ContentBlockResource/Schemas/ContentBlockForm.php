@@ -122,6 +122,7 @@ final class ContentBlockForm
                 ->numeric()
                 ->default(0)
                 ->minValue(0)
+                ->maxValue(2147483647)
                 ->label('Sort Order')
                 ->helperText('Determines display order within the placement (lower numbers appear first).'),
         ]);

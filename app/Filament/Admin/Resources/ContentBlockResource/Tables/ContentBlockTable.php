@@ -6,6 +6,7 @@ namespace App\Filament\Admin\Resources\ContentBlockResource\Tables;
 
 use App\Domain\Content\Actions\GetBlockServingStatus;
 use App\Domain\Content\Contracts\BlockRegistry;
+use App\Domain\Content\Enums\Placement;
 use App\Domain\Content\Enums\PublishStatus;
 use App\Domain\Content\Enums\ServingStatus;
 use App\Domain\Content\Models\ContentBlock;
@@ -22,6 +23,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Str;
 use Livewire\Component;
 
 final class ContentBlockTable
@@ -124,9 +126,10 @@ final class ContentBlockTable
                     ->default(true),
 
                 SelectFilter::make('placement')
-                    ->options([
-                        'announcement_bar' => 'Announcement Bar',
-                    ]),
+                    ->options(collect(Placement::cases())->mapWithKeys(fn (Placement $p) => [$p->value => Str::headline($p->value)])->all()),
+
+                SelectFilter::make('type')
+                    ->options(collect(app(BlockRegistry::class)->all())->mapWithKeys(fn ($def, string $key) => [$key => Str::headline($key)])->all()),
 
                 SelectFilter::make('status')
                     ->options([

@@ -31,7 +31,7 @@
                         @endif
                         <a class="text-link banner-stretched-link" href="{{ $heroSide->data['cta_url'] }}">{{ $heroSide->data['cta_label'] }}</a>
                     </div>
-                    <img src="{{ $heroSide->data['image_url'] }}" alt="{{ $heroSide->data['image_alt'] }}" width="900" height="852">
+                    <img src="{{ asset($heroSide->data['image_url']) }}" alt="{{ $heroSide->data['image_alt'] }}" width="900" height="852">
                     @if(!empty($heroSide->data['badge_text']))
                         <span class="side-caption">{{ $heroSide->data['badge_text'] }}</span>
                     @endif
@@ -125,7 +125,7 @@
                 <a class="button button-white banner-stretched-link" href="{{ $collectionBanner->data['cta_url'] }}">{{ $collectionBanner->data['cta_label'] }}</a>
             </div>
             <div class="collection-art">
-                <img src="{{ $collectionBanner->data['image_url'] }}" alt="{{ $collectionBanner->data['image_alt'] }}" width="900" height="900" loading="lazy">
+                <img src="{{ asset($collectionBanner->data['image_url']) }}" alt="{{ $collectionBanner->data['image_alt'] }}" width="900" height="900" loading="lazy">
             </div>
             @if(!empty($collectionBanner->data['badge_text']))
                 <span class="collection-number">{{ $collectionBanner->data['badge_text'] }}</span>

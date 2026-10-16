@@ -31,6 +31,10 @@ final class ContentSeeder extends Seeder
 {
     public function run(): void
     {
+        if (! app()->environment(['local', 'testing'])) {
+            abort(403, 'ContentSeeder may only be executed in local or testing environments.');
+        }
+
         $this->seedSettings();
         $this->seedContentBlocks();
         $this->seedMenus();
@@ -181,7 +185,7 @@ final class ContentSeeder extends Seeder
                 'eyebrow' => 'POWER YOUR EVERYDAY',
                 'title_line_1' => 'Low battery?',
                 'title_line_2' => 'Not your energy.',
-                'description' => 'Power banks, chargers, and clever little essentials. Ready for wherever the day takes you.',
+                'description' => "Power banks, chargers, and clever little essentials.\nReady for wherever the day takes you.",
                 'cta_label' => 'Stay charged',
                 'cta_url' => '/shop?category=charging',
                 'image_url' => '/images/products/shargeek-300.jpg',

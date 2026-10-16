@@ -140,3 +140,18 @@ it('converts timezones to UTC', function () {
     $raw = DB::table('content_blocks')->where('id', $block->id)->first();
     expect(Carbon::parse($raw->starts_at)->format('H:i:s'))->toBe('06:30:00');
 });
+
+it('rejects sort_order outside valid integer range [0, 2147483647]', function () {
+    $registry = app(BlockRegistry::class);
+    $action = new CreateContentBlock($registry);
+
+    expect(fn () => $action(
+        new CreateContentBlockData(Placement::ANNOUNCEMENT_BAR, 'announcement_bar', null, null, -1),
+        ['text' => 'hello', 'tone' => 'info']
+    ))->toThrow(ValidationException::class);
+
+    expect(fn () => $action(
+        new CreateContentBlockData(Placement::ANNOUNCEMENT_BAR, 'announcement_bar', null, null, 2147483648),
+        ['text' => 'hello', 'tone' => 'info']
+    ))->toThrow(ValidationException::class);
+});

@@ -24,8 +24,8 @@ This document is the source of truth for structure and boundaries. If code and t
 - [x] Menus
 - [x] Content API v1
 - [x] Seed data
-- [x] Step P1-S1 (storefront demo harness & teardown guide)
-- [x] Step P1-S2 (homepage CMS blocks: 5 block types, announcement bar v2, 9 placements, sort order, and link targets)
+- [ ] Step P1-S1 (storefront demo harness & teardown guide)
+- [ ] Step P1-S2 (homepage CMS blocks: 5 block types, announcement bar v2, 9 placements, sort order, and link targets)
 
 Rule: do not scaffold folders, models or packages for a phase that is not active.
 

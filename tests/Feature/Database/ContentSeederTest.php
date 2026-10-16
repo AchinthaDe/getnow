@@ -19,6 +19,7 @@ use App\Domain\Content\Settings\StorefrontSettings;
 use App\Support\Rules\SafeLink;
 use Database\Seeders\ContentSeeder;
 use Illuminate\Support\Facades\Validator;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 use function Pest\Laravel\getJson;
 
@@ -278,4 +279,11 @@ it('verifies all seeded menu item urls satisfy SafeLink validation', function ()
         $validator = Validator::make(['url' => $item->url], ['url' => $rule]);
         expect($validator->passes())->toBeTrue("Menu item '{$item->label}' has invalid URL: {$item->url}");
     }
+});
+
+it('aborts when executed outside local or testing environments', function (): void {
+    app()['env'] = 'production';
+
+    expect(fn () => (new ContentSeeder)->run())
+        ->toThrow(HttpException::class);
 });

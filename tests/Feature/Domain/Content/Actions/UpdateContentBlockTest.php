@@ -334,3 +334,23 @@ it('logs specific changed properties', function () {
     $log3 = Activity::where('subject_id', $block3->id)->latest('id')->first();
     expect($log3->properties['changed'])->toBe(['schema_version']);
 });
+
+it('rejects sort_order outside valid integer range [0, 2147483647]', function () {
+    $registry = app(BlockRegistry::class);
+    $action = new UpdateContentBlock($registry);
+
+    /** @var ContentBlock $block */
+    $block = ContentBlock::factory()->create();
+
+    expect(fn () => $action(
+        $block->id,
+        new UpdateContentBlockData(null, null, -1),
+        ['text' => 'hello', 'tone' => 'info']
+    ))->toThrow(ValidationException::class);
+
+    expect(fn () => $action(
+        $block->id,
+        new UpdateContentBlockData(null, null, 2147483648),
+        ['text' => 'hello', 'tone' => 'info']
+    ))->toThrow(ValidationException::class);
+});

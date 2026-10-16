@@ -40,6 +40,12 @@ final class CreateContentBlock
         $startsAt = $data->starts_at?->clone()->setTimezone('UTC')->startOfSecond();
         $endsAt = $data->ends_at?->clone()->setTimezone('UTC')->startOfSecond();
 
+        if ($data->sort_order < 0 || $data->sort_order > 2147483647) {
+            throw ValidationException::withMessages([
+                'sort_order' => 'The sort order must be between 0 and 2147483647.',
+            ]);
+        }
+
         if ($startsAt !== null && $endsAt !== null && $endsAt->lte($startsAt)) {
             throw ValidationException::withMessages([
                 'ends_at' => 'The ends at date must be after the starts at date.',
