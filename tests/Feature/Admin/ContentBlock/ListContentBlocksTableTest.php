@@ -6,6 +6,7 @@ use App\Domain\Content\Actions\GetBlockServingStatus;
 use App\Domain\Content\Contracts\BlockRegistry;
 use App\Domain\Content\Data\ServingHealthResult;
 use App\Domain\Content\Enums\Placement;
+use App\Domain\Content\Enums\PlacementPage;
 use App\Domain\Content\Enums\PublishStatus;
 use App\Domain\Content\Enums\ServingHealthOutcome;
 use App\Domain\Content\Models\ContentBlock;
@@ -465,4 +466,47 @@ it('drift-guard: type filter offers registered block types and filters correctly
     $component->set('tableFilters.type.value', 'promo_slide')
         ->assertCanSeeTableRecords([$block2])
         ->assertCanNotSeeTableRecords([$block1]);
+});
+
+it('filters list table by page tabs with badge counts', function () {
+    /** @var User $admin */
+    $admin = User::factory()->platformAdmin()->create();
+
+    $globalBlock = ContentBlock::factory()->create([
+        'placement' => Placement::ANNOUNCEMENT_BAR->value,
+    ]);
+    $homeBlock = ContentBlock::factory()->create([
+        'placement' => Placement::HOME_HERO_CAROUSEL->value,
+    ]);
+
+    $component = Livewire::actingAs($admin)->test(ListContentBlocks::class);
+
+    $component->assertCanSeeTableRecords([$globalBlock, $homeBlock]);
+
+    $component->set('activeTab', 'home')
+        ->assertCanSeeTableRecords([$homeBlock])
+        ->assertCanNotSeeTableRecords([$globalBlock]);
+
+    $component->set('activeTab', 'global_layout')
+        ->assertCanSeeTableRecords([$globalBlock])
+        ->assertCanNotSeeTableRecords([$homeBlock]);
+});
+
+it('renders page badge column and filters by page select', function () {
+    /** @var User $admin */
+    $admin = User::factory()->platformAdmin()->create();
+
+    $globalBlock = ContentBlock::factory()->create([
+        'placement' => Placement::ANNOUNCEMENT_BAR->value,
+    ]);
+    $homeBlock = ContentBlock::factory()->create([
+        'placement' => Placement::HOME_HERO_CAROUSEL->value,
+    ]);
+
+    Livewire::actingAs($admin)
+        ->test(ListContentBlocks::class)
+        ->assertTableColumnExists('page')
+        ->set('tableFilters.page.value', PlacementPage::HOME->value)
+        ->assertCanSeeTableRecords([$homeBlock])
+        ->assertCanNotSeeTableRecords([$globalBlock]);
 });

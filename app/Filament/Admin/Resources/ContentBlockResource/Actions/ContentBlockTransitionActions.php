@@ -10,6 +10,7 @@ use App\Domain\Content\Actions\EnableContentBlock;
 use App\Domain\Content\Actions\PublishContentBlock;
 use App\Domain\Content\Enums\PublishStatus;
 use App\Domain\Content\Exceptions\IllegalStateTransitionException;
+use App\Domain\Content\Exceptions\PlacementCapacityExceededException;
 use App\Domain\Content\Exceptions\UnservablePayloadException;
 use App\Domain\Content\Models\ContentBlock;
 use App\Models\User;
@@ -36,6 +37,13 @@ final class ContentBlockTransitionActions
 
         try {
             $domainCall($authUser);
+        } catch (PlacementCapacityExceededException $e) {
+            Notification::make()
+                ->danger()
+                ->title('Capacity Exceeded')
+                ->body($e->getMessage())
+                ->send();
+            $action->halt();
         } catch (UnservablePayloadException) {
             Notification::make()
                 ->danger()

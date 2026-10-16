@@ -7,6 +7,7 @@ namespace App\Filament\Admin\Resources\ContentBlockResource\Tables;
 use App\Domain\Content\Actions\GetBlockServingStatus;
 use App\Domain\Content\Contracts\BlockRegistry;
 use App\Domain\Content\Enums\Placement;
+use App\Domain\Content\Enums\PlacementPage;
 use App\Domain\Content\Enums\PublishStatus;
 use App\Domain\Content\Enums\ServingStatus;
 use App\Domain\Content\Models\ContentBlock;
@@ -62,6 +63,12 @@ final class ContentBlockTable
             ->defaultSort(fn (Builder $query) => $query->orderBy('placement')->orderBy('sort_order'))
             ->paginated([10, 25, 50])
             ->columns([
+                TextColumn::make('page')
+                    ->label('Page')
+                    ->badge()
+                    ->state(fn (ContentBlock $record): string => $record->placement?->page()->label() ?? '—')
+                    ->sortable(false),
+
                 TextColumn::make('placement')
                     ->label('Placement')
                     ->sortable()
@@ -124,6 +131,22 @@ final class ContentBlockTable
                         }
                     })
                     ->default(true),
+
+                SelectFilter::make('page')
+                    ->label('Page')
+                    ->options(collect(PlacementPage::cases())->mapWithKeys(fn (PlacementPage $p) => [$p->value => $p->label()])->all())
+                    ->query(function (Builder $query, array $data): Builder {
+                        $state = $data['value'] ?? null;
+                        if (blank($state)) {
+                            return $query;
+                        }
+                        $page = PlacementPage::tryFrom((string) $state);
+                        if ($page === null) {
+                            return $query;
+                        }
+
+                        return $query->whereIn('placement', collect(Placement::forPage($page))->pluck('value'));
+                    }),
 
                 SelectFilter::make('placement')
                     ->options(collect(Placement::cases())->mapWithKeys(fn (Placement $p) => [$p->value => $p->label()])->all()),
