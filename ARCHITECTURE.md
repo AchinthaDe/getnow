@@ -24,8 +24,9 @@ This document is the source of truth for structure and boundaries. If code and t
 - [x] Menus
 - [x] Content API v1
 - [x] Seed data
-- [ ] Step P1-S1 (storefront demo harness & teardown guide)
+- [x] Step P1-S1 (storefront demo harness & teardown guide)
 - [x] Step P1-S2 (homepage CMS blocks: 5 block types, announcement bar v2, 9 placements, sort order, and link targets)
+- [x] Step P1-UI5 (admin UX upgrades: PlacementPage enum, cascading create selector, page tabs, live capacity guards via EnsurePlacementCapacity and advisory locks)
 
 Rule: do not scaffold folders, models or packages for a phase that is not active.
 
@@ -116,7 +117,8 @@ Create new folders only when a phase needs them. `Infrastructure/` appears with 
 ### Concepts
 
 - **Site settings:** global scalar values (text, booleans). Spatie settings class `StorefrontSettings`, one Filament settings page. No images in phase 1.
-- **Placement:** a named slot in the storefront layout, **defined in code** as the `Placement` enum. Each placement declares which block types it allows and a maximum block count. Admins cannot create placements.
+- **Placement:** a named slot in the storefront layout, **defined in code** as the `Placement` enum. Each placement declares which block types it allows and a maximum block count (`maxCount`). Admins cannot create placements.
+- **PlacementPage:** grouping of placements by page context (`PlacementPage` enum: `global_layout`, `home`). Placements map to pages via `Placement::page()`, and `CountLiveBlocksForPlacement` reports live block counts per placement.
 - **Block:** one piece of content of a given type in a placement (`content_blocks` row). Its `payload` is JSON validated by the block's Data class.
 - **Menu / MenuItem:** navigation trees. Menu keys are defined in code (`MenuKey` enum).
 
@@ -272,7 +274,7 @@ Contract rules:
 | D5 | Phase 1 has no images. Media library arrives with the first image block in phase 2. |
 | D6 | Phase 1 admin access is one platform-admin flag. Roles come with the retailer panel. |
 | D7 | Published content edits go live immediately in phase 1. Revisions and preview come in phase 2. |
-| D8 | MaxCount is enforced at API output limit, not publish lock. Tie-break: `sort_order ASC, starts_at DESC NULLS LAST, id DESC`. One block = one message. |
+| D8 | Live capacity limits (`maxCount`) are enforced at write-time during publish, enable, and schedule edits via PostgreSQL advisory locks and `EnsurePlacementCapacity` (ADR-0004 amending D8). Tie-break for legacy data remains `sort_order ASC, starts_at DESC NULLS LAST, id DESC` at read time. One block = one message. |
 | D9 | Concurrency & Locks: Content blocks use last-write-wins for payloads, pessimistic locking for state transitions. Menus use whole-tree atomic replacement under a row lock, last-write-wins. |
 
 Open decisions (record as ADRs in `docs/adr/` when settled):

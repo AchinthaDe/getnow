@@ -104,8 +104,8 @@ The scope of P1-UI5 v3 is strictly confined to Checkpoint **CP-A**:
 | Modify | `app/Filament/Admin/Resources/ContentBlockResource/Actions/ContentBlockTransitionActions.php` | Catches `PlacementCapacityExceededException`, sends danger notification, and halts action. |
 | Modify | `app/Filament/Admin/Resources/ContentBlockResource/Pages/EditContentBlock.php` | Catches `PlacementCapacityExceededException` in `handleRecordUpdate` and halts save. |
 | Modify | `app/Filament/Admin/Resources/ContentBlockResource/Pages/Concerns/InteractsWithContentBlockActions.php` | Handles form error mapping and data preparation for edit page. |
-| Create | `docs/adr/0004-live-capacity-enforcement.md` | Architectural Decision Record documenting live capacity enforcement and amending D8. |
-| Modify | `ARCHITECTURE.md` | Adds decision D10 in Section 12. |
+| Create | `docs/adr/0004-placement-live-capacity-enforcement.md` | Architectural Decision Record documenting live capacity enforcement and amending D8. |
+| Modify | `ARCHITECTURE.md` | Updates Section 1 progress, Section 6 concepts, and amends Decision D8 in Section 12. |
 | Create | `tests/Unit/Domain/Content/Enums/PlacementPageTest.php` | Unit tests for `PlacementPage` cases and `Placement` page mapping. |
 | Modify | `tests/Unit/Domain/Content/Enums/PlacementTest.php` | Pins `maxCount()` across all 9 placements. |
 | Create | `tests/Feature/Domain/Content/Services/EnsurePlacementCapacityTest.php` | Tests concurrency, schedule overlap algorithms, expired windows, and self-exclusion. |
@@ -439,15 +439,15 @@ No changes to external APIs. The public endpoint `GET /api/v1/content/layout` co
 ## 11. Documentation & ADR
 
 ### 11.1 Architectural Decision Record
-Create `docs/adr/0004-live-capacity-enforcement.md`:
-- **Title**: Live Capacity Enforcement via Placement Advisory Locks
+Create `docs/adr/0004-placement-live-capacity-enforcement.md`:
+- **Title**: Placement Live Capacity Enforcement
 - **Status**: Accepted
 - **Context**: Decision D8 originally enforced `maxCount` solely at API query time. This permitted admins to publish multiple active blocks in singleton placements, leading to confusing admin UX where active blocks were shadowed and never displayed.
-- **Decision**: Amend D8 with D10. Enforce `maxCount` during `PublishContentBlock`, `EnableContentBlock`, and schedule modifications in `UpdateContentBlock`. Transactions serialize per placement using PostgreSQL advisory locks. D8 serving order remains the tie-breaker for legacy over-capacity data.
+- **Decision**: Amend Decision D8 with write-time live capacity enforcement. Enforce `maxCount` during `PublishContentBlock`, `EnableContentBlock`, and schedule modifications in `UpdateContentBlock`. Transactions serialize per placement using PostgreSQL advisory locks (`pg_advisory_xact_lock`). D8 serving order remains the tie-breaker for legacy over-capacity data.
 
 ### 11.2 ARCHITECTURE.md Update
-Update Section 12 table with decision D10:
-`| D10 | Live capacity limits (maxCount) are enforced at publish, enable, and schedule edit via advisory lock and EnsurePlacementCapacity, amending D8. |`
+Update Section 1 progress, Section 6 concepts (`PlacementPage` and `CountLiveBlocksForPlacement`), and amend Decision D8 in Section 12:
+`| D8 | Live capacity limits (maxCount) are enforced at write-time during publish, enable, and schedule edits via PostgreSQL advisory locks and EnsurePlacementCapacity (ADR-0004 amending D8). Tie-break for legacy data remains sort_order ASC, starts_at DESC NULLS LAST, id DESC at read time. One block = one message. |`
 
 ---
 
