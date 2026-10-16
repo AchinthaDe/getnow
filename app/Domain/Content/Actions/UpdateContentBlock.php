@@ -12,6 +12,7 @@ use App\Domain\Content\Exceptions\IllegalStateTransitionException;
 use App\Domain\Content\Exceptions\UnknownBlockTypeException;
 use App\Domain\Content\Exceptions\UnsupportedSchemaVersionException;
 use App\Domain\Content\Models\ContentBlock;
+use App\Domain\Content\Services\EnsurePlacementCapacity;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -19,7 +20,8 @@ use Illuminate\Validation\ValidationException;
 final class UpdateContentBlock
 {
     public function __construct(
-        private readonly BlockRegistry $registry
+        private readonly BlockRegistry $registry,
+        private readonly EnsurePlacementCapacity $ensurePlacementCapacity = new EnsurePlacementCapacity,
     ) {}
 
     /**
@@ -71,6 +73,10 @@ final class UpdateContentBlock
                     $errors["payload.{$key}"] = $messages;
                 }
                 throw ValidationException::withMessages($errors);
+            }
+
+            if ($block->status === PublishStatus::PUBLISHED && $block->is_enabled === true) {
+                $this->ensurePlacementCapacity->check($block, $startsAt, $endsAt);
             }
 
             $oldPayload = $block->payload;

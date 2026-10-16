@@ -264,6 +264,8 @@ it('publishes draft block from view header and table row with confirmation modal
     expect($recordInstance->status)->toBe(PublishStatus::PUBLISHED);
 
     // Table row publish
+    $blockHeader->delete();
+
     /** @var ContentBlock $blockRow */
     $blockRow = ContentBlock::factory()->draft()->create();
 

@@ -8,6 +8,7 @@ use App\Domain\Content\Enums\PublishStatus;
 use App\Domain\Content\Exceptions\IllegalStateTransitionException;
 use App\Domain\Content\Exceptions\UnservablePayloadException;
 use App\Domain\Content\Models\ContentBlock;
+use App\Domain\Content\Services\EnsurePlacementCapacity;
 use App\Domain\Content\Services\ResolveServablePayload;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -15,7 +16,8 @@ use Illuminate\Support\Facades\DB;
 final class EnableContentBlock
 {
     public function __construct(
-        private readonly ResolveServablePayload $resolveServablePayload
+        private readonly ResolveServablePayload $resolveServablePayload,
+        private readonly EnsurePlacementCapacity $ensurePlacementCapacity = new EnsurePlacementCapacity,
     ) {}
 
     public function __invoke(int $id, ?User $causer = null): ContentBlock
@@ -34,6 +36,10 @@ final class EnableContentBlock
             $health = ($this->resolveServablePayload)($block);
             if (! $health->isServable()) {
                 throw new UnservablePayloadException($health->outcome);
+            }
+
+            if ($block->status === PublishStatus::PUBLISHED) {
+                $this->ensurePlacementCapacity->check($block, $block->starts_at, $block->ends_at);
             }
 
             $oldEnabled = $block->is_enabled;

@@ -6,6 +6,7 @@ use App\Domain\Content\Actions\ArchiveContentBlock;
 use App\Domain\Content\Actions\GetBlockServingStatus;
 use App\Domain\Content\Actions\PublishContentBlock;
 use App\Domain\Content\Data\ServingHealthResult;
+use App\Domain\Content\Enums\Placement;
 use App\Domain\Content\Enums\PublishStatus;
 use App\Domain\Content\Enums\ServingHealthOutcome;
 use App\Domain\Content\Enums\ServingStatus;
@@ -255,4 +256,57 @@ it('resolves freshly if schema_version changes without updated_at changing', fun
     $block->updateQuietly(); // updated_at doesn't change
 
     expect($action($block)->status)->toBe(ServingStatus::PayloadError);
+});
+
+it('returns ServingStatus::PayloadError if payload is corrupt regardless of ranking', function () {
+    /** @var ContentBlock $block */
+    $block = ContentBlock::factory()->published()->invalidAfterUpgrade()->create([
+        'placement' => Placement::ANNOUNCEMENT_BAR->value,
+        'sort_order' => 2,
+    ]);
+
+    $result = app(GetBlockServingStatus::class)($block);
+
+    expect($result->status)->toBe(ServingStatus::PayloadError)
+        ->and($result->healthOutcome)->toBe(ServingHealthOutcome::InvalidAfterUpgrade);
+});
+
+it('returns ServingStatus::Live for valid rank 2 block when rank 1 has corrupt payload', function () {
+    /** @var ContentBlock $corruptBlock */
+    $corruptBlock = ContentBlock::factory()->published()->invalidAfterUpgrade()->create([
+        'placement' => Placement::ANNOUNCEMENT_BAR->value,
+        'sort_order' => 0,
+    ]);
+
+    /** @var ContentBlock $validBlock */
+    $validBlock = ContentBlock::factory()->published()->create([
+        'placement' => Placement::ANNOUNCEMENT_BAR->value,
+        'sort_order' => 1,
+    ]);
+
+    $corruptResult = app(GetBlockServingStatus::class)($corruptBlock);
+    $validResult = app(GetBlockServingStatus::class)($validBlock);
+
+    expect($corruptResult->status)->toBe(ServingStatus::PayloadError)
+        ->and($validResult->status)->toBe(ServingStatus::Live);
+});
+
+it('returns ServingStatus::NotLive for blocks ranking beyond maxCount in D8 order', function () {
+    /** @var ContentBlock $blockA */
+    $blockA = ContentBlock::factory()->published()->create([
+        'placement' => Placement::ANNOUNCEMENT_BAR->value,
+        'sort_order' => 0,
+    ]);
+
+    /** @var ContentBlock $blockB */
+    $blockB = ContentBlock::factory()->published()->create([
+        'placement' => Placement::ANNOUNCEMENT_BAR->value,
+        'sort_order' => 1,
+    ]);
+
+    $resultA = app(GetBlockServingStatus::class)($blockA);
+    $resultB = app(GetBlockServingStatus::class)($blockB);
+
+    expect($resultA->status)->toBe(ServingStatus::Live)
+        ->and($resultB->status)->toBe(ServingStatus::NotLive);
 });
