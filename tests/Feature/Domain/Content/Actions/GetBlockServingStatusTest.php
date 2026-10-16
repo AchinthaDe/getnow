@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Domain\Content\Actions\ArchiveContentBlock;
 use App\Domain\Content\Actions\GetBlockServingStatus;
+use App\Domain\Content\Actions\GetLayoutContent;
 use App\Domain\Content\Actions\PublishContentBlock;
 use App\Domain\Content\Data\ServingHealthResult;
 use App\Domain\Content\Enums\Placement;
@@ -309,4 +310,108 @@ it('returns ServingStatus::NotLive for blocks ranking beyond maxCount in D8 orde
 
     expect($resultA->status)->toBe(ServingStatus::Live)
         ->and($resultB->status)->toBe(ServingStatus::NotLive);
+});
+
+it('returns ServingStatus::NotLive for non-live blocks with corrupt payload due to isLive ordering', function () {
+    $action = app(GetBlockServingStatus::class);
+
+    /** @var ContentBlock $draftCorrupt */
+    $draftCorrupt = ContentBlock::factory()->draft()->invalidAfterUpgrade()->create();
+    expect($action($draftCorrupt)->status)->toBe(ServingStatus::NotLive)
+        ->and($action($draftCorrupt)->healthOutcome)->toBeNull();
+
+    /** @var ContentBlock $disabledCorrupt */
+    $disabledCorrupt = ContentBlock::factory()->published()->disabled()->invalidAfterUpgrade()->create();
+    expect($action($disabledCorrupt)->status)->toBe(ServingStatus::NotLive)
+        ->and($action($disabledCorrupt)->healthOutcome)->toBeNull();
+
+    /** @var ContentBlock $futureCorrupt */
+    $futureCorrupt = ContentBlock::factory()->published()->invalidAfterUpgrade()->scheduled(now()->addDays(2), now()->addDays(5))->create();
+    expect($action($futureCorrupt)->status)->toBe(ServingStatus::NotLive)
+        ->and($action($futureCorrupt)->healthOutcome)->toBeNull();
+
+    /** @var ContentBlock $expiredCorrupt */
+    $expiredCorrupt = ContentBlock::factory()->published()->invalidAfterUpgrade()->scheduled(now()->subDays(5), now()->subDays(2))->create();
+    expect($action($expiredCorrupt)->status)->toBe(ServingStatus::NotLive)
+        ->and($action($expiredCorrupt)->healthOutcome)->toBeNull();
+});
+
+it('ensures serving status Live set achieves strict parity with GetLayoutContent across diverse block states', function () {
+    $action = app(GetBlockServingStatus::class);
+    $getLayoutContent = app(GetLayoutContent::class);
+
+    // 1. Placement::ANNOUNCEMENT_BAR (maxCount = 1)
+    /** @var ContentBlock $barCorrupt */
+    $barCorrupt = ContentBlock::factory()->published()->invalidAfterUpgrade()->create([
+        'placement' => Placement::ANNOUNCEMENT_BAR->value,
+        'sort_order' => 0,
+    ]);
+    /** @var ContentBlock $barLive */
+    $barLive = ContentBlock::factory()->published()->create([
+        'placement' => Placement::ANNOUNCEMENT_BAR->value,
+        'sort_order' => 1,
+    ]);
+    /** @var ContentBlock $barShadowed */
+    $barShadowed = ContentBlock::factory()->published()->create([
+        'placement' => Placement::ANNOUNCEMENT_BAR->value,
+        'sort_order' => 2,
+    ]);
+
+    // 2. Placement::HOME_SERVICE_STRIP (maxCount = 4)
+    for ($i = 0; $i < 4; $i++) {
+        ContentBlock::factory()->published()->create([
+            'placement' => Placement::HOME_SERVICE_STRIP->value,
+            'type' => 'service_item',
+            'payload' => ['title' => "Service {$i}", 'icon_name' => 'truck'],
+            'sort_order' => $i,
+        ]);
+    }
+    /** @var ContentBlock $stripShadowed */
+    $stripShadowed = ContentBlock::factory()->published()->create([
+        'placement' => Placement::HOME_SERVICE_STRIP->value,
+        'type' => 'service_item',
+        'payload' => ['title' => 'Service 5 (Shadowed)', 'icon_name' => 'truck'],
+        'sort_order' => 4,
+    ]);
+    /** @var ContentBlock $stripCorrupt */
+    $stripCorrupt = ContentBlock::factory()->published()->invalidAfterUpgrade()->create([
+        'placement' => Placement::HOME_SERVICE_STRIP->value,
+        'sort_order' => 5,
+    ]);
+
+    // 3. Non-live blocks across states
+    /** @var ContentBlock $draftBlock */
+    $draftBlock = ContentBlock::factory()->draft()->create([
+        'placement' => Placement::ANNOUNCEMENT_BAR->value,
+    ]);
+    /** @var ContentBlock $disabledBlock */
+    $disabledBlock = ContentBlock::factory()->published()->disabled()->create([
+        'placement' => Placement::ANNOUNCEMENT_BAR->value,
+    ]);
+    /** @var ContentBlock $futureBlock */
+    $futureBlock = ContentBlock::factory()->published()->scheduled(now()->addDays(2), now()->addDays(5))->create([
+        'placement' => Placement::HOME_SERVICE_STRIP->value,
+    ]);
+    /** @var ContentBlock $expiredBlock */
+    $expiredBlock = ContentBlock::factory()->published()->scheduled(now()->subDays(5), now()->subDays(2))->create([
+        'placement' => Placement::HOME_SERVICE_STRIP->value,
+    ]);
+
+    // Compute GetLayoutContent response
+    $layoutResponse = $getLayoutContent();
+
+    // Verify strict parity per placement
+    foreach (Placement::cases() as $placement) {
+        $expectedPublicIds = array_map(fn ($b) => $b->id, $layoutResponse->data->placements[$placement->value] ?? []);
+
+        $actualLivePublicIds = ContentBlock::where('placement', $placement->value)
+            ->servingOrder()
+            ->get()
+            ->filter(fn (ContentBlock $b) => $action($b)->status === ServingStatus::Live)
+            ->map(fn (ContentBlock $b) => $b->public_id)
+            ->values()
+            ->all();
+
+        expect($actualLivePublicIds)->toBe($expectedPublicIds);
+    }
 });
