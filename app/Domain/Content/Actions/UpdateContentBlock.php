@@ -45,6 +45,13 @@ final class UpdateContentBlock
         }
 
         return DB::transaction(function () use ($id, $data, $rawPayload, $causer, $startsAt, $endsAt) {
+            $placementValue = DB::table('content_blocks')->where('id', $id)->value('placement');
+            if ($placementValue !== null) {
+                DB::statement('SELECT pg_advisory_xact_lock(?)', [
+                    (int) (crc32('placement:'.$placementValue) & 0x7FFFFFFF),
+                ]);
+            }
+
             $block = ContentBlock::where('id', $id)->lockForUpdate()->firstOrFail();
 
             if ($block->status === PublishStatus::ARCHIVED) {

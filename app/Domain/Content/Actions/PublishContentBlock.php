@@ -23,6 +23,13 @@ final class PublishContentBlock
     public function __invoke(int $id, ?User $causer = null): ContentBlock
     {
         return DB::transaction(function () use ($id, $causer) {
+            $placementValue = DB::table('content_blocks')->where('id', $id)->value('placement');
+            if ($placementValue !== null) {
+                DB::statement('SELECT pg_advisory_xact_lock(?)', [
+                    (int) (crc32('placement:'.$placementValue) & 0x7FFFFFFF),
+                ]);
+            }
+
             $block = ContentBlock::where('id', $id)->lockForUpdate()->firstOrFail();
 
             if ($block->status === PublishStatus::ARCHIVED) {

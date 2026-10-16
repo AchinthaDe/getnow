@@ -2,11 +2,17 @@
 
 declare(strict_types=1);
 
+use App\Domain\Content\Actions\EnableContentBlock;
+use App\Domain\Content\Actions\PublishContentBlock;
+use App\Domain\Content\Actions\UpdateContentBlock;
+use App\Domain\Content\Data\UpdateContentBlockData;
 use App\Domain\Content\Enums\Placement;
 use App\Domain\Content\Exceptions\PlacementCapacityExceededException;
 use App\Domain\Content\Models\ContentBlock;
 use App\Domain\Content\Services\EnsurePlacementCapacity;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Assert;
 use Tests\Support\TestBlocks;
 
@@ -93,4 +99,111 @@ it('enforces multi-block capacity up to maxCount', function (): void {
 
     expect(fn () => $service->check($sixthBlock, null, null))
         ->toThrow(PlacementCapacityExceededException::class);
+});
+
+it('ensures pg_advisory_xact_lock executes before candidate queries in Publish, Enable, and Update actions', function (): void {
+    /** @var User $admin */
+    $admin = User::factory()->platformAdmin()->create();
+
+    // 1. PublishContentBlock
+    /** @var ContentBlock $blockToPublish */
+    $blockToPublish = ContentBlock::factory()->draft()->create();
+
+    $recorder = new class
+    {
+        /** @var list<string> */
+        private array $queries = [];
+
+        public function add(string $sql): void
+        {
+            $this->queries[] = $sql;
+        }
+
+        public function reset(): void
+        {
+            $this->queries = [];
+        }
+
+        /** @return list<string> */
+        public function queries(): array
+        {
+            return $this->queries;
+        }
+    };
+
+    DB::listen(function ($query) use ($recorder) {
+        $recorder->add($query->sql);
+    });
+
+    app(PublishContentBlock::class)($blockToPublish->id, $admin);
+
+    $advisoryIndex = null;
+    $candidateIndex = null;
+    foreach ($recorder->queries() as $i => $sql) {
+        if (str_contains(strtolower($sql), 'pg_advisory_xact_lock') && $advisoryIndex === null) {
+            $advisoryIndex = $i;
+        }
+        if (str_contains(strtolower($sql), 'placement') && str_contains(strtolower($sql), 'status') && str_contains(strtolower($sql), 'for update') && $advisoryIndex !== null && $candidateIndex === null) {
+            $candidateIndex = $i;
+        }
+    }
+
+    expect($advisoryIndex)->not->toBeNull()
+        ->and($candidateIndex)->not->toBeNull()
+        ->and($advisoryIndex)->toBeLessThan($candidateIndex);
+
+    $blockToPublish->delete();
+
+    // 2. EnableContentBlock
+    /** @var ContentBlock $blockToEnable */
+    $blockToEnable = ContentBlock::factory()->published()->disabled()->create();
+
+    $recorder->reset();
+    app(EnableContentBlock::class)($blockToEnable->id, $admin);
+
+    $advisoryIndex = null;
+    $candidateIndex = null;
+    foreach ($recorder->queries() as $i => $sql) {
+        if (str_contains(strtolower($sql), 'pg_advisory_xact_lock') && $advisoryIndex === null) {
+            $advisoryIndex = $i;
+        }
+        if (str_contains(strtolower($sql), 'placement') && str_contains(strtolower($sql), 'status') && str_contains(strtolower($sql), 'for update') && $advisoryIndex !== null && $candidateIndex === null) {
+            $candidateIndex = $i;
+        }
+    }
+
+    expect($advisoryIndex)->not->toBeNull()
+        ->and($candidateIndex)->not->toBeNull()
+        ->and($advisoryIndex)->toBeLessThan($candidateIndex);
+
+    $blockToEnable->delete();
+
+    // 3. UpdateContentBlock
+    /** @var ContentBlock $blockToUpdate */
+    $blockToUpdate = ContentBlock::factory()->published()->create([
+        'starts_at' => now()->addDays(5),
+    ]);
+
+    $recorder->reset();
+    app(UpdateContentBlock::class)(
+        $blockToUpdate->id,
+        new UpdateContentBlockData(starts_at: now()->addDays(6), ends_at: null),
+        $blockToUpdate->payload,
+        $admin
+    );
+
+    $advisoryIndex = null;
+    $candidateIndex = null;
+    foreach ($recorder->queries() as $i => $sql) {
+        if (str_contains(strtolower($sql), 'pg_advisory_xact_lock') && $advisoryIndex === null) {
+            $advisoryIndex = $i;
+        }
+        if (str_contains(strtolower($sql), 'placement') && str_contains(strtolower($sql), 'status') && str_contains(strtolower($sql), 'for update') && $advisoryIndex !== null && $candidateIndex === null) {
+            $candidateIndex = $i;
+        }
+    }
+
+    expect($advisoryIndex)->not->toBeNull()
+        ->and($candidateIndex)->not->toBeNull()
+        ->and($advisoryIndex)->toBeLessThan($candidateIndex);
 });
