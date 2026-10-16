@@ -39,6 +39,10 @@ final class ContentBlock extends Model
 
     use HasUlids;
 
+    public const int MIN_SORT_ORDER = 0;
+
+    public const int MAX_SORT_ORDER = 2147483647;
+
     protected $guarded = [];
 
     protected $casts = [

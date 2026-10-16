@@ -34,9 +34,15 @@ it('creates block and logs activity', function () {
     );
 
     expect($block->status)->toBe(PublishStatus::DRAFT)
-        ->and($block->payload)->toBe(['text' => 'hello', 'link_url' => null, 'tone' => 'info'])
+        ->and($block->payload)->toBe([
+            'text' => 'hello',
+            'secondary_text' => null,
+            'locale_text' => null,
+            'link_url' => null,
+            'tone' => 'info',
+        ])
         ->and($block->created_by)->toBe($user->id)
-        ->and($block->schema_version)->toBe(1);
+        ->and($block->schema_version)->toBe(2);
 
     \Pest\Laravel\assertDatabaseHas('activity_log', [
         'subject_type' => ContentBlock::class,
@@ -133,4 +139,36 @@ it('converts timezones to UTC', function () {
 
     $raw = DB::table('content_blocks')->where('id', $block->id)->first();
     expect(Carbon::parse($raw->starts_at)->format('H:i:s'))->toBe('06:30:00');
+});
+
+it('rejects sort_order outside valid integer range [0, 2147483647]', function () {
+    $registry = app(BlockRegistry::class);
+    $action = new CreateContentBlock($registry);
+
+    expect(fn () => $action(
+        new CreateContentBlockData(Placement::ANNOUNCEMENT_BAR, 'announcement_bar', null, null, -1),
+        ['text' => 'hello', 'tone' => 'info']
+    ))->toThrow(ValidationException::class);
+
+    expect(fn () => $action(
+        new CreateContentBlockData(Placement::ANNOUNCEMENT_BAR, 'announcement_bar', null, null, 2147483648),
+        ['text' => 'hello', 'tone' => 'info']
+    ))->toThrow(ValidationException::class);
+});
+
+it('accepts sort_order at valid boundary values 0 and 2147483647', function () {
+    $registry = app(BlockRegistry::class);
+    $action = new CreateContentBlock($registry);
+
+    $blockMin = $action(
+        new CreateContentBlockData(Placement::ANNOUNCEMENT_BAR, 'announcement_bar', null, null, ContentBlock::MIN_SORT_ORDER),
+        ['text' => 'hello', 'tone' => 'info']
+    );
+    expect($blockMin->sort_order)->toBe(ContentBlock::MIN_SORT_ORDER);
+
+    $blockMax = $action(
+        new CreateContentBlockData(Placement::ANNOUNCEMENT_BAR, 'announcement_bar', null, null, ContentBlock::MAX_SORT_ORDER),
+        ['text' => 'hello', 'tone' => 'info']
+    );
+    expect($blockMax->sort_order)->toBe(ContentBlock::MAX_SORT_ORDER);
 });

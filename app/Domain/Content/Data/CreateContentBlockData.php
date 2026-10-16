@@ -15,5 +15,6 @@ final class CreateContentBlockData extends Data
         public string $type,
         public ?CarbonInterface $starts_at,
         public ?CarbonInterface $ends_at,
+        public int $sort_order = 0,
     ) {}
 }

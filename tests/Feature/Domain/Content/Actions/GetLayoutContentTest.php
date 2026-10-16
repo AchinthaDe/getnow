@@ -12,11 +12,9 @@ use App\Domain\Content\Data\BlockPayload;
 use App\Domain\Content\Enums\MenuKey;
 use App\Domain\Content\Enums\Placement;
 use App\Domain\Content\Enums\ServingHealthOutcome;
-use App\Domain\Content\Enums\Tone;
 use App\Domain\Content\Models\ContentBlock;
 use App\Domain\Content\Models\Menu;
 use App\Domain\Content\Models\MenuItem;
-use App\Domain\Content\Services\ContentBlockRegistry;
 use App\Domain\Content\Settings\StorefrontSettings;
 use Closure;
 use Illuminate\Contracts\Support\Arrayable;
@@ -278,67 +276,12 @@ it('skips blocks whose type is not permitted for the placement', function (): vo
 });
 
 it('upgrades older payload schemas to current version', function (): void {
-    $v2Definition = new class implements BlockDefinition
-    {
-        public function typeKey(): string
-        {
-            return 'announcement_bar';
-        }
-
-        public function schemaVersion(): int
-        {
-            return 2;
-        }
-
-        public function dataClass(): string
-        {
-            return get_class(new class extends BlockPayload
-            {
-                public string $text = '';
-
-                public ?string $link_url = null;
-
-                public Tone $tone = Tone::INFO;
-
-                public bool $upgraded = false;
-
-                /**
-                 * @param  Arrayable<string, mixed>|array<string, mixed>  $payload
-                 */
-                public static function validateAndCreate(Arrayable|array $payload): static
-                {
-                    $data = $payload instanceof Arrayable ? $payload->toArray() : $payload;
-                    $instance = new self;
-                    $instance->text = (string) ($data['text'] ?? '');
-                    $instance->link_url = isset($data['link_url']) ? (string) $data['link_url'] : null;
-                    $instance->tone = isset($data['tone']) && $data['tone'] instanceof Tone ? $data['tone'] : Tone::INFO;
-                    $instance->upgraded = (bool) ($data['upgraded'] ?? false);
-
-                    return $instance;
-                }
-            });
-        }
-
-        public function upgradePayload(int $fromVersion, array $payload): array
-        {
-            if ($fromVersion === 1) {
-                $payload['upgraded'] = true;
-            }
-
-            return $payload;
-        }
-    };
-
-    $customRegistry = new ContentBlockRegistry;
-    $customRegistry->register($v2Definition);
-    app()->instance(BlockRegistry::class, $customRegistry);
-
     ContentBlock::factory()->published()->enabled()->create([
         'placement' => Placement::ANNOUNCEMENT_BAR->value,
         'type' => 'announcement_bar',
         'schema_version' => 1,
         'payload' => [
-            'text' => 'Upgrade Test',
+            'text' => 'Old v1 text',
             'tone' => 'info',
             'link_url' => null,
         ],
@@ -348,7 +291,9 @@ it('upgrades older payload schemas to current version', function (): void {
 
     expect($response->data->placements[Placement::ANNOUNCEMENT_BAR->value])->toHaveCount(1)
         ->and($response->data->placements[Placement::ANNOUNCEMENT_BAR->value][0]->version)->toBe(2)
-        ->and($response->data->placements[Placement::ANNOUNCEMENT_BAR->value][0]->data['upgraded'])->toBeTrue();
+        ->and($response->data->placements[Placement::ANNOUNCEMENT_BAR->value][0]->data['text'])->toBe('Old v1 text')
+        ->and($response->data->placements[Placement::ANNOUNCEMENT_BAR->value][0]->data['secondary_text'])->toBeNull()
+        ->and($response->data->placements[Placement::ANNOUNCEMENT_BAR->value][0]->data['locale_text'])->toBeNull();
 });
 
 it('cascades exclusion to children of disabled parent items while retaining enabled siblings in strict sort order', function (): void {

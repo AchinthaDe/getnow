@@ -16,17 +16,31 @@
 <a href="#main-content" class="skip-link">Skip to content</a>
 @php($announcement = $layout->placements['announcement_bar'][0] ?? null)
 @if($announcement)
-    <div class="announcement announcement--{{ $announcement->data['tone'] ?? 'info' }}">
-        <div class="container">
-            @if(!empty($announcement->data['link_url']))
-                <a href="{{ $announcement->data['link_url'] }}"><span>{{ $announcement->data['text'] }}</span></a>
-            @else
+    @if(!empty($announcement->data['link_url']))
+        <a href="{{ $announcement->data['link_url'] }}" class="announcement announcement--{{ $announcement->data['tone'] ?? 'info' }} announcement--link">
+            <div class="container">
                 <span>{{ $announcement->data['text'] }}</span>
-            @endif
-            <span>Free delivery on orders over {{ \App\Support\DemoStorefront\Product::money((int) config('storefront.free_delivery_minor', 2500000)) }}</span>
-            <span>Sri Lanka <b> / </b> LKR</span>
+                @if(!empty($announcement->data['secondary_text']))
+                    <span>{{ $announcement->data['secondary_text'] }}</span>
+                @endif
+                @if(!empty($announcement->data['locale_text']))
+                    <span>{{ $announcement->data['locale_text'] }}</span>
+                @endif
+            </div>
+        </a>
+    @else
+        <div class="announcement announcement--{{ $announcement->data['tone'] ?? 'info' }}">
+            <div class="container">
+                <span>{{ $announcement->data['text'] }}</span>
+                @if(!empty($announcement->data['secondary_text']))
+                    <span>{{ $announcement->data['secondary_text'] }}</span>
+                @endif
+                @if(!empty($announcement->data['locale_text']))
+                    <span>{{ $announcement->data['locale_text'] }}</span>
+                @endif
+            </div>
         </div>
-    </div>
+    @endif
 @endif
 <header class="site-header">
     <div class="container header-main">

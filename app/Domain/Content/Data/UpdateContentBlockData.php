@@ -12,5 +12,6 @@ final class UpdateContentBlockData extends Data
     public function __construct(
         public ?CarbonInterface $starts_at,
         public ?CarbonInterface $ends_at,
+        public ?int $sort_order = null,
     ) {}
 }

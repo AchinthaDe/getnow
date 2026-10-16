@@ -24,6 +24,8 @@ This document is the source of truth for structure and boundaries. If code and t
 - [x] Menus
 - [x] Content API v1
 - [x] Seed data
+- [ ] Step P1-S1 (storefront demo harness & teardown guide)
+- [x] Step P1-S2 (homepage CMS blocks: 5 block types, announcement bar v2, 9 placements, sort order, and link targets)
 
 Rule: do not scaffold folders, models or packages for a phase that is not active.
 
@@ -132,6 +134,20 @@ Placements, menu keys and block types are defined in code because the storefront
 | Footer link columns | Menus `footer_column_1..3` (menu `title` is the column heading) | |
 | Flash messages | Leave in code | |
 | Main content | Not phase 1 | Pages arrive in phase 2 |
+
+### Homepage Placements and Block Types (Phase 1)
+
+| Placement Key | Allowed Block Types | Max Count | Purpose |
+|---|---|---|---|
+| `announcement_bar` | `announcement_bar` (v2) | 1 | Storewide announcement bar with tone, links, secondary and locale copy |
+| `home_hero_carousel` | `promo_slide` (v1) | 5 | Rotating promo slides at top of homepage with themes and stretched links |
+| `home_hero_side` | `feature_banner` (v1) | 1 | Side banner adjacent to hero carousel |
+| `home_service_strip` | `service_item` (v1) | 4 | Four value proposition highlights with icons |
+| `home_categories_header` | `section_header` (v1) | 1 | Section heading above category browse grid |
+| `home_featured_header` | `section_header` (v1) | 1 | Section heading above featured products |
+| `home_collection_banner` | `feature_banner` (v1) | 1 | Mid-page collection highlight banner |
+| `home_new_arrivals_header` | `section_header` (v1) | 1 | Section heading above new arrivals products |
+| `home_brand_strip` | `brand_strip` (v1) | 1 | Brand logo / name strip near footer |
 
 ### Initial tables (temporary schema, built to production conventions)
 

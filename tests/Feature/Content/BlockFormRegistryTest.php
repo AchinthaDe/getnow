@@ -8,6 +8,7 @@ use App\Domain\Content\Enums\Tone;
 use App\Domain\Content\Exceptions\UnknownBlockTypeException;
 use App\Filament\Blocks\AnnouncementBarForm;
 use App\Filament\Blocks\BlockFormRegistry;
+use Filament\Forms\Components\Field;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Illuminate\Support\Facades\File;
@@ -23,22 +24,43 @@ it('throws UnknownBlockTypeException for unregistered block type', function () {
     BlockFormRegistry::get('unknown_block_type');
 })->throws(UnknownBlockTypeException::class);
 
-it('defines announcement bar schema with text, link_url, and tone', function () {
+it('defines announcement bar schema with 5 fields', function () {
     $schema = AnnouncementBarForm::schema();
 
-    expect($schema)->toHaveCount(3);
+    expect($schema)->toHaveCount(5);
+
+    $fields = [];
+    foreach ($schema as $component) {
+        if ($component instanceof Field) {
+            $fields[$component->getName()] = $component;
+        }
+    }
+
+    expect($fields)->toHaveKeys(['text', 'secondary_text', 'locale_text', 'link_url', 'tone']);
 
     /** @var TextInput $text */
-    $text = $schema[0];
+    $text = $fields['text'];
+    /** @var TextInput $secondaryText */
+    $secondaryText = $fields['secondary_text'];
+    /** @var TextInput $localeText */
+    $localeText = $fields['locale_text'];
     /** @var TextInput $linkUrl */
-    $linkUrl = $schema[1];
+    $linkUrl = $fields['link_url'];
     /** @var Select $tone */
-    $tone = $schema[2];
+    $tone = $fields['tone'];
 
     expect($text)->toBeInstanceOf(TextInput::class)
         ->and($text->getName())->toBe('text')
         ->and($text->isRequired())->toBeTrue()
         ->and($text->getMaxLength())->toBe(AnnouncementBarData::TEXT_MAX_LENGTH)
+        ->and($secondaryText)->toBeInstanceOf(TextInput::class)
+        ->and($secondaryText->getName())->toBe('secondary_text')
+        ->and($secondaryText->isRequired())->toBeFalse()
+        ->and($secondaryText->getMaxLength())->toBe(AnnouncementBarData::SECONDARY_TEXT_MAX_LENGTH)
+        ->and($localeText)->toBeInstanceOf(TextInput::class)
+        ->and($localeText->getName())->toBe('locale_text')
+        ->and($localeText->isRequired())->toBeFalse()
+        ->and($localeText->getMaxLength())->toBe(AnnouncementBarData::LOCALE_TEXT_MAX_LENGTH)
         ->and($linkUrl)->toBeInstanceOf(TextInput::class)
         ->and($linkUrl->getName())->toBe('link_url')
         ->and($linkUrl->isRequired())->toBeFalse()

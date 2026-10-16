@@ -12,6 +12,7 @@ use App\Filament\Admin\Services\AdminTimezoneResolver;
 use App\Filament\Blocks\BlockFormRegistry;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Callout;
 use Filament\Schemas\Components\Group;
@@ -28,7 +29,7 @@ final class ContentBlockForm
 
         return $schema->components([
             Select::make('placement')
-                ->options(collect(Placement::cases())->mapWithKeys(fn (Placement $p) => [$p->value => Str::headline($p->value)])->all())
+                ->options(collect(Placement::cases())->mapWithKeys(fn (Placement $p) => [$p->value => $p->label()])->all())
                 ->required()
                 ->live()
                 ->afterStateUpdated(function (Set $set): void {
@@ -116,6 +117,14 @@ final class ContentBlockForm
                 ->label("Ends at ({$timezone})")
                 ->timezone($timezone)
                 ->nullable(),
+
+            TextInput::make('sort_order')
+                ->numeric()
+                ->default(0)
+                ->minValue(ContentBlock::MIN_SORT_ORDER)
+                ->maxValue(ContentBlock::MAX_SORT_ORDER)
+                ->label('Sort Order')
+                ->helperText('Determines display order within the placement (lower numbers appear first).'),
         ]);
     }
 }

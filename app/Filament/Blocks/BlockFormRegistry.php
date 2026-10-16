@@ -14,6 +14,11 @@ final class BlockFormRegistry
      */
     private const array FORMS = [
         'announcement_bar' => AnnouncementBarForm::class,
+        'promo_slide' => PromoSlideForm::class,
+        'feature_banner' => FeatureBannerForm::class,
+        'service_item' => ServiceItemForm::class,
+        'section_header' => SectionHeaderForm::class,
+        'brand_strip' => BrandStripForm::class,
     ];
 
     /**

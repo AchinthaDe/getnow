@@ -42,7 +42,7 @@ it('updates block and logs activity', function () {
         causer: $user
     );
 
-    expect($updated->payload)->toBe(['text' => 'new text', 'link_url' => null, 'tone' => 'success'])
+    expect($updated->payload)->toBe(['text' => 'new text', 'secondary_text' => null, 'locale_text' => null, 'link_url' => null, 'tone' => 'success'])
         ->and($updated->updated_by)->toBe($user->id);
 
     \Pest\Laravel\assertDatabaseHas('activity_log', [
@@ -174,7 +174,7 @@ it('writes nothing if identical data resubmitted but jsonb order differs', funct
 
     // Overwrite payload using raw DB with reversed keys
     DB::update(
-        "UPDATE content_blocks SET payload = '{\"tone\": \"info\", \"text\": \"hello\", \"link_url\": null}'::jsonb WHERE id = ?",
+        "UPDATE content_blocks SET payload = '{\"tone\": \"info\", \"text\": \"hello\", \"link_url\": null, \"locale_text\": null, \"secondary_text\": null}'::jsonb WHERE id = ?",
         [$block->id]
     );
 
@@ -333,4 +333,46 @@ it('logs specific changed properties', function () {
     $action($block3->id, $data3, ['text' => 'same', 'tone' => 'info'], $user);
     $log3 = Activity::where('subject_id', $block3->id)->latest('id')->first();
     expect($log3->properties['changed'])->toBe(['schema_version']);
+});
+
+it('rejects sort_order outside valid integer range [0, 2147483647]', function () {
+    $registry = app(BlockRegistry::class);
+    $action = new UpdateContentBlock($registry);
+
+    /** @var ContentBlock $block */
+    $block = ContentBlock::factory()->create();
+
+    expect(fn () => $action(
+        $block->id,
+        new UpdateContentBlockData(null, null, -1),
+        ['text' => 'hello', 'tone' => 'info']
+    ))->toThrow(ValidationException::class);
+
+    expect(fn () => $action(
+        $block->id,
+        new UpdateContentBlockData(null, null, 2147483648),
+        ['text' => 'hello', 'tone' => 'info']
+    ))->toThrow(ValidationException::class);
+});
+
+it('accepts sort_order at valid boundary values 0 and 2147483647', function () {
+    $registry = app(BlockRegistry::class);
+    $action = new UpdateContentBlock($registry);
+
+    /** @var ContentBlock $block */
+    $block = ContentBlock::factory()->create();
+
+    $action(
+        $block->id,
+        new UpdateContentBlockData(null, null, ContentBlock::MIN_SORT_ORDER),
+        ['text' => 'hello', 'tone' => 'info']
+    );
+    expect($block->fresh()->sort_order)->toBe(ContentBlock::MIN_SORT_ORDER);
+
+    $action(
+        $block->id,
+        new UpdateContentBlockData(null, null, ContentBlock::MAX_SORT_ORDER),
+        ['text' => 'hello', 'tone' => 'info']
+    );
+    expect($block->fresh()->sort_order)->toBe(ContentBlock::MAX_SORT_ORDER);
 });

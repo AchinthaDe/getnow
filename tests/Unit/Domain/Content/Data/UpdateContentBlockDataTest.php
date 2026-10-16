@@ -8,6 +8,6 @@ it('omits immutable fields from update DTO', function () {
     $reflection = new ReflectionClass(UpdateContentBlockData::class);
     $properties = collect($reflection->getProperties())->map->getName()->toArray();
 
-    expect($properties)->toContain('starts_at', 'ends_at')
-        ->and($properties)->not->toContain('type', 'placement', 'status', 'is_enabled', 'sort_order');
+    expect($properties)->toContain('starts_at', 'ends_at', 'sort_order')
+        ->and($properties)->not->toContain('type', 'placement', 'status', 'is_enabled');
 });

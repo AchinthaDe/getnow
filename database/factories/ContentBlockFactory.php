@@ -19,9 +19,11 @@ final class ContentBlockFactory extends Factory
         return [
             'placement' => Placement::ANNOUNCEMENT_BAR->value,
             'type' => 'announcement_bar',
-            'schema_version' => 1,
+            'schema_version' => 2,
             'payload' => [
                 'text' => $this->faker->sentence(),
+                'secondary_text' => null,
+                'locale_text' => null,
                 'link_url' => null,
                 'tone' => 'info',
             ],

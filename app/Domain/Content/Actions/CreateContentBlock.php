@@ -40,6 +40,12 @@ final class CreateContentBlock
         $startsAt = $data->starts_at?->clone()->setTimezone('UTC')->startOfSecond();
         $endsAt = $data->ends_at?->clone()->setTimezone('UTC')->startOfSecond();
 
+        if ($data->sort_order < ContentBlock::MIN_SORT_ORDER || $data->sort_order > ContentBlock::MAX_SORT_ORDER) {
+            throw ValidationException::withMessages([
+                'sort_order' => 'The sort order must be between '.ContentBlock::MIN_SORT_ORDER.' and '.ContentBlock::MAX_SORT_ORDER.'.',
+            ]);
+        }
+
         if ($startsAt !== null && $endsAt !== null && $endsAt->lte($startsAt)) {
             throw ValidationException::withMessages([
                 'ends_at' => 'The ends at date must be after the starts at date.',
@@ -68,7 +74,7 @@ final class CreateContentBlock
                 'payload' => $payloadData->toArray(),
                 'status' => PublishStatus::DRAFT->value,
                 'is_enabled' => true,
-                'sort_order' => 0,
+                'sort_order' => $data->sort_order,
                 'starts_at' => $startsAt,
                 'ends_at' => $endsAt,
                 'created_by' => $causer?->id,

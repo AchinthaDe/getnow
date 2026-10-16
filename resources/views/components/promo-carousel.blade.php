@@ -13,31 +13,31 @@
     <div class="promo-slides" data-carousel-slides>
         @foreach($slides as $slide)
             <article
-                id="{{ $id }}-{{ $slide['id'] }}"
-                class="promo-slide promo-slide--{{ $slide['theme'] }}"
+                id="{{ $id }}-{{ $slide->id }}"
+                class="promo-slide promo-slide--{{ $slide->data['theme'] }}"
                 role="group"
                 aria-roledescription="slide"
-                aria-label="{{ $loop->iteration }} of {{ $loop->count }}: {{ $slide['label'] }}"
+                aria-label="{{ $loop->iteration }} of {{ $loop->count }}: {{ $slide->data['label'] }}"
                 data-carousel-slide
-                data-label="{{ $slide['label'] }}"
+                data-label="{{ $slide->data['label'] }}"
                 @if(!$loop->first) hidden inert @endif
             >
                 <div class="promo-copy">
-                    <span class="eyebrow"><span aria-hidden="true"></span>{{ $slide['eyebrow'] }}</span>
-                    <h2>@foreach($slide['title'] as $line)<span>{{ $line }}</span>@endforeach</h2>
-                    <p>{{ $slide['description'] }}</p>
-                    <a href="{{ route($slide['route'], $slide['parameters'] ?? []) }}" class="button">{{ $slide['cta'] }}</a>
+                    <span class="eyebrow"><span aria-hidden="true"></span>{{ $slide->data['eyebrow'] }}</span>
+                    <h2><span>{{ $slide->data['title_line_1'] }}</span>@if(!empty($slide->data['title_line_2']))<span>{{ $slide->data['title_line_2'] }}</span>@endif</h2>
+                    <p>{{ $slide->data['description'] }}</p>
+                    <a href="{{ $slide->data['cta_url'] }}" class="button banner-stretched-link">{{ $slide->data['cta_label'] }}</a>
                 </div>
                 <div class="promo-art">
                     <img
-                        src="{{ asset($slide['image']) }}"
-                        alt="{{ $slide['alt'] }}"
+                        src="{{ asset($slide->data['image_url']) }}"
+                        alt="{{ $slide->data['image_alt'] }}"
                         width="900"
                         height="900"
                         @if($loop->first) fetchpriority="high" @else loading="lazy" @endif
                     >
                 </div>
-                <span class="promo-label">{{ $slide['label'] }}</span>
+                <span class="promo-label">{{ $slide->data['label'] }}</span>
             </article>
         @endforeach
     </div>
@@ -56,8 +56,8 @@
                         type="button"
                         class="promo-dot"
                         data-carousel-go="{{ $loop->index }}"
-                        aria-label="Show offer {{ $loop->iteration }}: {{ $slide['label'] }}"
-                        aria-controls="{{ $id }}-{{ $slide['id'] }}"
+                        aria-label="Show offer {{ $loop->iteration }}: {{ $slide->data['label'] }}"
+                        aria-controls="{{ $id }}-{{ $slide->id }}"
                         @if($loop->first) aria-current="true" @endif
                     ><span></span></button>
                 @endforeach
