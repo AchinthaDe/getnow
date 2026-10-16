@@ -36,7 +36,7 @@ final class UpdateContentBlock
             ]);
         }
 
-        return DB::transaction(function () use ($id, $rawPayload, $causer, $startsAt, $endsAt) {
+        return DB::transaction(function () use ($id, $data, $rawPayload, $causer, $startsAt, $endsAt) {
             $block = ContentBlock::where('id', $id)->lockForUpdate()->firstOrFail();
 
             if ($block->status === PublishStatus::ARCHIVED) {
@@ -95,6 +95,11 @@ final class UpdateContentBlock
             if ($block->schema_version !== $definition->schemaVersion()) {
                 $changed[] = 'schema_version';
             }
+            $oldSortOrder = $block->sort_order;
+            if ($data->sort_order !== null && $block->sort_order !== $data->sort_order) {
+                $block->sort_order = $data->sort_order;
+                $changed[] = 'sort_order';
+            }
 
             $isDirty = $changed !== [];
 
@@ -113,20 +118,27 @@ final class UpdateContentBlock
                 $block->updated_by = $causer?->id;
                 $block->save();
 
+                $properties = [
+                    'old_payload' => $oldPayload,
+                    'new_payload' => $newPayload,
+                    'old_starts_at' => $oldStartsAt,
+                    'new_starts_at' => $startsAt,
+                    'old_ends_at' => $oldEndsAt,
+                    'new_ends_at' => $endsAt,
+                    'old_schema_version' => $oldSchemaVersion,
+                    'new_schema_version' => $block->schema_version,
+                    'changed' => $changed,
+                ];
+
+                if (in_array('sort_order', $changed, true)) {
+                    $properties['old_sort_order'] = $oldSortOrder;
+                    $properties['new_sort_order'] = $block->sort_order;
+                }
+
                 activity('content')
                     ->performedOn($block)
                     ->causedBy($causer)
-                    ->withProperties([
-                        'old_payload' => $oldPayload,
-                        'new_payload' => $newPayload,
-                        'old_starts_at' => $oldStartsAt,
-                        'new_starts_at' => $startsAt,
-                        'old_ends_at' => $oldEndsAt,
-                        'new_ends_at' => $endsAt,
-                        'old_schema_version' => $oldSchemaVersion,
-                        'new_schema_version' => $block->schema_version,
-                        'changed' => $changed,
-                    ])
+                    ->withProperties($properties)
                     ->event('updated')
                     ->log('updated');
             }

@@ -40,6 +40,7 @@ trait InteractsWithContentBlockActions
             type: (string) ($data['type'] ?? ''),
             starts_at: $startsAt,
             ends_at: $endsAt,
+            sort_order: isset($data['sort_order']) ? (int) $data['sort_order'] : 0,
         );
 
         $rawPayload = is_array($data['payload'] ?? null) ? $data['payload'] : [];
@@ -59,6 +60,9 @@ trait InteractsWithContentBlockActions
         $actionData = new UpdateContentBlockData(
             starts_at: $startsAt,
             ends_at: $endsAt,
+            sort_order: array_key_exists('sort_order', $data) && $data['sort_order'] !== null
+                ? (int) $data['sort_order']
+                : null,
         );
 
         $rawPayload = is_array($data['payload'] ?? null) ? $data['payload'] : [];

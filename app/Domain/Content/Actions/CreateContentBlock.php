@@ -68,7 +68,7 @@ final class CreateContentBlock
                 'payload' => $payloadData->toArray(),
                 'status' => PublishStatus::DRAFT->value,
                 'is_enabled' => true,
-                'sort_order' => 0,
+                'sort_order' => $data->sort_order,
                 'starts_at' => $startsAt,
                 'ends_at' => $endsAt,
                 'created_by' => $causer?->id,

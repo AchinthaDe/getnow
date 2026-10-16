@@ -335,7 +335,7 @@ it('exposes no header actions on edit page and registers index and edit routes',
     expect(ContentBlockResource::getPages())->toHaveKeys(['index', 'edit']);
 });
 
-it('does not expose status, is_enabled, sort_order, schema_version or type fields on edit form', function () {
+it('does not expose status, is_enabled, schema_version or type fields on edit form', function () {
     /** @var User $admin */
     $admin = User::factory()->platformAdmin()->create();
     /** @var ContentBlock $block */
@@ -347,7 +347,7 @@ it('does not expose status, is_enabled, sort_order, schema_version or type field
 
     $component->assertFormFieldDoesNotExist('status')
         ->assertFormFieldDoesNotExist('is_enabled')
-        ->assertFormFieldDoesNotExist('sort_order')
+        ->assertFormFieldExists('sort_order')
         ->assertFormFieldDoesNotExist('schema_version')
         ->assertFormFieldDoesNotExist('type');
 });
