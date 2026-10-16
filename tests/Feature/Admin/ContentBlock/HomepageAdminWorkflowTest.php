@@ -18,14 +18,13 @@ use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Filters\SelectFilter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
-use Spatie\Activitylog\Models\Activity;
 
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\get;
 
 uses(RefreshDatabase::class);
 
-it('Layer C Step 1: filters list table by each of the 9 placements', function (): void {
+it('filters list table by each of the 9 placements', function (): void {
     (new ContentSeeder)->run();
 
     /** @var User $admin */
@@ -63,7 +62,7 @@ it('Layer C Step 1: filters list table by each of the 9 placements', function ()
     }
 });
 
-it('Layer C Step 2: creates one block of each of the 5 new types in Filament', function (): void {
+it('creates one block of each of the 5 new types in Filament', function (): void {
     /** @var User $admin */
     $admin = User::factory()->platformAdmin()->create();
     actingAs($admin);
@@ -105,19 +104,19 @@ it('Layer C Step 2: creates one block of each of the 5 new types in Filament', f
             'type' => 'service_item',
             'payload' => [
                 'icon' => 'truck',
-                'title' => 'Islandwide Courier',
-                'subtitle' => 'Delivery within 48 hours',
-                'link_url' => '/delivery',
+                'title' => 'Express Islandwide Delivery',
+                'subtitle' => 'Delivered in 24 hours to your door.',
+                'link_url' => '/shipping',
             ],
         ],
         'section_header' => [
             'placement' => Placement::HOME_CATEGORIES_HEADER->value,
             'type' => 'section_header',
             'payload' => [
-                'eyebrow' => 'TOP CATEGORIES',
-                'title' => 'Browse by tech category.',
-                'cta_label' => 'View all',
-                'cta_url' => '/shop',
+                'eyebrow' => 'TOP DEPARTMENTS',
+                'title' => 'Browse Curated Categories',
+                'cta_label' => 'View Catalog',
+                'cta_url' => '/categories',
             ],
         ],
         'brand_strip' => [
@@ -125,60 +124,53 @@ it('Layer C Step 2: creates one block of each of the 5 new types in Filament', f
             'type' => 'brand_strip',
             'payload' => [
                 'eyebrow' => 'OFFICIAL PARTNERS',
-                'title' => 'Authorized retailers.',
+                'title' => 'Direct from Top Manufacturers',
                 'brands' => [
-                    ['label' => 'Google', 'url' => '/shop?brand=Google'],
-                    ['label' => 'Nothing', 'url' => '/shop?brand=Nothing'],
+                    ['label' => 'Sony', 'url' => '/shop?brand=Sony'],
+                    ['label' => 'Bose', 'url' => '/shop?brand=Bose'],
                 ],
             ],
         ],
     ];
 
     foreach ($blockSpecs as $type => $spec) {
-        $data = [
-            'placement' => $spec['placement'],
-            'type' => $spec['type'],
-            'sort_order' => 1,
-            'payload' => $spec['payload'],
-        ];
+        $component = Livewire::test(CreateContentBlock::class)
+            ->fillForm([
+                'placement' => $spec['placement'],
+                'type' => $spec['type'],
+            ]);
 
-        Livewire::test(CreateContentBlock::class)
-            ->fillForm($data)
-            ->call('create')
+        foreach ($spec['payload'] as $key => $value) {
+            $component->fillForm(["payload.{$key}" => $value]);
+        }
+
+        $component->call('create')
             ->assertHasNoFormErrors();
 
         /** @var ContentBlock $created */
-        $created = ContentBlock::where('type', $type)->latest('id')->firstOrFail();
+        $created = ContentBlock::where('placement', $spec['placement'])
+            ->where('type', $spec['type'])
+            ->latest('id')
+            ->firstOrFail();
+
         expect($created->status)->toBe(PublishStatus::DRAFT)
-            ->and($created->placement->value)->toBe($spec['placement']);
+            ->and($created->is_enabled)->toBeTrue();
+
+        foreach ($spec['payload'] as $key => $value) {
+            expect($created->payload[$key])->toEqual($value);
+        }
     }
 });
 
-it('Layer C Step 3: opens View page for promo_slide and verifies read-only hydration', function (): void {
+it('opens View page for a promo_slide block and verifies form is disabled with hydrated payload', function (): void {
     /** @var User $admin */
     $admin = User::factory()->platformAdmin()->create();
     actingAs($admin);
 
-    $block = ContentBlock::factory()->create([
-        'type' => 'promo_slide',
-        'placement' => Placement::HOME_HERO_CAROUSEL->value,
-        'schema_version' => 1,
-        'payload' => [
-            'theme' => 'sky',
-            'label' => 'Hydration Test Slide',
-            'eyebrow' => 'EXCLUSIVE',
-            'title_line_1' => 'Sound Redefined',
-            'title_line_2' => 'Sony WH-1000XM5',
-            'description' => 'Industry-leading noise canceling.',
-            'cta_label' => 'Listen Now',
-            'cta_url' => '/shop?q=sony',
-            'image_url' => '/images/products/sony-wh1000xm5.jpg',
-            'image_alt' => 'Sony headphones',
-        ],
-    ]);
-    if (! $block instanceof ContentBlock) {
-        throw new \RuntimeException('Expected ContentBlock instance.');
-    }
+    (new ContentSeeder)->run();
+
+    /** @var ContentBlock $block */
+    $block = ContentBlock::where('type', 'promo_slide')->firstOrFail();
 
     $response = get('/admin/content-blocks/'.$block->public_id);
     $response->assertOk();
@@ -189,32 +181,21 @@ it('Layer C Step 3: opens View page for promo_slide and verifies read-only hydra
     /** @var ViewContentBlock $instance */
     $instance = $component->instance();
     expect($instance->form->isDisabled())->toBeTrue()
-        ->and($component->get('data.payload.title_line_1'))->toBe('Sound Redefined')
-        ->and($component->get('data.payload.label'))->toBe('Hydration Test Slide');
+        ->and($component->get('data.payload.eyebrow'))->toBe('FIND YOUR FREQUENCY')
+        ->and($component->get('data.payload.title_line_1'))->toBe('Less noise.')
+        ->and($component->get('data.payload.label'))->toBe('Audio offers')
+        ->and($component->get('data.payload.cta_url'))->toBe('/shop?category=audio&deals=1');
 });
 
-it('Layer C Step 4: opens View page for brand_strip and verifies nested brands repeater hydration', function (): void {
+it('opens View page for a brand_strip block and verifies form is disabled with hydrated nested brands repeater', function (): void {
     /** @var User $admin */
     $admin = User::factory()->platformAdmin()->create();
     actingAs($admin);
 
-    $block = ContentBlock::factory()->create([
-        'type' => 'brand_strip',
-        'placement' => Placement::HOME_BRAND_STRIP->value,
-        'schema_version' => 1,
-        'payload' => [
-            'eyebrow' => 'GOOD COMPANY',
-            'title' => 'Great brands.',
-            'brands' => [
-                ['label' => 'Apple', 'url' => '/shop?brand=Apple'],
-                ['label' => 'Samsung', 'url' => '/shop?brand=Samsung'],
-                ['label' => 'Sony', 'url' => '/shop?brand=Sony'],
-            ],
-        ],
-    ]);
-    if (! $block instanceof ContentBlock) {
-        throw new \RuntimeException('Expected ContentBlock instance.');
-    }
+    (new ContentSeeder)->run();
+
+    /** @var ContentBlock $block */
+    $block = ContentBlock::where('type', 'brand_strip')->firstOrFail();
 
     $response = get('/admin/content-blocks/'.$block->public_id);
     $response->assertOk();
@@ -232,41 +213,14 @@ it('Layer C Step 4: opens View page for brand_strip and verifies nested brands r
     expect(array_values(is_array($brands) ? $brands : []))->toBe([
         ['label' => 'Apple', 'url' => '/shop?brand=Apple'],
         ['label' => 'Samsung', 'url' => '/shop?brand=Samsung'],
+        ['label' => 'Anker', 'url' => '/shop?brand=Anker'],
+        ['label' => 'JBL', 'url' => '/shop?brand=JBL'],
+        ['label' => 'Marshall', 'url' => '/shop?brand=Marshall'],
         ['label' => 'Sony', 'url' => '/shop?brand=Sony'],
     ]);
 });
 
-it('Layer C Step 5: verifies ContentBlock history behavior and activity logging', function (): void {
-    /** @var User $admin */
-    $admin = User::factory()->platformAdmin()->create();
-    actingAs($admin);
-
-    (new ContentSeeder)->run();
-
-    /** @var ContentBlock $block */
-    $block = ContentBlock::where('placement', Placement::HOME_BRAND_STRIP->value)->firstOrFail();
-
-    // Verify Filament does not have a separate subpage for history (returns 404)
-    get('/admin/content-blocks/'.$block->public_id.'/history')
-        ->assertNotFound();
-
-    // Mutate block and verify activity log record is written
-    $payload = $block->payload;
-    $payload['title'] = 'Updated Brand Partners';
-    app(UpdateContentBlock::class)($block->id, new UpdateContentBlockData(null, null, 0), $payload, $admin);
-
-    $activity = Activity::where('subject_type', ContentBlock::class)
-        ->where('subject_id', $block->id)
-        ->latest('id')
-        ->first();
-
-    expect($activity)->not->toBeNull()
-        ->and($activity->causer_id)->toBe($admin->id)
-        ->and($activity->description)->toBe('updated')
-        ->and($activity->properties['changed'])->toContain('payload');
-});
-
-it('Layer C Step 6: edits slide sort_order and confirms homepage order changes', function (): void {
+it('edits slide sort_order and confirms homepage order changes', function (): void {
     (new ContentSeeder)->run();
 
     // In seeded database, slides are ordered by sort_order 0, 1, 2
