@@ -20,6 +20,7 @@ use App\Models\User;
 use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
+use Filament\Support\Enums\Width;
 use Filament\Support\Exceptions\Halt;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Log;
@@ -31,6 +32,11 @@ final class EditContentBlock extends EditRecord
     use InteractsWithContentBlockActions;
 
     protected static string $resource = ContentBlockResource::class;
+
+    public function getMaxContentWidth(): Width
+    {
+        return Width::Full;
+    }
 
     #[Locked]
     public string $previewMode = 'page';

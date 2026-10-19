@@ -16,6 +16,7 @@ use App\Filament\Admin\Resources\ContentBlockResource\Pages\EditContentBlock;
 use App\Filament\Admin\Resources\ContentBlockResource\Pages\ListContentBlocks;
 use App\Models\User;
 use Carbon\Carbon;
+use Filament\Support\Enums\Width;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Livewire\Livewire;
@@ -443,4 +444,10 @@ it('renders live preview pane on edit page and synchronizes ephemeral preview st
     $cached = Cache::get(SaveContentBlockPreviewState::cacheKey($admin->id, $block->public_id));
     expect($cached['payload']['text'])->toBe('Live Typing...')
         ->and($cached['token'])->toBe($token);
+});
+
+it('uses full max content width for split-screen live preview layout', function () {
+    $page = new EditContentBlock;
+
+    expect($page->getMaxContentWidth())->toBe(Width::Full);
 });

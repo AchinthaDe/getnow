@@ -204,13 +204,13 @@ final class ContentBlockForm
                             ->maxValue(ContentBlock::MAX_SORT_ORDER)
                             ->label('Sort Order')
                             ->helperText('Determines display order within the placement (lower numbers appear first).'),
-                    ])->columnSpan(fn (string $operation): int => $operation === 'edit' ? 7 : 12),
+                    ])->columnSpan(fn (string $operation): int => $operation === 'edit' ? 5 : 12),
 
                     Section::make('Storefront Preview (Approximation)')
                         ->schema([
                             View::make('filament.admin.resources.content-block-resource.components.live-preview-pane'),
                         ])
-                        ->columnSpan(5)
+                        ->columnSpan(7)
                         ->visibleOn('edit'),
                 ]),
         ]);
