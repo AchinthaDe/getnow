@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Domain\Content\Actions\ArchiveContentBlock;
+use App\Domain\Content\Actions\SaveContentBlockPreviewState;
 use App\Domain\Content\Actions\UpdateContentBlock;
 use App\Domain\Content\Enums\Placement;
 use App\Domain\Content\Enums\PublishStatus;
@@ -15,6 +16,7 @@ use App\Filament\Admin\Resources\ContentBlockResource\Pages\EditContentBlock;
 use App\Filament\Admin\Resources\ContentBlockResource\Pages\ListContentBlocks;
 use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Livewire\Livewire;
 use Spatie\Activitylog\Models\Activity;
@@ -412,4 +414,33 @@ it('displays live capacity helper text for placement on edit page', function () 
 
     Livewire::test(EditContentBlock::class, ['record' => $block->public_id])
         ->assertSee('1 / 1 live in this placement');
+});
+
+it('renders live preview pane on edit page and synchronizes ephemeral preview state', function (): void {
+    /** @var User $admin */
+    $admin = User::factory()->platformAdmin()->create();
+    /** @var ContentBlock $block */
+    $block = ContentBlock::factory()->create([
+        'payload' => ['text' => 'Initial', 'tone' => 'info'],
+    ]);
+
+    actingAs($admin);
+
+    $component = Livewire::test(EditContentBlock::class, ['record' => $block->public_id])
+        ->assertSeeText('Storefront Preview (Approximation)')
+        ->assertSeeHtml(route('admin.content-blocks.preview.page', ['contentBlock' => $block->public_id, 'live' => 1]))
+        ->call('setPreviewMode', 'isolated')
+        ->assertSet('previewMode', 'isolated')
+        ->call('setPreviewDevice', 'mobile')
+        ->assertSet('previewDevice', 'mobile')
+        ->set('data.payload.text', 'Live Typing...')
+        ->call('syncPreviewState');
+
+    $token = $component->get('previewToken');
+    expect($token)->not->toBeEmpty();
+
+    /** @var array{payload: array<string, mixed>, sort_order: int, token: string} $cached */
+    $cached = Cache::get(SaveContentBlockPreviewState::cacheKey($admin->id, $block->public_id));
+    expect($cached['payload']['text'])->toBe('Live Typing...')
+        ->and($cached['token'])->toBe($token);
 });

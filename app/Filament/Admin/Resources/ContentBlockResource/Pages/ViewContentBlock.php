@@ -18,6 +18,7 @@ use Filament\Actions\EditAction;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Log;
 
@@ -71,6 +72,11 @@ final class ViewContentBlock extends ViewRecord
     public function form(Schema $schema): Schema
     {
         return $schema->components([
+            Section::make('Storefront Preview (Approximation)')
+                ->schema([
+                    View::make('filament.admin.resources.content-block-resource.components.view-isolated-preview'),
+                ]),
+
             Section::make('Metadata')
                 ->schema(ContentBlockMetadataSchema::schema())
                 ->columns(2),
