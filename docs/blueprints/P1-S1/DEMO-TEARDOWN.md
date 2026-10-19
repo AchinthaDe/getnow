@@ -44,6 +44,11 @@ The following files and directories were introduced solely to host the in-memory
 | **Configs** | `config/blade-icons.php` | Blade Icons component alias override (disables default icon alias) |
 | **Tests** | `tests/Feature/Storefront/DemoHomeTest.php` | Demo homepage integration test suite |
 | **Tests** | `tests/Unit/Domain/Content/Enums/ServiceIconTest.php` | Demo SVG icon map parity test suite |
+| **Preview Views** | `resources/views/storefront/partials/blocks/` | Shared storefront block Blade partials (shared with admin preview) |
+| **Preview Views** | `resources/views/storefront/partials/preview-chrome.blade.php` | Shared preview chrome partial |
+| **Preview Controller** | `ContentBlockPreviewController::page()` | Page-context preview endpoint coupled to demo storefront |
+| **Preview Route** | `admin.content-blocks.preview.page` | Route in `routes/web.php` serving page preview |
+| **Preview UI** | `Page Context` toggle in `live-preview-pane.blade.php` | Live preview pane toggle |
 
 ---
 
@@ -88,7 +93,12 @@ Remove-Item -Force tests/Unit/Domain/Content/Enums/ServiceIconTest.php
 # 6. Revert modified routes and Vite bundler configuration
 git checkout -- routes/web.php vite.config.js
 
-# 7. Rebuild production assets and run full quality gates
+# 7. Decouple storefront demo preview (Step P1-UI6)
+# Remove ContentBlockPreviewController::page() and the preview.page route.
+# Retain isolated block preview (ContentBlockPreviewController::isolated()) if block partials are kept,
+# or remove all preview partials and routes in Level 2 teardown.
+
+# 8. Rebuild production assets and run full quality gates
 npm run build
 composer check
 ```

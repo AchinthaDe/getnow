@@ -12,7 +12,7 @@ This document is the source of truth for structure and boundaries. If code and t
 |---|---|---|
 | 0 Bootstrap | Laravel + PostgreSQL + Filament admin panel + quality gates | Done |
 | 1 Layout CMS (pilot) | Site settings, announcement bar, menus, Content API v1, seed data mirroring the current storefront layout | Active |
-| 2 Pages and media | Pages made of blocks, image blocks (hero), revisions and preview | Planned |
+| 2 Pages and media | Pages made of blocks, image blocks (hero), persistent revisions and public API preview tokens (ephemeral admin block preview shipped in Phase 1 per ADR 0005) | Planned |
 | Later (order TBD) | Accounts, Catalog, Retail (retailer panel), Sales, Negotiation, Procurement, Payments, Disputes, React storefront | Not started |
 
 ### Phase 1 progress
@@ -27,6 +27,7 @@ This document is the source of truth for structure and boundaries. If code and t
 - [x] Step P1-S1 (storefront demo harness & teardown guide)
 - [x] Step P1-S2 (homepage CMS blocks: 5 block types, announcement bar v2, 9 placements, sort order, and link targets)
 - [x] Step P1-UI5 (admin UX upgrades: PlacementPage enum, cascading create selector, page tabs, live capacity guards via EnsurePlacementCapacity and advisory locks)
+- [x] Step P1-UI6 (admin block previews: isolated view preview, split-screen edit preview, shared storefront partials, ADR 0005)
 
 Rule: do not scaffold folders, models or packages for a phase that is not active.
 
@@ -88,6 +89,7 @@ app/
 │       ├── Pages/              # settings pages, custom pages
 │       └── Widgets/
 ├── Http/
+│   ├── Controllers/Admin/      # ContentBlockPreviewController
 │   └── Controllers/Api/V1/Content/
 ├── Providers/                  # includes ContentServiceProvider (registers blocks)
 └── Support/                    # small shared helpers only
@@ -177,7 +179,7 @@ Settings and activity log tables come from their packages. Phase 1 content is pl
 - Colours and spacing come from enums that the storefront maps to its own CSS tokens. Design tokens stay in the storefront.
 - Links must be a relative path starting with `/` or an `https://` URL. Reject `javascript:` and other schemes.
 - Visibility is decided server-side: only `published`, `is_enabled` blocks inside their `starts_at`/`ends_at` window reach the API.
-- Phase 1 has no revisions: editing a published block changes the live site. Draft preview and revisions arrive in phase 2.
+- Phase 1 provides ephemeral cache-backed admin block preview approximation (ADR 0005); persistent database revisions and public API preview tokens arrive in Phase 2.
 
 ### Adding a block type (checklist)
 
@@ -240,6 +242,7 @@ Contract rules:
 - Customize only through documented extension points. Pin the Filament version and upgrade in its own PR.
 - Every resource has a smoke test that loads its list, create and edit pages.
 - Browser history convention: table state interactions (search, sort, and filters inherit `history: false`, pagination configured with `history: false`) replace the current browser history entry (`history: false`), while inter-page navigation pushes a new history entry. Intra-table state changes never pollute browser history.
+- Preview iframe routing conventions: preview endpoints reside under `admin/content-blocks/{public_id}/preview/` with server-side authorization guards (`canAccessPanel` and policy `view()`), serving responses with `X-Robots-Tag: noindex, nofollow`. The live preview iframe wrapper uses `wire:key` history protection to prevent iframe reloading on unrelated form state updates.
 
 ## 9. Database conventions (PostgreSQL)
 
@@ -273,7 +276,7 @@ Contract rules:
 | D4 | Category data stays with the catalog source. Menus link by URL until a Catalog context exists. |
 | D5 | Phase 1 has no images. Media library arrives with the first image block in phase 2. |
 | D6 | Phase 1 admin access is one platform-admin flag. Roles come with the retailer panel. |
-| D7 | Published content edits go live immediately in phase 1. Revisions and preview come in phase 2. |
+| D7 | Published content edits go live immediately on Save. Ephemeral cache-backed admin block preview is provided in Phase 1 (ADR 0005). Persistent revisions and version history arrive in Phase 2. |
 | D8 | Live capacity limits (`maxCount`) are enforced at write-time during publish, enable, and schedule edits via PostgreSQL advisory locks and `EnsurePlacementCapacity` (ADR-0004 amending D8). Tie-break for legacy data remains `sort_order ASC, starts_at DESC NULLS LAST, id DESC` at read time. One block = one message. |
 | D9 | Concurrency & Locks: Content blocks use last-write-wins for payloads, pessimistic locking for state transitions. Menus use whole-tree atomic replacement under a row lock, last-write-wins. |
 
