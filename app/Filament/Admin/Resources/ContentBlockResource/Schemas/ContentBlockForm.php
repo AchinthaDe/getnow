@@ -144,9 +144,7 @@ final class ContentBlockForm
                     if ($record === null || $record->placement === null) {
                         return '';
                     }
-                    $liveCount = ContentBlock::visible()
-                        ->where('placement', $record->placement->value)
-                        ->count();
+                    $liveCount = app(CountLiveBlocksForPlacement::class)($record->placement);
                     $maxCount = $record->placement->maxCount();
 
                     return "{$liveCount} / {$maxCount} live in this placement";

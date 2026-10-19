@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Domain\Content\Actions\ArchiveContentBlock;
 use App\Domain\Content\Actions\UpdateContentBlock;
+use App\Domain\Content\Enums\Placement;
 use App\Domain\Content\Enums\PublishStatus;
 use App\Domain\Content\Exceptions\IllegalStateTransitionException;
 use App\Domain\Content\Exceptions\UnknownBlockTypeException;
@@ -395,4 +396,20 @@ it('exposes no header actions on edit page and registers index create edit and v
     /** @var EditContentBlock $instance */
     $instance = $component->instance();
     expect($instance->getCachedHeaderActions())->toBeEmpty();
+});
+
+it('displays live capacity helper text for placement on edit page', function () {
+    /** @var User $admin */
+    $admin = User::factory()->platformAdmin()->create();
+    /** @var ContentBlock $block */
+    $block = ContentBlock::factory()->create([
+        'placement' => Placement::ANNOUNCEMENT_BAR,
+        'status' => PublishStatus::PUBLISHED,
+        'is_enabled' => true,
+    ]);
+
+    actingAs($admin);
+
+    Livewire::test(EditContentBlock::class, ['record' => $block->public_id])
+        ->assertSee('1 / 1 live in this placement');
 });
