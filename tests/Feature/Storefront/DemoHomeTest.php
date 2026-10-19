@@ -248,3 +248,37 @@ it('has valid teardown guide documenting all temporary demo files', function ():
     expect($content)->toContain('Files to Remove')
         ->and($content)->toContain('Remove-Item');
 });
+
+it('matches the pre-refactor golden HTML snapshot on GET /', function (): void {
+    (new ContentSeeder)->run();
+
+    $response = get('/');
+    $response->assertOk();
+
+    $normalize = function (string $html): string {
+        $html = (string) preg_replace('/<meta name="csrf-token" content="[^"]*">/', '<meta name="csrf-token" content="STATIC_CSRF_TOKEN">', $html);
+        $html = (string) preg_replace('/<input type="hidden" name="_token" value="[^"]*"/i', '<input type="hidden" name="_token" value="STATIC_CSRF_TOKEN"', $html);
+        $html = (string) preg_replace('/home-offers-01[0-9a-zA-Z]{24}/', 'home-offers-STATIC_SLIDE_ID', $html);
+        $html = (string) preg_replace('/\s+>/', '>', $html);
+        $html = (string) preg_replace('/>\s+</', '><', $html);
+
+        return trim((string) preg_replace('/\s+/', ' ', $html));
+    };
+
+    $fixturePath = base_path('tests/Fixtures/storefront/home-seeded-golden.html');
+    $fixture = $normalize((string) file_get_contents($fixturePath));
+
+    expect($normalize($response->getContent()))->toBe($fixture);
+});
+
+it('renders zero preview markers on public GET /', function (): void {
+    (new ContentSeeder)->run();
+
+    $response = get('/');
+    $response->assertOk();
+
+    $response->assertDontSee('data-preview-target');
+    $response->assertDontSee('preview-target-block');
+    $response->assertDontSee('preview-fallback-banner');
+    $response->assertDontSee('preview-unservable-placeholder');
+});
