@@ -448,6 +448,18 @@ it('renders live preview pane on edit page and synchronizes ephemeral preview st
 
 it('uses full max content width for split-screen live preview layout', function () {
     $page = new EditContentBlock;
-
     expect($page->getMaxContentWidth())->toBe(Width::Full);
+
+    /** @var User $admin */
+    $admin = User::factory()->platformAdmin()->create();
+    /** @var ContentBlock $block */
+    $block = ContentBlock::factory()->create();
+
+    actingAs($admin);
+    $response = get(EditContentBlock::getUrl(['record' => $block->public_id]));
+
+    expect($response->status())->toBe(200);
+    $html = $response->getContent();
+    expect($html)->toContain('class="fi-main fi-width-full"')
+        ->and($html)->toContain('--cols-lg: repeat(12, minmax(0, 1fr))');
 });
