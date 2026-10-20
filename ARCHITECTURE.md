@@ -28,6 +28,7 @@ This document is the source of truth for structure and boundaries. If code and t
 - [x] Step P1-S2 (homepage CMS blocks: 5 block types, announcement bar v2, 9 placements, sort order, and link targets)
 - [x] Step P1-UI5 (admin UX upgrades: PlacementPage enum, cascading create selector, page tabs, live capacity guards via EnsurePlacementCapacity and advisory locks)
 - [x] Step P1-UI6 (admin block previews: isolated view preview, split-screen edit preview, shared storefront partials, ADR 0005)
+- [x] Step P1-UI7 (menu form reorganization: collapsible level 1 & 2 repeaters, dynamic item labels, compact 12-column grid rows, and inset sub-item sections)
 
 Rule: do not scaffold folders, models or packages for a phase that is not active.
 
