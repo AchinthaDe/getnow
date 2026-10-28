@@ -15,9 +15,7 @@ paths:
 decisions: [D1, D3, D8]
 depends-on: [content-blocks, menus, site-settings]
 tests:
-  - vendor/bin/pest tests/Feature/Api/V1/Content/GetLayoutContentEndpointTest.php
-  - vendor/bin/pest tests/Feature/Domain/Content/Actions/GetLayoutContentTest.php
-  - vendor/bin/pest tests/Arch/ContentApiArchTest.php
+  - vendor/bin/pest tests/Feature/Api/V1/Content/GetLayoutContentEndpointTest.php tests/Feature/Domain/Content/Actions/GetLayoutContentTest.php tests/Arch/ContentApiArchTest.php
 triggers:
   - paths:
       - routes/api.php
@@ -44,9 +42,9 @@ The `content-api` area delivers the public layout graph for storefront rendering
 ## How it works now
 
 - **Single layout endpoint.** `GetLayoutContentController` routes `GET /api/v1/content/layout` without authentication under `throttle:content-api` middleware, delegating layout graph assembly to `GetLayoutContent`.
-- **Pre-indexed placement queries.** `GetLayoutContent` retrieves all published, enabled, in-window blocks with `ContentBlock::visible()->servingOrder()`, pre-indexing them by placement in memory before applying `ResolveServablePayload` and placement `maxCount()`.
+- **Pre-indexed placement queries.** `GetLayoutContent` retrieves all published, enabled, in-window blocks with `ContentBlock::visible()->servingOrder()`, pre-indexing them by placement in memory before applying `ResolveServablePayload` and in-memory placement `maxCount()` slicing.
 - **Revision ETag and HTTP 304.** Responses attach an `ETag` containing the SHA-256 hash of canonical layout data JSON. If the request's `If-None-Match` header matches the current revision or `*`, the controller returns an empty `304 Not Modified` response.
-- **Fail-closed block resolution.** Corrupted blocks or unsupported schema versions are logged and omitted from output without failing sibling blocks or returning an HTTP error.
+- **Fail-closed block resolution.** Unservable blocks (unsupported schema versions or invalid payloads) are omitted from layout output without failing sibling blocks or returning an HTTP error (ADR 0002).
 
 ## Invariants
 
@@ -56,8 +54,8 @@ The `content-api` area delivers the public layout graph for storefront rendering
 | 2 | **Deterministic revision ETag caching.** Responses carry an ETag matching SHA-256 of canonical data and return 304 on match. | Minimizes network payload transfer when storefront layout has not changed. | `tests/Feature/Api/V1/Content/GetLayoutContentEndpointTest.php` |
 | 3 | **Fail-closed serving health per block.** Unservable blocks are omitted while valid sibling blocks are returned. | Resiliency decision ADR 0002; corrupted blocks must never crash storefront layout. | `tests/Feature/Domain/Content/Actions/GetLayoutContentTest.php` |
 | 4 | **All placements and menus present.** Every defined Placement and MenuKey case is present in the output even when empty. | Contract consistency; storefront layout components must not crash on missing keys. | `tests/Feature/Domain/Content/Actions/GetLayoutContentTest.php` |
-| 5 | **Additive changes only within v1.** Response schema fields cannot be removed or renamed in v1. | Backward compatibility rule K8; breaking contract changes require `/api/v2`. | `tests/Feature/Domain/Content/Actions/GetLayoutContentTest.php` |
-| 6 | **Per-minute IP rate limiting.** Endpoint enforces 60 requests per minute per IP address by default. | Protects the CMS backend against traffic spikes and scraping denial-of-service. | `tests/Feature/Api/V1/Content/GetLayoutContentEndpointTest.php` |
+| 5 | **Additive changes only within v1.** Response schema fields cannot be removed or renamed in v1. | Backward compatibility rule K8; breaking contract changes require `/api/v2`. | `Review only` (monitored by `tests/Feature/Api/V1/Content/GetLayoutContentEndpointTest.php`) |
+| 6 | **Per-minute IP rate limiting applies.** Endpoint returns HTTP 429 when requests exceed configured threshold. | Protects the CMS backend against traffic spikes and scraping denial-of-service. | `tests/Feature/Api/V1/Content/GetLayoutContentEndpointTest.php` |
 | 7 | **Thin controller boundary.** Controller performs no validation or queries and only delegates to `GetLayoutContent`. | Architectural rule S2; enforces layer separation and prevents business logic in HTTP. | `tests/Arch/ContentApiArchTest.php` |
 
 ## Changing it
@@ -78,15 +76,17 @@ Run configuration cache clearing before executing tests to ensure test database 
 
 ```powershell
 php artisan config:clear
-vendor/bin/pest tests/Feature/Api/V1/Content/GetLayoutContentEndpointTest.php
+vendor/bin/pest tests/Feature/Api/V1/Content/GetLayoutContentEndpointTest.php tests/Feature/Domain/Content/Actions/GetLayoutContentTest.php tests/Arch/ContentApiArchTest.php
 ```
 
 ## Known limits and open questions
 
-- **Isolated rate limiter registration.** The `content-api` rate limiter is configured in `AppServiceProvider` specifically for `/api/v1/content`; other application routes have no shared rate limiter.
+- **Rate limiting applies only to content-api route.** The `content-api` rate limiter is configured in `AppServiceProvider` specifically for `/api/v1/content/layout` with a default of 60 requests per minute (`CONTENT_API_RATE_LIMIT_PER_MINUTE`).
 - **No application caching beyond HTTP ETags.** Layout responses rely entirely on HTTP conditional caching (`If-None-Match`); responses are not cached in Redis or Laravel memory stores.
 
 ## History
 
-- [ADR 0001](../adr/0001-content-api-tie-break.md): deterministic tie-breaking and query-level maxCount limits.
+- [ADR 0001](../adr/0001-content-api-tie-break.md): deterministic tie-breaking (`sort_order ASC, starts_at DESC NULLS LAST, id DESC`) and read-side in-memory maxCount slicing.
+- [ADR 0002](../adr/0002-content-block-serving-health.md): fail-closed serving health checks and reason codes.
 - [docs/contracts/content-api.md](../contracts/content-api.md): Content API v1 layout contract specification.
+- [ARCHITECTURE.md §12 Decisions](../../ARCHITECTURE.md#12-decisions): D1, D3, D8.
