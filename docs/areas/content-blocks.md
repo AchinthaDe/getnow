@@ -75,9 +75,9 @@ triggers:
       - app/Domain/Content/Services/**
     reconsider: >-
       Mutating action changes require checking three things:
-      (1) Locking order must acquire the placement transaction advisory lock before row lockForUpdate.
-      (2) Live capacity check runs in the same transaction prior to state persistence.
-      (3) Concurrency and capacity enforcement adheres to ADR 0004.
+      (1) State transitions execute within a database transaction under a row lockForUpdate.
+      (2) Concurrency follows last-write-wins for payloads and pessimistic locking for status transitions (ADR 0003).
+      (3) Capacity enforcement adheres to placement limits.
 ---
 
 # Content Blocks
@@ -140,5 +140,5 @@ vendor/bin/pest tests/Feature/Domain/Content/ServingWindowTest.php tests/Feature
 - [ADR 0001](../adr/0001-content-api-tie-break.md): deterministic tie-breaking (`sort_order ASC, starts_at DESC NULLS LAST, id DESC`) and read-side in-memory maxCount slicing.
 - [ADR 0002](../adr/0002-content-block-serving-health.md): fail-closed serving health checks and reason codes.
 - [ADR 0003](../adr/0003-content-block-concurrency.md): last-write-wins payload saves and pessimistic locking for lifecycle actions.
-- [ADR 0004](../adr/0004-placement-live-capacity-enforcement.md): write-time live capacity guards using PostgreSQL transaction advisory locks.
+- ADR 0004 (planned): write-time live capacity guards using PostgreSQL transaction advisory locks.
 - [ARCHITECTURE.md §12 Decisions](../../ARCHITECTURE.md#12-decisions): D2, D3, D5, D7, D8.
