@@ -21,7 +21,7 @@ paths:
 decisions: [D2, D4, D9]
 depends-on: [admin-panel, data]
 tests:
-  - vendor/bin/pest tests/Feature/Domain/Content/Policies/MenuPolicyTest.php tests/Feature/Domain/Content/Actions/UpdateMenuRejectionsTest.php tests/Feature/Support/Rules/SafeLinkTest.php tests/Feature/Domain/Content/Actions/UpdateMenuTest.php tests/Feature/Domain/Content/Actions/GetMenuTreeTest.php
+  - vendor/bin/pest tests/Feature/Domain/Content/Policies/MenuPolicyTest.php tests/Feature/Domain/Content/Actions/UpdateMenuRejectionsTest.php tests/Feature/Support/Rules/SafeLinkTest.php tests/Feature/Domain/Content/Actions/UpdateMenuTest.php tests/Feature/Domain/Content/Actions/GetMenuTreeTest.php tests/Feature/Admin/Menu/MenuFormTest.php
 triggers:
   - paths:
       - app/Domain/Content/Enums/MenuKey.php
@@ -30,9 +30,16 @@ triggers:
       Menu key changes require verifying three things:
       (1) Menu keys are code-owned and defined in MenuKey enum (D2).
       (2) Adding a menu key requires an idempotent database migration.
-      (3) Layout API responses must include the new key with default empty items.
+      (3) Layout API responses automatically map the new key from MenuKey cases.
   - paths:
-      - app/Filament/Admin/Resources/MenuResource/Schemas/MenuForm.php
+      - app/Domain/Content/Actions/UpdateMenu.php
+      - app/Domain/Content/Models/MenuItem.php
+    reconsider: >-
+      Menu mutation updates require verifying three things:
+      (1) Tree depth is guarded to a maximum depth of 2.
+      (2) Items matched by public_id update in place to preserve stable identifiers.
+      (3) Items link by URL (D4); replacing URL strings with foreign keys requires an ADR.
+  - paths:
       - app/Filament/Admin/Resources/MenuResource/**
     reconsider: >-
       Menu form schema changes require verifying three things:
@@ -68,9 +75,9 @@ The `menus` area manages navigation menu hierarchies for the storefront layout. 
 
 - **Adding a new navigation menu:**
   1. Add a new case to `App\Domain\Content\Enums\MenuKey`.
-  2. Create an idempotent database migration inserting the new row into `menus`.
-  3. Ensure `GetLayoutContent` maps the new key in the Content API layout response.
-  4. Update `docs/contracts/content-api.md` and fixture `tests/Fixtures/contracts/content-layout-v1.json`.
+  2. Create an idempotent database migration in `database/migrations/` inserting the new row into `menus`.
+  3. Update `docs/contracts/content-api.md` and fixture `tests/Fixtures/contracts/content-layout-v1.json`.
+  4. Verify tests in `MenuSchemaAndProvisioningTest` and `GetLayoutContentTest`.
 - **Modifying item validation rules:**
   1. Adjust constraints in `UpdateMenu` and `MenuItemData`.
   2. Update form schema components in `App\Filament\Admin\Resources\MenuResource\Schemas\MenuForm`.
@@ -82,13 +89,13 @@ Run configuration cache clearing before executing tests to ensure test database 
 
 ```powershell
 php artisan config:clear
-vendor/bin/pest tests/Feature/Domain/Content/Policies/MenuPolicyTest.php tests/Feature/Domain/Content/Actions/UpdateMenuRejectionsTest.php tests/Feature/Support/Rules/SafeLinkTest.php tests/Feature/Domain/Content/Actions/UpdateMenuTest.php tests/Feature/Domain/Content/Actions/GetMenuTreeTest.php
+vendor/bin/pest tests/Feature/Domain/Content/Policies/MenuPolicyTest.php tests/Feature/Domain/Content/Actions/UpdateMenuRejectionsTest.php tests/Feature/Support/Rules/SafeLinkTest.php tests/Feature/Domain/Content/Actions/UpdateMenuTest.php tests/Feature/Domain/Content/Actions/GetMenuTreeTest.php tests/Feature/Admin/Menu/MenuFormTest.php
 ```
 
 ## Known limits and open questions
 
 - **Menu items link by plain URL string.** Category and product foreign keys are deferred (D4 is the current decision; replacing it needs an ADR).
-- **UpdateMenu recreates unkeyed items on save.** Saving a menu reconciles items by `public_id`; items submitted without a `public_id` receive newly generated ULIDs.
+- **Last-write-wins tree reconciliation.** Menus reconcile whole trees under a row lock on save; concurrent administrative edits commit last-write-wins without conflict exceptions (D9).
 
 ## History
 
