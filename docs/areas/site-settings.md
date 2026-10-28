@@ -49,22 +49,22 @@ The `site-settings` area manages global scalar storefront configuration values s
 
 | # | Rule | Why | Enforced by |
 |---|---|---|---|
-| 1 | **Global scalar strings only.** Settings contain only short text strings without media or files. | Phase 1 CMS scope constraint (D5); media library arrives with image blocks. | `Review only` |
-| 2 | **Single group namespace.** All storefront settings reside under the `'storefront'` group. | Isolates storefront layout settings from other platform configuration. | `Review only` |
-| 3 | **Strict text validation without raw HTML.** Property values reject `<` and `>` characters and respect length bounds. | Security rule K3; prevents script injection into storefront layout metadata. | `tests/Feature/Content/StorefrontSettingsTest.php` |
-| 4 | **Platform admin authorization only.** Access to view or mutate storefront settings requires `is_platform_admin === true`. | Authorization rule SEC4 and decision D6; non-admin users receive 403 Forbidden. | `tests/Feature/Content/StorefrontSettingsTest.php` |
-| 5 | **Activity log emission on modification.** Modifying settings writes previous and updated values to the activity log. | Audit trail requirement SEC5 for sensitive administrative configuration. | `tests/Feature/Content/StorefrontSettingsTest.php` |
-| 6 | **Action encapsulation for mutations.** Settings writes execute via `UpdateStorefrontSettings` rather than direct calls. | Architectural rule C5; every write to persisted state goes through an Action. | `tests/Feature/Content/StorefrontSettingsTest.php` |
+| 1 | **Strict text validation without raw HTML.** Property values reject `<` and `>` characters and respect length bounds. | Security rule K3; prevents script injection into storefront layout metadata. | `tests/Feature/Content/StorefrontSettingsTest.php` |
+| 2 | **Settings page access denied to non-admins.** Visiting or mounting `ManageStorefrontSettings` as a non-admin returns HTTP 403 Forbidden. | Authorization rule SEC4 and decision D6; non-platform admins cannot access administrative settings pages. | `tests/Feature/Content/StorefrontSettingsTest.php` |
+| 3 | **Activity log emission on modification.** Modifying settings writes previous and updated values to the activity log. | Audit trail requirement SEC5 for sensitive administrative configuration. | `tests/Feature/Content/StorefrontSettingsTest.php` |
+| 4 | **Action encapsulation for mutations.** Settings writes execute via `UpdateStorefrontSettings` rather than direct model writes. | Architectural rule C5; every write to persisted state goes through an Action. | `Review only` |
 
 ## Changing it
 
 - **Adding a new setting property:**
   1. Add a typed property to `App\Domain\Content\Settings\StorefrontSettings`.
   2. Create a Spatie settings migration in `database/settings/` adding the default value.
-  3. Add the property with validation attributes to `StorefrontSettingsData`.
-  4. Add the input component to `StorefrontSettingsForm`.
-  5. Update `UpdateStorefrontSettings` property mapping and `GetLayoutContent` layout response.
-  6. Add test cases in `StorefrontSettingsTest`.
+  3. Add the property with validation attributes to `App\Domain\Content\Data\StorefrontSettingsData`.
+  4. Add the input component to `App\Filament\Admin\Schemas\StorefrontSettingsForm`.
+  5. Update `App\Domain\Content\Actions\UpdateStorefrontSettings` property mapping.
+  6. If exposed in the storefront layout, add the property to `App\Domain\Content\Data\LayoutSettingsData` and `App\Domain\Content\Actions\GetLayoutContent`.
+  7. Update API contract specification in `docs/contracts/content-api.md` and contract fixture `tests/Fixtures/contracts/content-layout-v1.json`.
+  8. Add test cases in `tests/Feature/Content/StorefrontSettingsTest.php` and `tests/Feature/Domain/Content/Actions/GetLayoutContentTest.php`.
 
 ## Running and testing
 
@@ -78,9 +78,8 @@ vendor/bin/pest tests/Feature/Content/StorefrontSettingsTest.php
 ## Known limits and open questions
 
 - **No media or image assets.** Favicon, logos, and OpenGraph images are deferred (D5); media management arrives in later phases.
-- **No optimistic locking.** Settings updates overwrite concurrently without version-conflict exceptions.
 
 ## History
 
 - Settings migration [2026_10_07_091043_create_storefront_settings.php](../../database/settings/2026_10_07_091043_create_storefront_settings.php): initial storefront settings properties.
-- Decisions: D5 (no images in phase 1), D6 (platform admin access flag).
+- [ARCHITECTURE.md §12 Decisions](../../ARCHITECTURE.md#12-decisions): D5 (no images in phase 1), D6 (platform admin access flag).
