@@ -2,7 +2,7 @@
 kind: normative
 area: content-blocks
 status: active
-summary: Content block domain models, schemas, placements, serving health resolution, previews, and lifecycle actions.
+summary: Content block domain models, schemas, placements, serving health resolution, and lifecycle actions.
 paths:
   - app/Domain/Content/Blocks/**
   - app/Domain/Content/Contracts/**
@@ -74,14 +74,14 @@ triggers:
 
 # Content Blocks
 
-Content blocks provide modular storefront layout components defined in code and configured by administrators. The area encapsulates block lifecycle states, schema validation, live capacity enforcement, serving health resolution, and preview rendering.
+Content blocks provide modular storefront layout components defined in code and configured by administrators. The area encapsulates block lifecycle states, schema validation, live capacity enforcement, serving health resolution, and lifecycle actions.
 
 ## How it works now
 
 - **Code-owned definitions.** Placements and block types are defined in PHP enums and classes, never in the database (D2). `Placement` defines allowed block types and `maxCount`. Each block implements `BlockDefinition` and is registered in `ContentServiceProvider`.
 - **Lifecycle and serving health.** A block is live when `ContentBlock::isLive()` evaluates to true (published, enabled, and inside `starts_at`/`ends_at`). Servability is resolved via `ResolveServablePayload` returning outcomes defined in `ServingHealthOutcome` (ADR 0002).
-- **Live capacity enforcement.** Mutating actions (`PublishContentBlock`, `EnableContentBlock`, `UpdateContentBlock`) enforce instantaneous concurrency against `Placement::maxCount()` under a PostgreSQL transaction advisory lock (`pg_advisory_xact_lock`) before updating state (ADR 0004).
-- **Ephemeral admin previews.** View and edit pages offer visual preview approximation backed by ephemeral cache (`SaveContentBlockPreviewState`), allowing admins to inspect rendered blocks across responsive viewports without mutating persisted database state (ADR 0005).
+- **Read-side maxCount slicing.** `GetLayoutContent` queries visible blocks ordered by `servingOrder()` (`sort_order ASC, starts_at DESC NULLS LAST, id DESC`), pre-indexes them by placement in memory, and slices candidates to `Placement::maxCount()` in memory (ADR 0001, D8).
+- **Write-time capacity enforcement.** Activating or scheduling a block enforces instantaneous schedule concurrency against `Placement::maxCount()` under a PostgreSQL transaction advisory lock (`pg_advisory_xact_lock`) before updating state (ADR 0004).
 - **Immediate publish.** In accordance with Decision D7, published content edits go live immediately upon saving without an intermediate revision staging table.
 
 ## Invariants
@@ -89,7 +89,7 @@ Content blocks provide modular storefront layout components defined in code and 
 | # | Rule | Why | Enforced by |
 |---|---|---|---|
 | 1 | **Lifecycle visibility rule.** Only published, enabled blocks inside their scheduling window are live. | Consumers must never receive draft, archived, disabled, or out-of-window content (K7). | `tests/Feature/Domain/Content/ServingWindowTest.php` |
-| 2 | **Deterministic tie-breaking.** Overlapping live blocks rank by `sort_order ASC`, `starts_at DESC NULLS LAST`, `id DESC`. | Guarantees deterministic ordering and predictable winner selection across consumers (D8). | `tests/Feature/Domain/Content/Models/ServingOrderScopeTest.php` |
+| 2 | **Deterministic tie-breaking.** Overlapping live blocks rank by `sort_order ASC`, `starts_at DESC NULLS LAST`, `id DESC`. | Guarantees deterministic ordering and predictable winner selection across consumers (D8, ADR 0001). | `tests/Feature/Domain/Content/Models/ServingOrderScopeTest.php` |
 | 3 | **Write-time live capacity enforcement.** Activating a block enforces instantaneous schedule concurrency against `Placement::maxCount()` under a PostgreSQL transaction advisory lock (`pg_advisory_xact_lock`). | Prevents over-capacity scheduling race conditions and shadowed blocks (ADR 0004). | `Review only` |
 | 4 | **Fail-closed serving health per block.** Unservable blocks are omitted while valid sibling blocks continue to render. | Architectural resiliency (ADR 0002); corrupted blocks or version mismatches must never crash layout rendering. | `tests/Feature/Domain/Content/Actions/GetBlockServingStatusTest.php` |
 | 5 | **Placement allowed block types and maxCount.** Placements strictly constrain permitted block type keys and maximum live count. | Code-owned placement boundaries (D2); prevents layout distortion from unsupported components. | `Review only` |
@@ -124,9 +124,7 @@ vendor/bin/pest tests/Feature/Domain/Content/ServingWindowTest.php tests/Feature
 
 - **Policies check platform admin flag only.** `ContentBlockPolicy` verifies `$user->isAdmin()` with no author or tenant scoping; fine-grained retailer permissions arrive in later phases (D6).
 - **Last-write-wins concurrency.** Payloads use last-write-wins on save; concurrent form submissions overwrite without conflict detection (ADR 0003).
-- **Advisory-lock SQL is inline.** `PublishContentBlock`, `EnableContentBlock`, and `UpdateContentBlock` execute raw PostgreSQL transaction-level advisory locks (`pg_advisory_xact_lock`) using CRC32-derived keys (`(int) (crc32('placement:' . $placement) & 0x7FFFFFFF)`) inline rather than through a dedicated connection service.
-- **Preview controller hardcodes panel ID.** `ContentBlockPreviewController` hardcodes panel `'admin'` during authorization and view resolution.
-- **Pending UI feature ownership.** This area guide owns `ContentBlockPreviewController`, `CountLiveBlocksForPlacement`, `ContentBlockPreviewData`, and `resources/views/filament/admin/resources/content-block-resource/**`. These files belong to the pending UI feature branch and will be claimed in `paths:` upon merge to `main`.
+- **Advisory-lock SQL is inline.** Raw PostgreSQL transaction-level advisory locks (`pg_advisory_xact_lock`) use CRC32-derived keys (`(int) (crc32('placement:' . $placement) & 0x7FFFFFFF)`) inline rather than through a dedicated connection service (ADR 0004).
 
 ## History
 
@@ -134,5 +132,4 @@ vendor/bin/pest tests/Feature/Domain/Content/ServingWindowTest.php tests/Feature
 - [ADR 0002](../adr/0002-content-block-serving-health.md): fail-closed serving health checks and reason codes.
 - [ADR 0003](../adr/0003-content-block-concurrency.md): last-write-wins payload saves and pessimistic locking for lifecycle actions.
 - [ADR 0004](../adr/0004-placement-live-capacity-enforcement.md): write-time live capacity guards using PostgreSQL transaction advisory locks.
-- [ADR 0005](../adr/0005-admin-block-preview-approximation.md): ephemeral admin block preview approximation backed by cache.
 - [ARCHITECTURE.md §12 Decisions](../../ARCHITECTURE.md#12-decisions): D2, D3, D5, D7, D8.
