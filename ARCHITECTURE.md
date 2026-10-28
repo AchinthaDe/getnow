@@ -4,7 +4,7 @@ Platform for wholesale mobile and electronics sellers to connect with business b
 
 This repository starts as the **content management backend**: admins edit storefront content in Filament, and storefronts read it through a versioned API. It will grow into the full marketplace backend, one phase at a time.
 
-This document is the source of truth for structure and boundaries. If code and this document disagree, fix one of them in the same PR. Only the **active phase** is described in detail; later phases are sketched so names stay consistent, not so they get built early.
+This document is the source of truth for structure and boundaries. If code and this document disagree, fix one of them in the same PR. Only the **active phase** is described in detail; later phases are sketched so names stay consistent, not so they get built early. Area detail lives in the guides under docs/areas/ (index: docs/README.md). Rules and their IDs live in AGENTS.md. The step process is in docs/workflow.md.
 
 ## 1. Phases
 
@@ -97,7 +97,7 @@ database/
 ├── migrations/
 ├── seeders/
 └── settings/                   # spatie/laravel-settings migrations
-docs/{adr,contracts}/           # contracts/content-api.md is the API contract
+docs/{adr,areas,contracts}/     # areas = area guides (index docs/README.md); contracts/content-api.md is the API contract
 routes/api.php
 tests/{Feature,Unit}/Content/  tests/Arch/  tests/Fixtures/contracts/
 ```
@@ -274,8 +274,8 @@ Contract rules:
 | D5 | Phase 1 has no images. Media library arrives with the first image block in phase 2. |
 | D6 | Phase 1 admin access is one platform-admin flag. Roles come with the retailer panel. |
 | D7 | Published content edits go live immediately in phase 1. Revisions and preview come in phase 2. |
-| D8 | Live capacity limits (`maxCount`) are enforced at write-time during publish, enable, and schedule edits via PostgreSQL advisory locks and `EnsurePlacementCapacity` (ADR-0004 amending D8). Tie-break for legacy data remains `sort_order ASC, starts_at DESC NULLS LAST, id DESC` at read time. One block = one message. |
-| D9 | Concurrency & Locks: Content blocks use last-write-wins for payloads, pessimistic locking for state transitions. Menus use whole-tree atomic replacement under a row lock, last-write-wins. |
+| D8 | MaxCount is enforced at API output via in-memory slice, not publish lock (ADR 0001). Deterministic tie-break: `sort_order ASC, starts_at DESC NULLS LAST, id DESC`. One block = one message. |
+| D9 | Concurrency & Locks: Content blocks use last-write-wins for payloads, pessimistic locking for state transitions (ADR 0003). Menus: the submitted tree is reconciled in one transaction under a row lock. Items matched by public_id update in place, new items are inserted, omitted items are deleted. Last-write-wins. |
 
 Open decisions (record as ADRs in `docs/adr/` when settled):
 - React frontend shape: Inertia inside this app versus a separate SPA or SSR app. The Content API is the contract either way.
