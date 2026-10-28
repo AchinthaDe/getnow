@@ -99,5 +99,5 @@ vendor/bin/pest tests/Feature/Domain/Content/Policies/MenuPolicyTest.php tests/F
 
 ## History
 
-- Migration [2026_10_14_000000_create_menus_and_menu_items_tables.php](../../database/migrations/2026_10_14_000000_create_menus_and_menu_items_tables.php): initial schema for menus and menu items.
+- Migration [2026_10_14_000000_create_menus_and_menu_items_tables.php](../../database/migrations/2026_10_14_000000_create_menus_and_menu_items_tables.php): initial schema for menus and menu items tables.
 - [ARCHITECTURE.md §12 Decisions](../../ARCHITECTURE.md#12-decisions): D2 (code-owned keys), D4 (links by URL until catalog context exists), D9 (atomic tree reconciliation under row lock).
