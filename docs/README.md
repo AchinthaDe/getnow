@@ -18,7 +18,7 @@ Normative area guides capture architectural rules, invariants, change workflows,
 
 ## Guide Structure
 
-Every area guide defines normative YAML front matter followed by six standardized sections:
+Every area guide defines normative YAML front matter followed by an introduction and six sections:
 
 ```yaml
 ---
