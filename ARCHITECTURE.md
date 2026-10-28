@@ -274,7 +274,7 @@ Contract rules:
 | D5 | Phase 1 has no images. Media library arrives with the first image block in phase 2. |
 | D6 | Phase 1 admin access is one platform-admin flag. Roles come with the retailer panel. |
 | D7 | Published content edits go live immediately in phase 1. Revisions and preview come in phase 2. |
-| D8 | MaxCount is enforced at API output via in-memory slice, not publish lock (ADR 0001). Deterministic tie-break: `sort_order ASC, starts_at DESC NULLS LAST, id DESC`. One block = one message. |
+| D8 | Live capacity limits (`maxCount`) are enforced at write time during publish, enable, and schedule edits via PostgreSQL advisory locks and `EnsurePlacementCapacity` (ADR 0004), and sliced in memory at API output with deterministic tie-break `sort_order ASC, starts_at DESC NULLS LAST, id DESC` (ADR 0001). One block = one message. |
 | D9 | Concurrency & Locks: Content blocks use last-write-wins for payloads, pessimistic locking for state transitions (ADR 0003). Menus: the submitted tree is reconciled in one transaction under a row lock. Items matched by public_id update in place, new items are inserted, omitted items are deleted. Last-write-wins. |
 
 Open decisions (record as ADRs in `docs/adr/` when settled):
