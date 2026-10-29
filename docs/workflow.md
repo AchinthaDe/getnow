@@ -1,6 +1,6 @@
 # GetNow CMS: Step Workflow
 
-Claude, Achintha and Gemini. Applies from UI Step 3 onward. Built on AGENTS.md and ARCHITECTURE.md. If this document conflicts with either, they win and this one gets fixed.
+Claude, Achintha and Gemini. Applies from UI Step 3 onward. Built on AGENTS.md and ARCHITECTURE.md. Product docs: docs/README.md. Read the guide of every area a step touches. If this document conflicts with either, they win and this one gets fixed.
 
 ## 1. Roles
 
@@ -25,23 +25,6 @@ Split a step when the plan manifest passes about 10 files, mixes domain and UI w
 
 ID format: `P<phase>-<AREA><n>`, with a letter for sub-steps, for example `P1-UI3a`.
 
-Proposed remainder of Phase 1:
-
-| Step | Scope | Depends on |
-| --- | --- | --- |
-| P1-UI3a | BlockFormRegistry, AnnouncementBar form schema in app/Filament/Blocks, arch and unit tests. No pages | UI2 |
-| P1-UI3b | Create and Edit pages wired to Actions, validation, link rules, smoke tests | UI3a |
-| P1-UI4 | View page, header and row actions Publish, Archive, Enable, Disable through Actions, activity log, policy abilities | UI3b |
-| P1-SET | StorefrontSettings page saving through an Action. This is in Phase 1 scope but has no line on the progress list: confirm whether it exists | none |
-| P1-MENU1 | Menu and MenuItem models, migrations, Actions (depth 2 enforced), policy, tests | UI4 |
-| P1-MENU2 | Menus admin UI with nested items | MENU1 |
-| P1-API1 | GetLayoutContent Action, Data classes, visibility, D8 tie-break, content-api.md and fixture | MENU1, SET |
-| P1-API2 | Controller, route, rate limit, ETag, contract test | API1 |
-| P1-SEED | Idempotent ContentSeeder mirroring app.blade.php | API1 |
-| P1-CLOSE | Phase exit review (section 11) | all |
-
-Order can change. Dependencies cannot.
-
 ## 3. Step lifecycle
 
 ```text
@@ -63,61 +46,7 @@ Keep step artifacts in docs/blueprints/ (already used for step\_2b.md): `P1-UI3a
 
 ## 4. Rule register
 
-Plans and reviews cite these IDs. All come from AGENTS.md.
-
-| ID | Rule |
-| --- | --- |
-| S1 | Business logic only in app/Domain/Content/Actions, one invokable per use case, reads included |
-| S2 | Controllers, Filament resources and pages are thin: validate, authorize, call an Action, return |
-| S3 | App\\Domain never imports App\\Filament or App\\Http |
-| S4 | Filament never calls Model::create, update or delete directly |
-| S5 | Block definitions in Domain/Content/Blocks/Name, form schemas in app/Filament/Blocks |
-| S6 | Panel code under app/Filament/Admin only, nothing in default Filament paths |
-| S7 | No new context or top-level folder without asking |
-| C1 | declare(strict\_types=1) in every PHP file |
-| C2 | Typed parameters, returns, properties. Prefer final classes |
-| C3 | Enums for fixed sets, spatie/laravel-data for structured input and output between layers |
-| C4 | Status and is\_enabled change only through Actions (Publish, Archive, Enable, Disable), never a form field |
-| C5 | Every write to persisted state, Spatie settings included, goes through an Action |
-| C6 | Form Request or Data validation for input, Policies for authorization on every exposed model |
-| C7 | Pint and Larastan clean, no baseline entries without approval |
-| C8 | Comments explain why, no commented-out code |
-| K1 | Block type keys are permanent |
-| K2 | schema\_version on every payload, shape change means bump plus upgrader, old payloads still load |
-| K3 | No raw HTML, CSS or JS fields. Short text with max lengths, enums, validated links, booleans |
-| K4 | Links are a relative path starting with / or an https:// URL, every other scheme rejected |
-| K5 | Placements, menu keys, block types defined in code, admins never create them |
-| K6 | Block registration is an explicit list in ContentServiceProvider |
-| K7 | Visibility decided server-side, API never returns draft, archived, disabled or out-of-window content |
-| K8 | API v1 additive only, content-api.md and fixture updated in the same change |
-| K9 | New block type follows the ARCHITECTURE.md section 6 checklist |
-| DB1 | PostgreSQL only, tests never on SQLite |
-| DB2 | Never edit a merged migration, add a new one |
-| DB3 | No destructive change in the same release that stops using the thing |
-| DB4 | Foreign keys, indexes for query paths, CHECK constraints |
-| DB5 | public\_id (ULID) external, never raw IDs |
-| DB6 | Seeders idempotent, destructive commands only on phone\_store and phone\_store\_test |
-| SEC1 | No secrets or .env committed, new variables in .env.example |
-| SEC2 | Never disable authorization, policies, strict types or static analysis rules to pass |
-| SEC3 | No sensitive data in logs |
-| SEC4 | Admin access checked server-side in canAccessPanel |
-| SEC5 | Publish, disable, menu and settings changes written to the activity log |
-| T1 | Pest. Feature tests for Actions, API, Filament resources. Unit tests for pure logic. Arch tests in tests/Arch |
-| T2 | Every Filament resource has a smoke test for list, create and edit |
-| T3 | Every block type tests payload validation, API output, visibility |
-| T4 | Factories, not hand-built rows. Tests independent and deterministic |
-| T5 | No lowered coverage, skipped or incomplete tests |
-| G1 | Branch feat/, fix/ or chore/ from main |
-| G2 | Conventional Commits |
-| G3 | Never push to main or bypass hooks |
-| X1 | No dependency outside ARCHITECTURE.md section 3 without approval |
-| X2 | No Docker, Sail or container config |
-| X3 | No deployment pipeline or infrastructure change as a side effect |
-| X4 | Nothing for later phases |
-| X5 | Storefront repo untouched |
-| X6 | composer check passes and its output was read |
-| X7 | ARCHITECTURE.md, content-api.md, .env.example updated where relevant |
-| E1 | PowerShell, one command at a time, no && or bash syntax, no servers left running |
+Plans and reviews cite the rule IDs defined in AGENTS.md (S, C, K, DB, SEC, T, G, X, E, DOC). The plan's rule matrix has one row per ID in AGENTS.md.
 
 ## 5. Step Brief (Claude writes, at the start of every step)
 
@@ -127,7 +56,8 @@ Goal:                 one paragraph
 Depends on:           accepted steps, and the exact classes/files from them this step uses
 In scope:             explicit list
 Out of scope:         explicit list, including later-phase things Gemini might add
-Read first:           ARCHITECTURE.md sections, AGENTS.md sections, existing files (paths)
+Read first:           ARCHITECTURE.md sections, AGENTS.md sections, docs/README.md, owning area guides, existing files (paths)
+Guides to update:     guide files and what changes, or None
 Decisions made:       Gemini must not re-decide these
 Open decisions:       Achintha answers before G1
 Acceptance criteria:  AC-1 .. AC-n (observable, testable, one behavior each)
@@ -149,6 +79,7 @@ Change log (v2 onward): finding ID > section changed
 
 2. Sources read
    Table: file or doc section | what in it constrains this step.
+   Includes the owning guide of every manifest file (docs/README.md map).
    Includes every existing file this step will call, extend or copy a pattern from.
    Files are read, not recalled.
 
@@ -157,7 +88,7 @@ Change log (v2 onward): finding ID > section changed
    Anything not verified by reading goes to section 13 as an assumption.
 
 4. File manifest
-   Table: path | new or modify | layer | one-line responsibility | rule IDs it must satisfy.
+   Table: path | new or modify | layer | owning guide | one-line responsibility | rule IDs it must satisfy.
    Total file count. Placement checked against AGENTS.md 'Where code goes'.
 
 5. Interface specs
@@ -190,8 +121,7 @@ Change log (v2 onward): finding ID > section changed
    Arch tests added or changed.
 
 11. Docs and contract updates
-   Exact edits: ARCHITECTURE.md (section and new text), content-api.md, fixture,
-   .env.example, ADRs. Or: None, with reason.
+   Exact edits: each owning guide (section and new text); trigger checklists answered for every matching `triggers:` entry; ARCHITECTURE.md only for map-level changes; content-api.md, fixture, .env.example, ADRs; or None with reason.
 
 12. Implementation order
    Numbered commits. Each: Conventional Commit message, files, and the state after it
@@ -218,7 +148,7 @@ Checklist applied every round:
 5. Rule matrix: spot-check Y and N rows, wrong N/A flagged
 6. Failure paths: authorization, validation, concurrency, empty data, old payload versions
 7. Tests: each AC has a test that would fail if the behavior broke, failure and authorization cases exist, factories used
-8. Docs and contract updates listed
+8. Docs and contract updates listed: owning guides identified, exact guide edits listed, trigger checklists answered, no step IDs or plan prose destined for a guide
 9. Commit order: each commit green on its own
 10. Scope creep and later-phase leakage (X4)
 
@@ -266,7 +196,7 @@ Recommendation:
 4. Deviations: CR IDs and what changed. 'None' stated explicitly.
 5. Raw unedited output: composer check (full), php artisan migrate (if any), git status
 6. Rule self-audit: output of the section 10A commands
-7. Docs diffs: ARCHITECTURE.md, content-api.md, fixture, .env.example, ADRs
+7. Docs diffs: each owning guide, ARCHITECTURE.md (map-level only), content-api.md, fixture, .env.example, ADRs; raw output of every edited guide's tests: commands; trigger checklist answers
 8. Gaps: anything unfinished, skipped, flaky or suspicious. 'None' stated explicitly.
 ```
 
@@ -287,8 +217,10 @@ A report with summaries in place of raw output is rejected without review.
 9. `Get-ChildItem tests -Recurse -Filter *.php | Select-String -SimpleMatch '->skip(','->todo(','markTestIncomplete','markTestSkipped'` (expect none, T5)
 10. `git ls-files | Select-String -SimpleMatch 'docker','compose','sail'` (expect none, X2)
 11. `git ls-files .env` (expect empty, SEC1)
-12. `composer check` (read all of it)
-13. Any step-specific commands from the brief
+12. `Select-String -Path docs/areas/*.md -Pattern 'P1-[A-Z]+[0-9]|blueprint|\.php:\d+'` (expect none, DOC3)
+13. every changed file that matches a guide's paths has that guide in `git diff --name-status` (DOC2)
+14. `composer check` (read all of it)
+15. Any step-specific commands from the brief
 
 ### 10B. Layer B, diff review (Claude)
 
@@ -299,6 +231,7 @@ Achintha pastes `git diff main...HEAD`, or the changed files in manifest order. 
 - every rule in the register that applies
 - test quality: assertions that prove behavior (not only a 200 status), failure, authorization and boundary cases, factories used
 - docs and contract edits match plan section 11
+- guides changed in the diff are reviewed as deliverables: statements checked against code, Enforced by names a test or Review only, no plan prose, D numbers and rule IDs resolve
 
 Mutation spot-check, required for steps touching visibility, status transitions, authorization or the API: Claude names 2 or 3 behaviors, Gemini breaks each one temporarily, shows the specific test that fails, then restores it and shows a clean `git diff`.
 
@@ -329,6 +262,7 @@ Step closeout:
 - tick the checkbox in ARCHITECTURE.md Phase 1 progress
 - closeout note, 5 lines: what shipped, deviations accepted, debt and follow-ups, what the next step depends on, ADRs added
 - PR description: what changed, why, how tested, risks (migrations, API contract, security)
+- guides updated in the step's PR (DOC2); lasting facts from the closeout note go into the guide's Known limits or History
 
 Phase start: a Phase Brief with scope, step list, order, risks and exit criteria.
 
@@ -347,7 +281,7 @@ Phase exit review (P1-CLOSE):
 Plan request:
 
 ```text
-Read AGENTS.md and ARCHITECTURE.md, then the Step Brief below. Produce a plan using the Plan template exactly: all 14 sections, in order, none skipped. Read the files you list in section 2 before writing section 3. Do not recall signatures from memory. Do not write code. Do not use: etc., as needed, appropriate, similar to, TBD. If something is ambiguous or conflicts, put it in section 13 and stop there; do not choose. Start with the tag [<STEP ID> | PLAN v1 | Gemini].
+Read AGENTS.md, ARCHITECTURE.md and docs/README.md, then the guides the brief names, then the Step Brief below. Produce a plan using the Plan template exactly: all 14 sections, in order, none skipped. Read the files you list in section 2 before writing section 3. Do not recall signatures from memory. Do not write code. Do not use: etc., as needed, appropriate, similar to, TBD. If something is ambiguous or conflicts, put it in section 13 and stop there; do not choose. Start with the tag [<STEP ID> | PLAN v1 | Gemini].
 ```
 
 Plan revision:
@@ -359,21 +293,11 @@ Revise the plan per the review below. Resend the whole plan as v<N+1> with a cha
 Implementation:
 
 ```text
-Implement plan <STEP ID> v<N> exactly. Follow the section 12 commit order. One PowerShell command at a time, no &&. No refactors, extra files, dependencies or improvements. If the plan is wrong or incomplete, stop and send a CR; do not work around it. When finished, run composer check, then fill the IMPL-REPORT template with raw unedited outputs. A summary in place of raw output is a failed report.
+Implement plan <STEP ID> v<N> exactly. Follow the section 12 commit order. One PowerShell command at a time, no &&. No refactors, extra files, dependencies or improvements. Update the guides named in plan section 11 in the same PR. If the plan is wrong or incomplete, stop and send a CR; do not work around it. When finished, run composer check, then fill the IMPL-REPORT template with raw unedited outputs. A summary in place of raw output is a failed report.
 ```
 
 Fixes:
 
 ```text
 Fix only findings F1 to Fn from VERIFY r<N>. One commit per group. Send a FIX-REPORT: finding, commit SHA, diff, evidence. If a fix needs anything beyond the finding, send a CR instead.
-```
-
-## 13. Suggested AGENTS.md addition (your call)
-
-```text
-## Step protocol
-- Work only from an approved plan identified by step ID and version. No approved plan, no code.
-- If the plan is wrong or incomplete, stop and write a Change Request. Never deviate silently.
-- A step ends with an IMPLEMENTATION REPORT containing raw, unedited command output. Summaries are not evidence.
-- Do not mark a step done. Only the reviewer accepts it.
 ```

@@ -226,3 +226,16 @@ it('renders brand_strip block payload with nested brands repeater array on view 
             ['label' => 'Sony', 'url' => '/shop?brand=Sony'],
         ]);
 });
+
+it('renders isolated preview iframe and badges on view page', function (): void {
+    /** @var User $admin */
+    $admin = User::factory()->platformAdmin()->create();
+    /** @var ContentBlock $block */
+    $block = ContentBlock::factory()->create();
+
+    actingAs($admin);
+
+    Livewire::test(ViewContentBlock::class, ['record' => $block->public_id])
+        ->assertSeeText('Storefront Preview (Approximation)')
+        ->assertSeeHtml(route('admin.content-blocks.preview.isolated', ['contentBlock' => $block->public_id]));
+});
