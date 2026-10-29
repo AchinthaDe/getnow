@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Admin\ContentBlockPreviewController;
 use App\Http\Controllers\Storefront\DemoHomeController;
 use Illuminate\Support\Facades\Route;
 
@@ -20,5 +21,15 @@ Route::get('/terms', fn () => redirect('/'))->name('terms');
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::view('dashboard', 'dashboard')->name('dashboard');
 });
+
+Route::middleware(['web'])
+    ->prefix('admin/content-blocks')
+    ->name('admin.content-blocks.')
+    ->group(function (): void {
+        Route::get('{contentBlock:public_id}/preview/isolated', [ContentBlockPreviewController::class, 'isolated'])
+            ->name('preview.isolated');
+        Route::get('{contentBlock:public_id}/preview/page', [ContentBlockPreviewController::class, 'page'])
+            ->name('preview.page');
+    });
 
 require __DIR__.'/settings.php';

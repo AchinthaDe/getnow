@@ -10,6 +10,7 @@ use App\Filament\Admin\Resources\MenuResource\Pages\EditMenu;
 use App\Filament\Admin\Resources\MenuResource\Schemas\MenuForm;
 use App\Models\User;
 use Filament\Forms\Components\Repeater;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Livewire\Livewire;
 
@@ -50,11 +51,18 @@ it('forbids third-level nesting in form schema', function () {
     MenuForm::form($schema);
     $components = $schema->getComponents();
 
-    $itemsRepeater = collect($components)->first(fn ($c) => $c instanceof Repeater && $c->getName() === 'items');
+    $section2 = collect($components)->first(fn ($c) => $c instanceof Section && $c->getHeading() === 'Top-Level Menu Items (Level 1)');
+    expect($section2)->not->toBeNull();
+    /** @var Section $section2 */
+    $itemsRepeater = collect($section2->getChildComponents())->first(fn ($c) => $c instanceof Repeater && $c->getName() === 'items');
     expect($itemsRepeater)->not->toBeNull();
-
-    $childRepeater = collect($itemsRepeater->getChildComponents())->first(fn ($c) => $c instanceof Repeater && $c->getName() === 'children');
+    /** @var Repeater $itemsRepeater */
+    $subSection = collect($itemsRepeater->getChildComponents())->first(fn ($c) => $c instanceof Section && $c->getHeading() === 'Dropdown Sub-Items (Level 2)');
+    expect($subSection)->not->toBeNull();
+    /** @var Section $subSection */
+    $childRepeater = collect($subSection->getChildComponents())->first(fn ($c) => $c instanceof Repeater && $c->getName() === 'children');
     expect($childRepeater)->not->toBeNull();
+    /** @var Repeater $childRepeater */
 
     // Verify children repeater has NO nested repeater
     $nestedRepeaters = collect($childRepeater->getChildComponents())->filter(fn ($c) => $c instanceof Repeater);

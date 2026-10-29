@@ -14,34 +14,16 @@
 </head>
 <body>
 <a href="#main-content" class="skip-link">Skip to content</a>
+@include('storefront.partials.preview-chrome', [
+    'previewModeActive' => $previewModeActive ?? false,
+    'usingFallbackPayload' => $usingFallbackPayload ?? false,
+    'isUnservable' => $isUnservable ?? false,
+])
 @php($announcement = $layout->placements['announcement_bar'][0] ?? null)
-@if($announcement)
-    @if(!empty($announcement->data['link_url']))
-        <a href="{{ $announcement->data['link_url'] }}" class="announcement announcement--{{ $announcement->data['tone'] ?? 'info' }} announcement--link">
-            <div class="container">
-                <span>{{ $announcement->data['text'] }}</span>
-                @if(!empty($announcement->data['secondary_text']))
-                    <span>{{ $announcement->data['secondary_text'] }}</span>
-                @endif
-                @if(!empty($announcement->data['locale_text']))
-                    <span>{{ $announcement->data['locale_text'] }}</span>
-                @endif
-            </div>
-        </a>
-    @else
-        <div class="announcement announcement--{{ $announcement->data['tone'] ?? 'info' }}">
-            <div class="container">
-                <span>{{ $announcement->data['text'] }}</span>
-                @if(!empty($announcement->data['secondary_text']))
-                    <span>{{ $announcement->data['secondary_text'] }}</span>
-                @endif
-                @if(!empty($announcement->data['locale_text']))
-                    <span>{{ $announcement->data['locale_text'] }}</span>
-                @endif
-            </div>
-        </div>
-    @endif
-@endif
+@include('storefront.partials.blocks.announcement-bar', [
+    'block' => $announcement,
+    'previewTarget' => ($announcement !== null && ($previewTargetId ?? null) === $announcement->id),
+])
 <header class="site-header">
     <div class="container header-main">
         <button type="button" class="icon-button mobile-menu-button" aria-label="Open menu" data-open-dialog="mobile-menu"><x-icon name="menu"/></button>

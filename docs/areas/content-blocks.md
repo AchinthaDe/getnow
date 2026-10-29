@@ -2,7 +2,7 @@
 kind: normative
 area: content-blocks
 status: active
-summary: Content block domain models, schemas, placements, serving health resolution, and lifecycle actions.
+summary: Content block domain models, schemas, placements, serving health resolution, previews, and lifecycle actions.
 paths:
   - app/Domain/Content/Blocks/**
   - app/Domain/Content/Contracts/**
@@ -20,6 +20,7 @@ paths:
   - app/Domain/Content/Data/BlockPayload.php
   - app/Domain/Content/Data/BlockServingStatusResult.php
   - app/Domain/Content/Data/ServingHealthResult.php
+  - app/Domain/Content/Data/ContentBlockPreviewData.php
   - app/Domain/Content/Enums/Placement*.php
   - app/Domain/Content/Enums/PublishStatus.php
   - app/Domain/Content/Enums/ServingStatus.php
@@ -30,8 +31,10 @@ paths:
   - app/Filament/Blocks/*.php
   - app/Filament/Admin/Resources/ContentBlockResource.php
   - app/Filament/Admin/Resources/ContentBlockResource/**
+  - app/Http/Controllers/Admin/ContentBlockPreviewController.php
   - app/Providers/ContentServiceProvider.php
   - app/Support/Rules/**
+  - resources/views/filament/admin/resources/content-block-resource/**
   - tests/Feature/Admin/ContentBlock/**
   - tests/Feature/Domain/Content/Blocks/**
   - tests/Feature/Domain/Content/Actions/*ContentBlock*.php
@@ -140,5 +143,6 @@ vendor/bin/pest tests/Feature/Domain/Content/ServingWindowTest.php tests/Feature
 - [ADR 0001](../adr/0001-content-api-tie-break.md): deterministic tie-breaking (`sort_order ASC, starts_at DESC NULLS LAST, id DESC`) and read-side in-memory maxCount slicing.
 - [ADR 0002](../adr/0002-content-block-serving-health.md): fail-closed serving health checks and reason codes.
 - [ADR 0003](../adr/0003-content-block-concurrency.md): last-write-wins payload saves and pessimistic locking for lifecycle actions.
-- ADR 0004 (planned): write-time live capacity guards using PostgreSQL transaction advisory locks.
+- [ADR 0004](../adr/0004-placement-live-capacity-enforcement.md): write-time live capacity guards using PostgreSQL transaction advisory locks.
+- [ADR 0005](../adr/0005-admin-block-preview-approximation.md): ephemeral admin block preview approximation backed by cache.
 - [ARCHITECTURE.md §12 Decisions](../../ARCHITECTURE.md#12-decisions): D2, D3, D5, D7, D8.

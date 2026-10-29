@@ -16,7 +16,20 @@ final class DemoHomeController extends Controller
         $layoutResponse = $getLayoutContent();
         $layout = $layoutResponse->data;
 
-        $featured = [
+        $featured = self::getFeaturedProducts();
+        $newProducts = self::getNewProducts();
+        $categories = self::getCategories();
+        $cartCount = 0;
+
+        return view('storefront.home', compact('layout', 'featured', 'newProducts', 'categories', 'cartCount'));
+    }
+
+    /**
+     * @return array<int, Product>
+     */
+    public static function getFeaturedProducts(): array
+    {
+        return [
             Product::fromArray([
                 'id' => '1',
                 'slug' => 'soundcore-space-2',
@@ -83,8 +96,14 @@ final class DemoHomeController extends Controller
                 'featured' => true,
             ]),
         ];
+    }
 
-        $newProducts = [
+    /**
+     * @return array<int, Product>
+     */
+    public static function getNewProducts(): array
+    {
+        return [
             Product::fromArray([
                 'id' => '12',
                 'slug' => 'sharge-disk-pro',
@@ -150,8 +169,14 @@ final class DemoHomeController extends Controller
                 'featured' => false,
             ]),
         ];
+    }
 
-        $categories = [
+    /**
+     * @return array<int, array<string, string>>
+     */
+    public static function getCategories(): array
+    {
+        return [
             [
                 'slug' => 'audio',
                 'name' => 'Headphones & earbuds',
@@ -201,9 +226,5 @@ final class DemoHomeController extends Controller
                 'image' => '/images/products/sharge-disk-pro.jpg',
             ],
         ];
-
-        $cartCount = 0;
-
-        return view('storefront.home', compact('layout', 'featured', 'newProducts', 'categories', 'cartCount'));
     }
 }

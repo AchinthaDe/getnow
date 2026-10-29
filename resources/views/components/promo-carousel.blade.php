@@ -1,6 +1,10 @@
-@props(['slides', 'autoplay' => true, 'interval' => 6000, 'id' => 'home-offers'])
+@props(['slides', 'autoplay' => true, 'interval' => 6000, 'id' => 'home-offers', 'previewTargetId' => null])
 
 @if(count($slides))
+@php
+    $targetIndex = $previewTargetId !== null ? collect($slides)->search(fn ($s) => $s->id === $previewTargetId) : false;
+    $activeSlideIndex = $targetIndex !== false ? (int) $targetIndex : 0;
+@endphp
 <section
     id="{{ $id }}"
     class="hero promo-carousel"
@@ -13,14 +17,19 @@
     <div class="promo-slides" data-carousel-slides>
         @foreach($slides as $slide)
             <article
-                id="{{ $id }}-{{ $slide->id }}"
+                @if($previewTargetId !== null && $slide->id === $previewTargetId)
+                    id="preview-target-block"
+                    data-preview-target="true"
+                @else
+                    id="{{ $id }}-{{ $slide->id }}"
+                @endif
                 class="promo-slide promo-slide--{{ $slide->data['theme'] }}"
                 role="group"
                 aria-roledescription="slide"
                 aria-label="{{ $loop->iteration }} of {{ $loop->count }}: {{ $slide->data['label'] }}"
                 data-carousel-slide
                 data-label="{{ $slide->data['label'] }}"
-                @if(!$loop->first) hidden inert @endif
+                @if($loop->index !== $activeSlideIndex) hidden inert @endif
             >
                 <div class="promo-copy">
                     <span class="eyebrow"><span aria-hidden="true"></span>{{ $slide->data['eyebrow'] }}</span>
@@ -34,7 +43,7 @@
                         alt="{{ $slide->data['image_alt'] }}"
                         width="900"
                         height="900"
-                        @if($loop->first) fetchpriority="high" @else loading="lazy" @endif
+                        @if($loop->index === $activeSlideIndex) fetchpriority="high" @else loading="lazy" @endif
                     >
                 </div>
                 <span class="promo-label">{{ $slide->data['label'] }}</span>
@@ -57,13 +66,13 @@
                         class="promo-dot"
                         data-carousel-go="{{ $loop->index }}"
                         aria-label="Show offer {{ $loop->iteration }}: {{ $slide->data['label'] }}"
-                        aria-controls="{{ $id }}-{{ $slide->id }}"
-                        @if($loop->first) aria-current="true" @endif
+                        aria-controls="{{ $previewTargetId !== null && $slide->id === $previewTargetId ? 'preview-target-block' : $id.'-'.$slide->id }}"
+                        @if($loop->index === $activeSlideIndex) aria-current="true" @endif
                     ><span></span></button>
                 @endforeach
             </div>
             <div class="promo-arrows">
-                <span class="promo-count" aria-hidden="true"><span data-carousel-current>01</span> / {{ str_pad((string) count($slides), 2, '0', STR_PAD_LEFT) }}</span>
+                <span class="promo-count" aria-hidden="true"><span data-carousel-current>{{ str_pad((string) ($activeSlideIndex + 1), 2, '0', STR_PAD_LEFT) }}</span> / {{ str_pad((string) count($slides), 2, '0', STR_PAD_LEFT) }}</span>
                 <button type="button" class="promo-arrow promo-arrow--previous" data-carousel-previous aria-label="Previous offer"><x-icon name="chevron" size="17"/></button>
                 <button type="button" class="promo-arrow" data-carousel-next aria-label="Next offer"><x-icon name="chevron" size="17"/></button>
             </div>
@@ -72,3 +81,4 @@
     @endif
 </section>
 @endif
+
