@@ -239,7 +239,9 @@ it('renders gracefully when placements and menus are empty', function (): void {
 });
 
 it('has valid teardown guide documenting all temporary demo files', function (): void {
-    $path = base_path('docs/blueprints/P1-S1/DEMO-TEARDOWN.md');
+    $path = file_exists(base_path('docs/blueprints/phase-1/P1-S1/DEMO-TEARDOWN.md'))
+        ? base_path('docs/blueprints/phase-1/P1-S1/DEMO-TEARDOWN.md')
+        : base_path('docs/blueprints/P1-S1/DEMO-TEARDOWN.md');
 
     expect(file_exists($path))->toBeTrue();
 
