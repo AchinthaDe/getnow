@@ -20,3 +20,11 @@ arch('domain exceptions extend ContentException')
     ->classes()
     ->toExtend(ContentException::class)
     ->ignoring(ContentException::class);
+
+arch('content domain uses actions rather than services or repositories')
+    ->expect('App\Domain\Content')
+    ->classes()
+    ->not->toHaveSuffix('Service')
+    ->and('App\Domain\Content')
+    ->classes()
+    ->not->toHaveSuffix('Repository');
