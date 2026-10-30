@@ -53,17 +53,17 @@ Map: ARCHITECTURE.md (phases, stack, structure, decisions), docs/README.md (area
 - **S1** Business logic placement is scoped per context (ADR 0006). In `Content` (and later `Catalog`, `Retail`), business logic lives in `app/Domain/<Context>/Actions/`, one invokable class per use case (read use cases included). In `Accounts`, business logic lives in Services, Repositories, Tokens, and Contracts under `app/Domain/Accounts/{Services,Repositories,Tokens,Contracts}/`.
 - **S2** Controllers, Filament resources and pages are thin: validate, authorize, call an Action (or a Service or `TokenIssuer` in `Accounts`), return output.
 - **S3** `app/Domain` must never import from `App\Filament` or `App\Http`.
-- **S4** Filament never calls `Model::create/update/delete` directly. It calls Actions.
+- **S4** Filament never calls `Model::create/update/delete` directly. In Content, Catalog, and Retail, it calls Actions; in Accounts, it calls Services (or `TokenIssuer`).
 - **S5** Block definitions go in `app/Domain/Content/Blocks/<Name>/`. Their Filament form schemas go in `app/Filament/Blocks/`.
 - **S6** Panel code goes under `app/Filament/Admin/`. Do not put files in `app/Filament/Resources` or other default paths.
-- **S7** Put code in the correct place: Content in `app/Domain/Content/`, Accounts in `app/Domain/Accounts/{Contracts,Data,Enums,Exceptions,Repositories,Services,Tokens}/`, Accounts controllers in `app/Http/Controllers/Api/V1/{Auth,Users}/`, Accounts requests in `app/Http/Requests/{Auth,Users}/`. If nothing fits, ask before creating a new context or top-level folder.
+- **S7** Put code in the correct place: Content in `app/Domain/Content/`, Accounts in `app/Domain/Accounts/{Contracts,Data,Enums,Exceptions,Repositories,Services,Tokens}/`, Accounts controllers in `app/Http/Controllers/Api/V1/{Auth,Users}/`, Accounts requests in `app/Http/Requests/{Auth,Users}/`, and shared `User` model at `app/Models/User.php`. If nothing fits, ask before creating a new context or top-level folder.
 
 ## Coding standards
 
 - **C1** `declare(strict_types=1);` in every PHP file.
 - **C2** Type every parameter, return value and property. Prefer `final` classes.
 - **C3** Use enums for fixed value sets (`Placement`, `MenuKey`, `PublishStatus`, `Tone`) and `spatie/laravel-data` classes for structured input and output between layers.
-- **C4** Status changes (draft/published/archived) and is_enabled changes happen only through Actions (Publish, Archive, Enable, Disable). Neither is ever a form field.
+- **C4** Status changes (draft/published/archived) and is_enabled changes happen only through Actions in Content, Catalog, and Retail. Neither is ever a form field. Accounts user status and role changes happen through Services.
 - **C5** The 'call an Action' rule applies to every write to persisted state in Content, Catalog, and Retail, including Spatie settings. Pages that save settings call an Action. Accounts writes go through Services and Repositories per ADR 0006.
 - **C6** Use Form Requests or Data validation for input and Policies for authorization on every model exposed through Filament or the API.
 - **C7** Follow Pint and Larastan. Do not add baseline entries without approval.
