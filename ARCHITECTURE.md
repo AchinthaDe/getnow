@@ -32,7 +32,7 @@ This document is the source of truth for structure and boundaries. If code and t
 - [x] Step P1-UI7 (menu form reorganization: collapsible level 1 & 2 repeaters, dynamic item labels, compact 12-column grid rows, and inset sub-item sections)
 
 ### Phase 3 progress
-- [ ] P3-ACC1a (rules, ADR, arch scoping)
+- [x] P3-ACC1a (rules, ADR, arch scoping)
 - [ ] P3-ACC1b (Passport and token stream import)
 - [ ] P3-ACC1c (users stream import, users reconcile migration, seeders, factory, guide)
 - [ ] P3-QA1 (strict models outside production, query-count test helper)
