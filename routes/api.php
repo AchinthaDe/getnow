@@ -10,5 +10,7 @@ Route::prefix('v1/content')->middleware(['throttle:content-api'])->group(functio
 });
 
 Route::prefix('v1')->group(function (): void {
+    require __DIR__.'/api/auth.php';
     require __DIR__.'/api/tokens.php';
+    require __DIR__.'/api/users.php';
 });
