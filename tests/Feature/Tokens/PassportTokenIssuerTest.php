@@ -29,6 +29,8 @@ function ensurePassportTestKeys(): void
             'C:/tools/php85/extras/ssl/openssl.cnf',
             'C:/Program Files/Git/mingw64/etc/ssl/openssl.cnf',
             'C:/Program Files/Git/usr/ssl/openssl.cnf',
+            '/etc/ssl/openssl.cnf',
+            '/usr/lib/ssl/openssl.cnf',
         ];
 
         foreach ($candidates as $candidate) {
