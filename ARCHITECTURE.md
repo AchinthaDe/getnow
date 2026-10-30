@@ -150,8 +150,8 @@ Create new folders only when a phase needs them. `Infrastructure/` appears with 
 1. `App\Domain` must not depend on `App\Filament` or `App\Http`.
 2. Filament resources, pages and controllers contain no business rules. They validate, authorize, call an Action (or a Service or `TokenIssuer` in `Accounts`) and return output.
 3. Every PHP file declares `strict_types=1`.
-4. Filament code never calls `Model::create/update/delete` directly. It calls Actions.
-5. Contexts interact through Actions (or Services in Accounts), events and contracts, never each other's models or repositories. Accounts exposes its Services (UserService, AuthService), DTOs/enums, and the `TokenIssuer` contract to other contexts—never UserRepository or UserRepositoryInterface.
+4. Filament code never calls `Model::create/update/delete` directly. It calls Actions (or Services in Accounts).
+5. Contexts interact through Actions (or Services in Accounts), events and contracts, never each other's models or repositories (with the sole exception of the shared `App\Models\User` authenticatable model at `app/Models/User.php`). Accounts exposes its Services (UserService, AuthService), DTOs/enums, and the `TokenIssuer` contract to other contexts—never UserRepository or UserRepositoryInterface.
 
 ## 6. Content model (phase 1)
 
@@ -318,6 +318,7 @@ Contract rules:
 | D7 | Published content edits go live immediately on Save. Ephemeral cache-backed admin block preview is provided in Phase 1 (ADR 0005). Persistent revisions and version history arrive in Phase 2. |
 | D8 | Live capacity limits (`maxCount`) are enforced at write time during publish, enable, and schedule edits via PostgreSQL advisory locks and `EnsurePlacementCapacity` (ADR 0004), and sliced in memory at API output with deterministic tie-break `sort_order ASC, starts_at DESC NULLS LAST, id DESC` (ADR 0001). One block = one message. |
 | D9 | Concurrency & Locks: Content blocks use last-write-wins for payloads, pessimistic locking for state transitions (ADR 0003). Menus: the submitted tree is reconciled in one transaction under a row lock. Items matched by public_id update in place, new items are inserted, omitted items are deleted. Last-write-wins. |
+| D10 | Architectural styles are scoped per context (ADR 0006): Accounts uses Controller, Service, Repository, Tokens, and Contracts; Content, Catalog, and Retail use single-purpose Actions. App\Models\User is the shared root authenticatable model. |
 
 Open decisions (record as ADRs in `docs/adr/` when settled):
 - React frontend shape: Inertia inside this app versus a separate SPA or SSR app. The Content API is the contract either way.
