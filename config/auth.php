@@ -120,4 +120,9 @@ return [
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
+    'superadmin' => [
+        'email' => env('SUPERADMIN_EMAIL', 'superadmin@getnow.test'),
+        'password' => env('SUPERADMIN_PASSWORD', 'secret'),
+    ],
+
 ];

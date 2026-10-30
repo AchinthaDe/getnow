@@ -1,7 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Factories;
 
+use App\Domain\Accounts\Enums\UserRole;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
@@ -25,6 +28,7 @@ class UserFactory extends Factory
     public function definition(): array
     {
         return [
+            'public_id' => (string) Str::ulid(),
             'name' => fake()->name(),
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
@@ -34,6 +38,7 @@ class UserFactory extends Factory
             'two_factor_recovery_codes' => null,
             'two_factor_confirmed_at' => null,
             'is_platform_admin' => false,
+            'role' => UserRole::Customer,
         ];
     }
 
@@ -66,6 +71,38 @@ class UserFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'is_platform_admin' => true,
+            'role' => UserRole::Superadmin,
+        ]);
+    }
+
+    /**
+     * Indicate that the model's role should be superadmin.
+     */
+    public function superadmin(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => UserRole::Superadmin,
+            'is_platform_admin' => true,
+        ]);
+    }
+
+    /**
+     * Indicate that the model's role should be retailer.
+     */
+    public function retailer(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => UserRole::Retailer,
+        ]);
+    }
+
+    /**
+     * Indicate that the model's role should be customer.
+     */
+    public function customer(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => UserRole::Customer,
         ]);
     }
 }
