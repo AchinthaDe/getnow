@@ -12,6 +12,8 @@ use Laravel\Passport\AccessToken;
 use Laravel\Passport\Passport;
 use League\OAuth2\Server\ResourceServer;
 
+use function Pest\Laravel\assertDatabaseHas;
+
 function ensurePassportTestKeys(): void
 {
     /** @var string|null $cachedPrivateKey */
@@ -87,12 +89,12 @@ test('issue mints a valid token pair and persists records in postgresql', functi
         ->and($tokenPair->tokenType)->toBe('Bearer')
         ->and($tokenPair->expiresIn)->toBe(900);
 
-    $this->assertDatabaseHas('oauth_access_tokens', [
+    assertDatabaseHas('oauth_access_tokens', [
         'user_id' => $user->getAuthIdentifier(),
         'revoked' => false,
     ]);
 
-    $this->assertDatabaseHas('oauth_refresh_tokens', [
+    assertDatabaseHas('oauth_refresh_tokens', [
         'revoked' => false,
     ]);
 });

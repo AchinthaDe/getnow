@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\Auth;
 use Laravel\Passport\Passport;
 use League\OAuth2\Server\ResourceServer;
 
+use function Pest\Laravel\postJson;
+
 function ensureEndpointsPassportTestKeys(): void
 {
     /** @var string|null $cachedPrivateKey */
@@ -72,7 +74,7 @@ test('post api v1 auth refresh rotates token pair successfully', function (): vo
 
     $initialPair = $issuer->issue($user);
 
-    $response = $this->postJson('/api/v1/auth/refresh', [
+    $response = postJson('/api/v1/auth/refresh', [
         'refresh_token' => $initialPair->refreshToken,
     ]);
 
@@ -96,7 +98,7 @@ test('post api v1 auth refresh rotates token pair successfully', function (): vo
     expect($newAccessToken)->not->toBe($initialPair->accessToken)
         ->and($newRefreshToken)->not->toBe($initialPair->refreshToken);
 
-    $logoutResponse = $this->postJson('/api/v1/auth/logout', [], [
+    $logoutResponse = postJson('/api/v1/auth/logout', [], [
         'Authorization' => 'Bearer '.$newAccessToken,
     ]);
 
@@ -109,11 +111,11 @@ test('post api v1 auth refresh fails with 401 when refresh token is reused', fun
 
     $initialPair = $issuer->issue($user);
 
-    $this->postJson('/api/v1/auth/refresh', [
+    postJson('/api/v1/auth/refresh', [
         'refresh_token' => $initialPair->refreshToken,
     ])->assertOk();
 
-    $secondAttempt = $this->postJson('/api/v1/auth/refresh', [
+    $secondAttempt = postJson('/api/v1/auth/refresh', [
         'refresh_token' => $initialPair->refreshToken,
     ]);
 
@@ -125,7 +127,7 @@ test('post api v1 auth refresh fails with 401 on expired, revoked, or invalid to
     $user = User::factory()->create();
     $issuer = app(TokenIssuer::class);
 
-    $this->postJson('/api/v1/auth/refresh', [
+    postJson('/api/v1/auth/refresh', [
         'refresh_token' => 'completely-invalid-token',
     ])->assertUnauthorized()
         ->assertJson(['message' => 'Unauthenticated.']);
@@ -136,7 +138,7 @@ test('post api v1 auth refresh fails with 401 on expired, revoked, or invalid to
     $refreshTokenRow = Passport::refreshToken()->newQuery()->where('access_token_id', $expiredAccessToken->id)->firstOrFail();
     $refreshTokenRow->forceFill(['expires_at' => Carbon::now()->subMinute()])->save();
 
-    $this->postJson('/api/v1/auth/refresh', [
+    postJson('/api/v1/auth/refresh', [
         'refresh_token' => $expiredPair->refreshToken,
     ])->assertUnauthorized()
         ->assertJson(['message' => 'Unauthenticated.']);
@@ -145,14 +147,14 @@ test('post api v1 auth refresh fails with 401 on expired, revoked, or invalid to
     $revokedPair = $issuer->issue($revokedUser);
     $issuer->revokeAll($revokedUser);
 
-    $this->postJson('/api/v1/auth/refresh', [
+    postJson('/api/v1/auth/refresh', [
         'refresh_token' => $revokedPair->refreshToken,
     ])->assertUnauthorized()
         ->assertJson(['message' => 'Unauthenticated.']);
 });
 
 test('post api v1 auth refresh validates refresh token parameter', function (): void {
-    $response = $this->postJson('/api/v1/auth/refresh', []);
+    $response = postJson('/api/v1/auth/refresh', []);
 
     $response->assertUnprocessable()
         ->assertJsonValidationErrors(['refresh_token']);
@@ -164,7 +166,7 @@ test('post api v1 auth logout revokes current session', function (): void {
 
     $pair = $issuer->issue($user);
 
-    $response = $this->postJson('/api/v1/auth/logout', [], [
+    $response = postJson('/api/v1/auth/logout', [], [
         'Authorization' => 'Bearer '.$pair->accessToken,
     ]);
 
@@ -172,13 +174,13 @@ test('post api v1 auth logout revokes current session', function (): void {
 
     Auth::forgetGuards();
 
-    $retryLogout = $this->postJson('/api/v1/auth/logout', [], [
+    $retryLogout = postJson('/api/v1/auth/logout', [], [
         'Authorization' => 'Bearer '.$pair->accessToken,
     ]);
 
     $retryLogout->assertUnauthorized();
 
-    $refreshAttempt = $this->postJson('/api/v1/auth/refresh', [
+    $refreshAttempt = postJson('/api/v1/auth/refresh', [
         'refresh_token' => $pair->refreshToken,
     ]);
 
@@ -192,7 +194,7 @@ test('post api v1 auth logout leaves user other active sessions valid', function
     $sessionA = $issuer->issue($user);
     $sessionB = $issuer->issue($user);
 
-    $logoutA = $this->postJson('/api/v1/auth/logout', [], [
+    $logoutA = postJson('/api/v1/auth/logout', [], [
         'Authorization' => 'Bearer '.$sessionA->accessToken,
     ]);
 
@@ -200,21 +202,21 @@ test('post api v1 auth logout leaves user other active sessions valid', function
 
     Auth::forgetGuards();
 
-    $checkA = $this->postJson('/api/v1/auth/logout', [], [
+    $checkA = postJson('/api/v1/auth/logout', [], [
         'Authorization' => 'Bearer '.$sessionA->accessToken,
     ]);
     $checkA->assertUnauthorized();
 
     Auth::forgetGuards();
 
-    $logoutB = $this->postJson('/api/v1/auth/logout', [], [
+    $logoutB = postJson('/api/v1/auth/logout', [], [
         'Authorization' => 'Bearer '.$sessionB->accessToken,
     ]);
     $logoutB->assertNoContent();
 });
 
 test('post api v1 auth logout requires authentication', function (): void {
-    $response = $this->postJson('/api/v1/auth/logout');
+    $response = postJson('/api/v1/auth/logout');
 
     $response->assertUnauthorized();
 });
@@ -226,7 +228,7 @@ test('refresh endpoint enforces rate limits', function (): void {
     $currentPair = $issuer->issue($user);
 
     for ($i = 0; $i < 10; $i++) {
-        $res = $this->postJson('/api/v1/auth/refresh', [
+        $res = postJson('/api/v1/auth/refresh', [
             'refresh_token' => $currentPair->refreshToken,
         ]);
         $res->assertOk();
@@ -240,7 +242,7 @@ test('refresh endpoint enforces rate limits', function (): void {
         );
     }
 
-    $rateLimitedResponse = $this->postJson('/api/v1/auth/refresh', [
+    $rateLimitedResponse = postJson('/api/v1/auth/refresh', [
         'refresh_token' => $currentPair->refreshToken,
     ]);
 
