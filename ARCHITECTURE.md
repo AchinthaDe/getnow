@@ -11,9 +11,10 @@ This document is the source of truth for structure and boundaries. If code and t
 | Phase | Scope | Status |
 |---|---|---|
 | 0 Bootstrap | Laravel + PostgreSQL + Filament admin panel + quality gates | Done |
-| 1 Layout CMS (pilot) | Site settings, announcement bar, menus, Content API v1, seed data mirroring the current storefront layout | Active |
+| 1 Layout CMS (pilot) | Site settings, announcement bar, menus, Content API v1, seed data mirroring the current storefront layout | Closed |
 | 2 Pages and media | Pages made of blocks, image blocks (hero), persistent revisions and public API preview tokens (ephemeral admin block preview shipped in Phase 1 per ADR 0005) | Planned |
-| Later (order TBD) | Accounts, Catalog, Retail (retailer panel), Sales, Negotiation, Procurement, Payments, Disputes, React storefront | Not started |
+| 3 Accounts, Catalog and Retail | Accounts module merge (users, roles, Passport tokens), shared catalog taxonomy (categories, brands, models, attributes, collections), retailer product listing and proposals, superadmin review queue | Active |
+| Later (order TBD) | Sales, Negotiation, Procurement, Payments, Disputes, React storefront | Not started |
 
 ### Phase 1 progress
 - [x] Step 2a (content block domain, actions, serving health)
@@ -30,13 +31,50 @@ This document is the source of truth for structure and boundaries. If code and t
 - [x] Step P1-UI6 (admin block previews: isolated view preview, split-screen edit preview, shared storefront partials, ADR 0005)
 - [x] Step P1-UI7 (menu form reorganization: collapsible level 1 & 2 repeaters, dynamic item labels, compact 12-column grid rows, and inset sub-item sections)
 
+### Phase 3 progress
+- [x] P3-ACC1a (rules, ADR, arch scoping)
+- [ ] P3-ACC1b (Passport and token stream import)
+- [ ] P3-ACC1c (users stream import, users reconcile migration, seeders, factory, guide)
+- [ ] P3-QA1 (strict models outside production, query-count test helper)
+- [ ] P3-CAT1 (Catalog context, categories table, CreateCategory, UpdateCategory, ADR, rules CT1 to CT8, guide)
+- [ ] P3-CAT2 (Activate, Deactivate, Delete, Move, Reorder, GetCategoryTree, ListCategoryOptions, subtree and effective-active resolution)
+- [ ] P3-CAT3 (Category resource, CategoryPolicy)
+- [ ] P3-NAV1a (typed menu items: migration, kinds, validation, category reference and category_tree source)
+- [ ] P3-NAV1b (batched resolution in GetLayoutContent, revision includes taxonomy state, contract doc and fixture)
+- [ ] P3-NAV1c (menu form: kind select, category picker, inactive-target warnings)
+- [ ] P3-TAX1a (value lifecycle and Brand)
+- [ ] P3-TAX1b (Brand resource and proposals queue)
+- [ ] P3-MDL1a (Models brand and category scoped, ListModelOptions with search)
+- [ ] P3-MDL1b (Model resource)
+- [ ] P3-ATT1a (Attributes and values)
+- [ ] P3-ATT1b (Attribute resource)
+- [ ] P3-NAV2 (Brand reference and brand source in menus)
+- [ ] P3-RET1a (Retail context: retailers, membership, CurrentRetailer, status, suspension)
+- [ ] P3-RET1b (retailer panel shell, superadmin retailer management, panel access by role)
+- [ ] P3-PRD1a (Product core with category, brand and model references, create, update, archive, row_version, ownership scoping, CT2 guard, indexes)
+- [ ] P3-PRD1b (Submit, withdraw, list, unlist, state machine, VisibleProducts)
+- [ ] P3-PRD1c (Spec attribute values on products)
+- [ ] P3-PRD2a (Review rounds, snapshots, approve with CT8 gate, request changes, reject)
+- [ ] P3-PRD2b (Flags, retailer replies, events after commit, queued notifications, database queue)
+- [ ] P3-RET2 (Product CRUD with cascading selects, Add custom..., flagged-field display, submit)
+- [ ] P3-ADM1 (Review queue, snapshot diff, flag editor, inline proposal resolution, approve, admin create into queue, bulk actions)
+- [ ] P3-VAR1a (Variants using variant_option attributes)
+- [ ] P3-VAR1b (Price breaks, variant_stock)
+- [ ] P3-VAR1c (Variant, price and stock forms in both panels)
+- [ ] P3-MED1a (Medialibrary ADR, product images, caps, conversions queued)
+- [ ] P3-MED1b (Image upload in both panels)
+- [ ] P3-COL1 (Collections, product membership, menu reference)
+- [ ] P3-API1a (Public listing and detail, keyset pagination, VisibleProducts)
+- [ ] P3-API1b (Filters, facets, text search)
+- [ ] P3-CLOSE (Exit review)
+
 Rule: do not scaffold folders, models or packages for a phase that is not active.
 
 ## 2. Goals and constraints
 
 - Admins change storefront content without a deploy.
 - Consumers (Blade storefront now, React later) must not break when content changes or is missing.
-- Modular monolith. One context (`Content`) for now.
+- Modular monolith. Two contexts (`Content` and `Accounts`) in Phase 3, with `Catalog` and `Retail` joining in subsequent steps.
 - `main` is always working and tested. Quality gates run locally (`composer check`) and via a minimal GitHub Actions check workflow. No CD pipelines, no Docker for local development.
 
 ## 3. Stack (phases 0 to 2)
@@ -110,10 +148,10 @@ Create new folders only when a phase needs them. `Infrastructure/` appears with 
 ### Dependency rules (enforced by `tests/Arch`)
 
 1. `App\Domain` must not depend on `App\Filament` or `App\Http`.
-2. Filament resources, pages and controllers contain no business rules. They validate, authorize, call an Action and return output.
+2. Filament resources, pages and controllers contain no business rules. They validate, authorize, call an Action (or a Service or `TokenIssuer` in `Accounts`) and return output.
 3. Every PHP file declares `strict_types=1`.
-4. Filament code never calls `Model::create/update/delete` directly. It calls Actions.
-5. Contexts interact through Actions, events and contracts, never each other's models.
+4. Filament code never calls `Model::create/update/delete` directly. It calls Actions (or Services in Accounts).
+5. Contexts interact through Actions (or Services in Accounts), events and contracts, never each other's models or repositories (with the sole exception of the shared `App\Models\User` authenticatable model at `app/Models/User.php`). Accounts exposes its Services (UserService, AuthService), DTOs/enums, and the `TokenIssuer` contract to other contexts—never UserRepository or UserRepositoryInterface.
 
 ## 6. Content model (phase 1)
 
@@ -280,6 +318,7 @@ Contract rules:
 | D7 | Published content edits go live immediately on Save. Ephemeral cache-backed admin block preview is provided in Phase 1 (ADR 0005). Persistent revisions and version history arrive in Phase 2. |
 | D8 | Live capacity limits (`maxCount`) are enforced at write time during publish, enable, and schedule edits via PostgreSQL advisory locks and `EnsurePlacementCapacity` (ADR 0004), and sliced in memory at API output with deterministic tie-break `sort_order ASC, starts_at DESC NULLS LAST, id DESC` (ADR 0001). One block = one message. |
 | D9 | Concurrency & Locks: Content blocks use last-write-wins for payloads, pessimistic locking for state transitions (ADR 0003). Menus: the submitted tree is reconciled in one transaction under a row lock. Items matched by public_id update in place, new items are inserted, omitted items are deleted. Last-write-wins. |
+| D10 | Architectural styles are scoped per context (ADR 0006): Accounts uses Controller, Service, Repository, Tokens, and Contracts; Content, Catalog, and Retail use single-purpose Actions. App\Models\User is the shared root authenticatable model. |
 
 Open decisions (record as ADRs in `docs/adr/` when settled):
 - React frontend shape: Inertia inside this app versus a separate SPA or SSR app. The Content API is the contract either way.
@@ -289,4 +328,4 @@ Open decisions (record as ADRs in `docs/adr/` when settled):
 
 ## 13. Later phases (sketch only, do not build)
 
-Accounts (users, business accounts, verification), Catalog (brands, models, variants, categories), Retail (retailers, offers, inventory), Sales (cart, orders), Negotiation (chat, quotes), Procurement (purchase orders), Payments (ledger, escrow, commission, payouts), Disputes. When a phase starts, add its section here and its context under `app/Domain/`.
+Catalog (brands, models, variants, categories), Retail (retailers, offers, inventory), Sales (cart, orders), Negotiation (chat, quotes), Procurement (purchase orders), Payments (ledger, escrow, commission, payouts), Disputes. When a phase starts, add its section here and its context under `app/Domain/`.

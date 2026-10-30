@@ -6,7 +6,7 @@ Instructions for AI coding agents working in this repository. Read `ARCHITECTURE
 
 Laravel backend for a wholesale mobile and electronics marketplace. It currently contains only the **content management system**: admins edit storefront content in Filament, and storefronts read it from a versioned API. The storefront is a separate repository and is out of scope here.
 
-Active scope: **Phase 0 (bootstrap) and Phase 1 (layout CMS)**, as defined in `ARCHITECTURE.md`. Do not build, scaffold or add packages for later phases (accounts, catalog, retail, sales, payments, chat, React). If a task seems to need them, ask.
+Active scope: **Phase 0 (bootstrap), Phase 1 (layout CMS), and Phase 3: Accounts, then Catalog and Retail**, as defined in `ARCHITECTURE.md`. Accounts is permitted from P3-ACC1 onward; Catalog and Retail remain forbidden under X4 until their respective implementation steps. Do not build, scaffold or add packages for later phases (sales, payments, chat, React). If a task seems to need them, ask.
 
 ## Environment
 
@@ -50,21 +50,21 @@ Map: ARCHITECTURE.md (phases, stack, structure, decisions), docs/README.md (area
 
 ## Where code goes
 
-- **S1** Business logic lives in `app/Domain/Content/Actions/`, one invokable class per use case. Read use cases (such as building the API response) are Actions too.
-- **S2** Controllers, Filament resources and pages are thin: validate, authorize, call an Action, return output.
+- **S1** Business logic placement is scoped per context (ADR 0006). In `Content` (and later `Catalog`, `Retail`), business logic lives in `app/Domain/<Context>/Actions/`, one invokable class per use case (read use cases included). In `Accounts`, business logic lives in Services, Repositories, Tokens, and Contracts under `app/Domain/Accounts/{Services,Repositories,Tokens,Contracts}/`.
+- **S2** Controllers, Filament resources and pages are thin: validate, authorize, call an Action (or a Service or `TokenIssuer` in `Accounts`), return output.
 - **S3** `app/Domain` must never import from `App\Filament` or `App\Http`.
-- **S4** Filament never calls `Model::create/update/delete` directly. It calls Actions.
+- **S4** Filament never calls `Model::create/update/delete` directly. In Content, Catalog, and Retail, it calls Actions; in Accounts, it calls Services (or `TokenIssuer`).
 - **S5** Block definitions go in `app/Domain/Content/Blocks/<Name>/`. Their Filament form schemas go in `app/Filament/Blocks/`.
 - **S6** Panel code goes under `app/Filament/Admin/`. Do not put files in `app/Filament/Resources` or other default paths.
-- **S7** Put code in the correct place. If nothing fits, ask before creating a new context or top-level folder.
+- **S7** Put code in the correct place: Content in `app/Domain/Content/`, Accounts in `app/Domain/Accounts/{Contracts,Data,Enums,Exceptions,Repositories,Services,Tokens}/`, Accounts controllers in `app/Http/Controllers/Api/V1/{Auth,Users}/`, Accounts requests in `app/Http/Requests/{Auth,Users}/`, and shared `User` model at `app/Models/User.php`. If nothing fits, ask before creating a new context or top-level folder.
 
 ## Coding standards
 
 - **C1** `declare(strict_types=1);` in every PHP file.
 - **C2** Type every parameter, return value and property. Prefer `final` classes.
 - **C3** Use enums for fixed value sets (`Placement`, `MenuKey`, `PublishStatus`, `Tone`) and `spatie/laravel-data` classes for structured input and output between layers.
-- **C4** Status changes (draft/published/archived) and is_enabled changes happen only through Actions (Publish, Archive, Enable, Disable). Neither is ever a form field.
-- **C5** The 'call an Action' rule applies to every write to persisted state, including Spatie settings. Pages that save settings call an Action.
+- **C4** Status changes (draft/published/archived) and is_enabled changes happen only through Actions in Content, Catalog, and Retail. Neither is ever a form field. Accounts user status and role changes happen through Services.
+- **C5** The 'call an Action' rule applies to every write to persisted state in Content, Catalog, and Retail, including Spatie settings. Pages that save settings call an Action. Accounts writes go through Services and Repositories per ADR 0006.
 - **C6** Use Form Requests or Data validation for input and Policies for authorization on every model exposed through Filament or the API.
 - **C7** Follow Pint and Larastan. Do not add baseline entries without approval.
 - **C8** Comments explain why, not what. No commented-out code.
@@ -121,7 +121,7 @@ Map: ARCHITECTURE.md (phases, stack, structure, decisions), docs/README.md (area
 - Change deployment or infrastructure configuration as a side effect of a feature.
 - Put business logic in controllers, Filament resources, model boot methods or observers.
 - **X5** Modify the storefront repository or assume its internals. The API contract is the only interface.
-- **X4** Create folders, contexts or tables for later phases.
+- **X4** Create folders, contexts or tables for phases that are not active, or for Catalog and Retail prior to their designated steps.
 - Make destructive file or database operations outside migrations and the local reset command above.
 
 ## Definition of done
