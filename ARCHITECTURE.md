@@ -89,6 +89,7 @@ Rule: do not scaffold folders, models or packages for a phase that is not active
 | Audit trail | spatie/laravel-activitylog |
 | Quality | Pint, Larastan, Pest (including architecture tests) |
 | Media (phase 2) | spatie/laravel-medialibrary + Filament plugin, added with the first image block |
+| API auth (Phase 3 Accounts) | Laravel Passport (`laravel/passport:"^13.10"`), first-party OAuth2 access and refresh tokens |
 
 Not in the stack yet. Add only when a phase needs it, with a short justification: Redis/Horizon, Reverb, Scout/Meilisearch, laravel-permission/Shield, laravel-model-states, brick/money, typescript-transformer, Sentry/Pulse. (Redis, Meilisearch and Mailpit may be installed locally but are unused for now.)
 
