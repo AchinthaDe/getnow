@@ -22,7 +22,7 @@ final class SuperadminSeeder extends Seeder
         $user = User::where('email', $email)->first();
 
         if ($user === null) {
-            User::create([
+            User::forceCreate([
                 'public_id' => (string) Str::ulid(),
                 'name' => 'Superadmin',
                 'email' => $email,
