@@ -35,7 +35,7 @@ This document is the source of truth for structure and boundaries. If code and t
 - [x] P3-ACC1a (rules, ADR, arch scoping)
 - [x] P3-ACC1b (Passport and token stream import)
 - [x] P3-ACC1c (users stream import, users reconcile migration, seeders, factory, guide)
-- [ ] P3-QA1 (strict models outside production, query-count test helper)
+- [x] P3-QA1 (strict models outside production, query-count test helper)
 - [ ] P3-CAT1 (Catalog context, categories table, CreateCategory, UpdateCategory, ADR, rules CT1 to CT8, guide)
 - [ ] P3-CAT2 (Activate, Deactivate, Delete, Move, Reorder, GetCategoryTree, ListCategoryOptions, subtree and effective-active resolution)
 - [ ] P3-CAT3 (Category resource, CategoryPolicy)
