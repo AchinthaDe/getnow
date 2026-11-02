@@ -88,9 +88,9 @@ vendor/bin/pest tests/Arch/AccountsArchTest.php
 
 ## Known limits and open questions
 
-- `POST /api/v1/users` creates retailer users, but the `retailers` company profile table is introduced in `RET1a`.
-- `canAccessPanel` currently checks `is_platform_admin`. Transitioning panel access to role-based gating occurs in `RET1b`.
-- Email verification and password resets are deferred to later operational iterations.
+- `POST /api/v1/users` can persist users with the retailer role, but retailer company profiles are not yet modeled in the database.
+- Admin panel access (`canAccessPanel`) is controlled strictly by the `is_platform_admin` boolean flag, not the `role` enum.
+- Email verification and password resets are not implemented on the API.
 
 ## History
 

@@ -6,9 +6,9 @@
 
 ## Context
 
-In the accounts and authentication module, users authenticate to receive short-lived OAuth2 access tokens and rotating refresh tokens (ADR 0007). Prior to step `ACC-U5`, active access tokens and refresh tokens remained usable following user deletion, password changes, or role changes until natural expiration.
+In the accounts and authentication module, users authenticate to receive short-lived OAuth2 access tokens and rotating refresh tokens (ADR 0007). Active access tokens and refresh tokens should not remain usable following user deletion, password changes, or role changes.
 
-`AGENTS.md` mandates that deleting a user, changing a password, or changing a role must call `TokenIssuer::revokeAll`. Open Question OQ8 (formulated from OD-2 through OD-5) addresses the exact triggers, transactional boundaries, and session semantics for token revocation.
+`AGENTS.md` mandates that deleting a user, changing a password, or changing a role must call `TokenIssuer::revokeAll`. This decision establishes the exact triggers, transactional boundaries, and session semantics for token revocation.
 
 ## Decision
 
@@ -28,8 +28,6 @@ In the accounts and authentication module, users authenticate to receive short-l
    - A role change takes effect in the database immediately upon transaction commit. Revoking tokens on role change terminates all active sessions across client devices, forcing users to re-authenticate under their new role.
 5. **Concurrent Login Window**:
    - In accordance with brief trap 10, a concurrent login verifying an old password immediately before a password update transaction commits may issue a token that revocation does not catch. Row-level locking on authentication is out of scope and this window is accepted as an operational risk.
-6. **Mark Open Question OQ8 as Resolved**:
-   - Record OQ8 in `ARCHITECTURE.md` §11 as resolved by ADR 0009.
 
 ## Consequences
 
