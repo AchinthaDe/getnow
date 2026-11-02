@@ -83,6 +83,7 @@ vendor/bin/pest tests/Feature/Api/V1/Content/GetLayoutContentEndpointTest.php te
 
 - **Rate limiting applies only to content-api route.** The `content-api` rate limiter is configured in `AppServiceProvider` specifically for `/api/v1/content/layout` with a default of 60 requests per minute (`CONTENT_API_RATE_LIMIT_PER_MINUTE`).
 - **No application caching beyond HTTP ETags.** Layout responses rely entirely on HTTP conditional caching (`If-None-Match`); responses are not cached in Redis or Laravel memory stores.
+- **Root route file shares prefix with other contexts.** `routes/api.php` defines the top-level `v1/content` prefix for storefront content layouts while delegating sibling `v1` routes (`auth`, `tokens`, `users`) to their respective domain route files.
 
 ## History
 

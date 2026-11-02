@@ -56,7 +56,7 @@ Map: ARCHITECTURE.md (phases, stack, structure, decisions), docs/README.md (area
 - **S4** Filament never calls `Model::create/update/delete` directly. In Content, Catalog, and Retail, it calls Actions; in Accounts, it calls Services (or `TokenIssuer`).
 - **S5** Block definitions go in `app/Domain/Content/Blocks/<Name>/`. Their Filament form schemas go in `app/Filament/Blocks/`.
 - **S6** Panel code goes under `app/Filament/Admin/`. Do not put files in `app/Filament/Resources` or other default paths.
-- **S7** Put code in the correct place: Content in `app/Domain/Content/`, Accounts in `app/Domain/Accounts/{Contracts,Data,Enums,Exceptions,Repositories,Services,Tokens}/`, Accounts controllers in `app/Http/Controllers/Api/V1/{Auth,Users}/`, Accounts requests in `app/Http/Requests/{Auth,Users}/`, and shared `User` model at `app/Models/User.php`. If nothing fits, ask before creating a new context or top-level folder.
+- **S7** Put code in the correct place: Content in `app/Domain/Content/`, Accounts in `app/Domain/Accounts/{Contracts,Data,Enums,Exceptions,Policies,Repositories,Services,Tokens}/`, Accounts controllers in `app/Http/Controllers/Api/V1/{Auth,Users}/`, Accounts requests in `app/Http/Requests/{Auth,Users}/`, and shared `User` model at `app/Models/User.php`. If nothing fits, ask before creating a new context or top-level folder.
 
 ## Coding standards
 

@@ -10,6 +10,7 @@ Normative area guides capture architectural rules, invariants, change workflows,
 | menus | active | [menus.md](areas/menus.md) | Navigation menus, tree caps, whole-tree updates, and Filament menu editor. |
 | site-settings | active | [site-settings.md](areas/site-settings.md) | Storefront global scalar settings, Spatie settings repository, and Filament page. |
 | content-api | active | [content-api.md](areas/content-api.md) | Public layout HTTP endpoint, rate limiting, and revision ETag caching. |
+| accounts | active | [accounts.md](areas/accounts.md) | User identity, role hierarchy, credential authentication, and user administration. |
 | admin-panel | planned (P1-DOC1b) | planned | Filament panel configuration, user authentication, and admin access control. |
 | auth-scaffold | planned (P1-DOC1b) | planned | Temporary Phase 0 starter-kit authentication scaffolding and views. |
 | data | planned (P1-DOC1b) | planned | PostgreSQL schema, database migrations, constraints, seeders, and conventions. |
