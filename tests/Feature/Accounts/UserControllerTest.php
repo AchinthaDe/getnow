@@ -6,12 +6,22 @@ use App\Domain\Accounts\Data\UserResponseData;
 use App\Domain\Accounts\Enums\UserRole;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
+use Tests\Support\InteractsWithPassportKeys;
 
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\delete;
 use function Pest\Laravel\get;
 use function Pest\Laravel\patch;
 use function Pest\Laravel\post;
+
+uses(InteractsWithPassportKeys::class);
+
+beforeEach(function (): void {
+    (new class
+    {
+        use InteractsWithPassportKeys;
+    })->ensurePassportKeys();
+});
 
 it('serializes user model to user response data without internal id or password', function (): void {
     $user = User::factory()->create();

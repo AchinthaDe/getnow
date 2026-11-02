@@ -86,10 +86,13 @@ vendor/bin/pest tests/Feature/Contract
 vendor/bin/pest tests/Arch/AccountsArchTest.php
 ```
 
+Feature tests exercising authenticated routes use the `Tests\Support\InteractsWithPassportKeys` trait to inject transient RSA key pairs into configuration memory (`config(['passport.public_key' => ..., 'passport.private_key' => ...])`), guaranteeing test hermeticity in clean CI environments lacking physical storage keys.
+
 ## Known limits and open questions
 
 - `POST /api/v1/users` can persist users with the retailer role, but retailer company profiles are not yet modeled in the database.
 - Admin panel access (`canAccessPanel`) is controlled strictly by the `is_platform_admin` boolean flag, not the `role` enum.
+- Superadmin credentials default to `'superadmin@getnow.test'` and `'secret'` when unset or empty in the environment, ensuring `.env.example` remains secret-free while local seeding and automated CI pipelines run deterministically.
 - Email verification and password resets are not implemented on the API.
 
 ## History

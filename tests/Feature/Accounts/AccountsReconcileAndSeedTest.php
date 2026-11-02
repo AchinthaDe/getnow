@@ -15,6 +15,13 @@ use function Pest\Laravel\seed;
 
 uses(InteractsWithPassportKeys::class);
 
+beforeEach(function (): void {
+    (new class
+    {
+        use InteractsWithPassportKeys;
+    })->ensurePassportKeys();
+});
+
 it('reconciles users table backfilling platform admins to superadmin and standard users to customer with valid ulids', function (): void {
     // Insert raw rows simulating existing CMS users prior to reconcile migration
     $adminId = DB::table('users')->insertGetId([
@@ -56,8 +63,8 @@ it('executes database seeder idempotently ensuring dual access to admin panel an
     seed(DatabaseSeeder::class);
     seed(DatabaseSeeder::class);
 
-    $superadminEmail = (string) config('auth.superadmin.email', 'superadmin@getnow.test');
-    $superadminPassword = (string) config('auth.superadmin.password', 'secret');
+    $superadminEmail = (string) (config('auth.superadmin.email') ?: 'superadmin@getnow.test');
+    $superadminPassword = (string) (config('auth.superadmin.password') ?: 'secret');
 
     /** @var User $superadmin */
     $superadmin = User::where('email', $superadminEmail)->firstOrFail();

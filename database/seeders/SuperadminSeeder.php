@@ -16,8 +16,8 @@ final class SuperadminSeeder extends Seeder
      */
     public function run(): void
     {
-        $email = (string) config('auth.superadmin.email', 'superadmin@getnow.test');
-        $password = (string) config('auth.superadmin.password', 'secret');
+        $email = (string) (config('auth.superadmin.email') ?: 'superadmin@getnow.test');
+        $password = (string) (config('auth.superadmin.password') ?: 'secret');
 
         $user = User::where('email', $email)->first();
 
