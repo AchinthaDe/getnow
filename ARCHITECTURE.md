@@ -110,6 +110,11 @@ The CMS and the storefront are separate applications with separate databases. Th
 ```
 app/
 ├── Domain/
+│   ├── Catalog/
+│   │   ├── Actions/Category/   # one invokable class per use case
+│   │   ├── Data/Category/      # DTOs
+│   │   ├── Exceptions/
+│   │   └── Models/             # Category
 │   └── Content/
 │       ├── Actions/            # one invokable class per use case, reads included
 │       ├── Blocks/<Name>/      # <Name>Block.php (definition) + <Name>Data.php (payload)
@@ -313,7 +318,7 @@ Contract rules:
 | D1 | CMS is its own project and database. Storefronts consume the Content API. No shared database. |
 | D2 | Placements, menu keys and block types are defined in code. Content lives in the database. |
 | D3 | Design tokens stay in the storefront. Blocks choose from enums, never raw colours. |
-| D4 | Category data stays with the catalog source. Menus link by URL until a Catalog context exists. |
+| D4 | Superseded by ADR 0010. Category data owned by Catalog context; menus link via typed references or links. |
 | D5 | Phase 1 has no images. Media library arrives with the first image block in phase 2. |
 | D6 | Phase 1 admin access is one platform-admin flag. Roles come with the retailer panel. |
 | D7 | Published content edits go live immediately on Save. Ephemeral cache-backed admin block preview is provided in Phase 1 (ADR 0005). Persistent revisions and version history arrive in Phase 2. |
@@ -329,4 +334,4 @@ Open decisions (record as ADRs in `docs/adr/` when settled):
 
 ## 13. Later phases (sketch only, do not build)
 
-Catalog (brands, models, variants, categories), Retail (retailers, offers, inventory), Sales (cart, orders), Negotiation (chat, quotes), Procurement (purchase orders), Payments (ledger, escrow, commission, payouts), Disputes. When a phase starts, add its section here and its context under `app/Domain/`.
+Catalog (taxonomy, products, reviews, variants, media), Retail (retailers, membership), Sales (cart, orders), Negotiation (chat, quotes), Procurement (purchase orders), Payments (ledger, escrow, commission, payouts), Disputes. When a phase starts, add its section here and its context under `app/Domain/`.
