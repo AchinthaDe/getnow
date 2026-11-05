@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Domain\Accounts\Policies\UserPolicy;
+use App\Domain\Catalog\Models\Category;
+use App\Domain\Catalog\Policies\CategoryPolicy;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -38,6 +40,7 @@ class AppServiceProvider extends ServiceProvider
         $this->configureRateLimiting();
 
         Gate::policy(User::class, UserPolicy::class);
+        Gate::policy(Category::class, CategoryPolicy::class);
     }
 
     /**
