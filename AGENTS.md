@@ -81,6 +81,16 @@ Map: ARCHITECTURE.md (phases, stack, structure, decisions), docs/README.md (area
 - **K8** The Content API is a contract. Within v1, only additive changes. Update `docs/contracts/content-api.md` and the fixture in `tests/Fixtures/contracts/` in the same change.
 - **K9** Adding a block type follows the checklist in `ARCHITECTURE.md` section 6. Do not skip steps.
 
+## Catalog rules
+
+- **CT1** Catalog owns all taxonomy data (categories, brands, collections, option values). No other context stores their names, slugs or URLs.
+- **CT2** A product references exactly one leaf category. A category with products cannot gain children. A category with children cannot receive products.
+- **CT3** A category slug is immutable. Renaming changes the name only.
+- **CT4** A referenced taxonomy row is never hard-deleted. It is deactivated through an Action.
+- **CT5** Contexts touch Catalog only through `App\Domain\Catalog\Actions` and `Data`, never its models.
+- **CT6** What a storefront may see is computed at read time by one query definition. Never by writing flags across many rows.
+- **CT7** Hot-write data (stock) lives in its own table, apart from reviewed content.
+
 ## Database rules
 
 - **DB1** PostgreSQL only. Tests run against Postgres, never SQLite.

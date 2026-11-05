@@ -5,14 +5,24 @@ declare(strict_types=1);
 use App\Domain\Accounts\Enums\UserRole;
 use App\Models\User;
 use Database\Seeders\SuperadminSeeder;
+use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
-use function Pest\Laravel\artisan;
 use function Pest\Laravel\assertDatabaseHas;
+
+/**
+ * @internal
+ */
+interface MigrationWithRollback
+{
+    public function up(): void;
+
+    public function down(): void;
+}
 
 it('has expected cases and backing values for user role enum', function (): void {
     $cases = UserRole::cases();
@@ -140,7 +150,9 @@ it('supports soft deleting user instances', function (): void {
 });
 
 it('successfully rolls back migration and removes added columns while restoring dropped columns', function (): void {
-    artisan('migrate:rollback', ['--step' => 1])->assertSuccessful();
+    /** @var Migration&MigrationWithRollback $migration */
+    $migration = require database_path('migrations/2026_10_30_070000_add_accounts_columns_to_users_table.php');
+    $migration->down();
 
     expect(Schema::hasColumn('users', 'public_id'))->toBeFalse()
         ->and(Schema::hasColumn('users', 'role'))->toBeFalse()
@@ -148,5 +160,5 @@ it('successfully rolls back migration and removes added columns while restoring 
         ->and(Schema::hasColumn('users', 'remember_token'))->toBeTrue()
         ->and(Schema::hasColumn('users', 'two_factor_secret'))->toBeTrue();
 
-    artisan('migrate')->assertSuccessful();
+    $migration->up();
 });
