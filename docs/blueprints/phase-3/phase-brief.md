@@ -147,7 +147,7 @@ Each step is one layer and ends with `composer check` green. Sizes are code and 
 | P3-CAT1 | domain | Catalog context, `categories` table, CreateCategory, UpdateCategory, ADR, rules CT1 to CT7, guide | ~11 |
 | P3-CAT2 | domain | Activate, Deactivate, Delete, Move, Reorder, `GetCategoryTree`, `ListCategoryOptions`, subtree and effective-active resolution | ~11 |
 | P3-CAT3 | admin UI | Category resource (tree, reorder), CategoryPolicy | ~8 |
-| P3-NAV1a | domain | Typed menu items: migration, kinds, validation, category reference and `category_tree` source | ~10 |
+| P3-NAV1a | domain | Typed menu items: migration, kinds, validation, category reference and `category_tree` source. Handoff: DeleteCategory refuses a category referenced by a menu item, with a test. | ~10 |
 | P3-NAV1b | API | Batched resolution in `GetLayoutContent`, revision includes taxonomy state, contract doc and fixture | ~8 |
 | P3-NAV1c | admin UI | Menu form: kind select, category picker, inactive-target warnings | ~8 |
 | P3-BRD1a | domain | Brands, `ListBrandOptions` with search, show_in_nav | ~9 |
@@ -155,7 +155,7 @@ Each step is one layer and ends with `composer check` green. Sizes are code and 
 | P3-NAV2 | domain + API | Brand reference and brand source in menus | ~8 |
 | P3-RET1a | domain | Retail context: retailers, membership, status, suspension. Needs question 1 | ~10 |
 | P3-RET1b | UI | Retailer panel shell, superadmin retailer management | ~9 |
-| P3-PRD1a | domain | Product core, create, update, archive, `row_version`, ownership scoping, CT2 guard, indexes | ~11 |
+| P3-PRD1a | domain | Product core, create, update, archive, `row_version`, ownership scoping, CT2 guard, indexes. Handoff: DeleteCategory refuses a category referenced by a product, and CreateCategory and MoveCategory refuse a parent that products reference (product-side half of CT2), each with a test. | ~11 |
 | P3-PRD1b | domain | Submit, withdraw, list, unlist, state machine, `VisibleProducts` | ~9 |
 | P3-PRD2a | domain | Review rounds, snapshots, approve, request changes, reject | ~10 |
 | P3-PRD2b | domain | Flags, retailer replies, events after commit, queued notifications, database queue | ~10 |
