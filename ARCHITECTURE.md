@@ -37,7 +37,7 @@ This document is the source of truth for structure and boundaries. If code and t
 - [x] P3-ACC1c (users stream import, users reconcile migration, seeders, factory, guide)
 - [x] P3-QA1 (strict models outside production, query-count test helper)
 - [x] P3-CAT1 (Catalog context, categories table, CreateCategory, UpdateCategory, ADR, rules CT1 to CT8, guide)
-- [ ] P3-CAT2 (Activate, Deactivate, Delete, Move, Reorder, GetCategoryTree, ListCategoryOptions, subtree and effective-active resolution)
+- [x] P3-CAT2 (Activate, Deactivate, Delete, Move, Reorder, GetCategoryTree, ListCategoryOptions, subtree and effective-active resolution)
 - [ ] P3-CAT3 (Category resource, CategoryPolicy)
 - [ ] P3-NAV1a (typed menu items: migration, kinds, validation, category reference and category_tree source)
 - [ ] P3-NAV1b (batched resolution in GetLayoutContent, revision includes taxonomy state, contract doc and fixture)
