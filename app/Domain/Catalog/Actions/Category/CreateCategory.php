@@ -7,6 +7,7 @@ namespace App\Domain\Catalog\Actions\Category;
 use App\Domain\Catalog\Data\Category\CreateCategoryData;
 use App\Domain\Catalog\Exceptions\CategoryRuleViolation;
 use App\Domain\Catalog\Models\Category;
+use App\Domain\Catalog\Support\CategorySiblingLock;
 use App\Models\User;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
@@ -27,8 +28,7 @@ final class CreateCategory
                     throw CategoryRuleViolation::parentNotFound($data->parent_public_id);
                 }
 
-                $lockKey = (int) (crc32('category_parent:'.$parent->id) & 0x7FFFFFFF);
-                DB::statement('SELECT pg_advisory_xact_lock(?)', [$lockKey]);
+                CategorySiblingLock::acquire($parent->id);
 
                 if ($parent->parent_id !== null) {
                     throw CategoryRuleViolation::maxDepthExceeded(Category::MAX_DEPTH);
@@ -43,8 +43,7 @@ final class CreateCategory
                 $parentId = $parent->id;
                 $parentPublicId = $parent->public_id;
             } else {
-                $lockKey = (int) (crc32('category_parent:0') & 0x7FFFFFFF);
-                DB::statement('SELECT pg_advisory_xact_lock(?)', [$lockKey]);
+                CategorySiblingLock::acquire(null);
 
                 if (Category::whereNull('parent_id')->whereRaw('lower(name) = lower(?)', [$data->name])->exists()) {
                     throw CategoryRuleViolation::siblingNameClash($data->name, null);
