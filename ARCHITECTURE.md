@@ -113,8 +113,10 @@ app/
 │   ├── Catalog/
 │   │   ├── Actions/Category/   # one invokable class per use case
 │   │   ├── Data/Category/      # DTOs
+│   │   ├── Enums/
 │   │   ├── Exceptions/
-│   │   └── Models/             # Category
+│   │   ├── Models/             # Category
+│   │   └── Support/
 │   └── Content/
 │       ├── Actions/            # one invokable class per use case, reads included
 │       ├── Blocks/<Name>/      # <Name>Block.php (definition) + <Name>Data.php (payload)
