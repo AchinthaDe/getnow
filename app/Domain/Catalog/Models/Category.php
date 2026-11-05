@@ -6,6 +6,7 @@ namespace App\Domain\Catalog\Models;
 
 use App\Models\User;
 use Database\Factories\CategoryFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -27,6 +28,7 @@ use Illuminate\Support\Carbon;
  * @property int|null $updated_by
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
+ * @property bool|int|null $is_effectively_active
  * @property-read Category|null $parent
  * @property-read Collection<int, Category> $children
  * @property-read User|null $creator
@@ -101,5 +103,47 @@ final class Category extends Model
     protected static function newFactory(): CategoryFactory
     {
         return CategoryFactory::new();
+    }
+
+    /**
+     * PostgreSQL expression returning true if this category and every ancestor has is_active = true.
+     * Uses UNION to terminate on cycles without recursion loops.
+     */
+    public static function effectiveActiveRawSql(): string
+    {
+        return 'NOT EXISTS (
+            WITH RECURSIVE ancestors AS (
+                SELECT c_anc.id, c_anc.parent_id, c_anc.is_active
+                FROM categories c_anc
+                WHERE c_anc.id = categories.id
+                UNION
+                SELECT parent.id, parent.parent_id, parent.is_active
+                FROM categories parent
+                JOIN ancestors ON parent.id = ancestors.parent_id
+            )
+            SELECT 1 FROM ancestors WHERE ancestors.is_active = false
+        )';
+    }
+
+    /**
+     * @param  Builder<Category>  $query
+     * @return Builder<Category>
+     */
+    public function scopeEffectivelyActive(Builder $query): Builder
+    {
+        return $query->whereRaw(self::effectiveActiveRawSql());
+    }
+
+    /**
+     * @param  Builder<Category>  $query
+     * @return Builder<Category>
+     */
+    public function scopeWithEffectiveActive(Builder $query): Builder
+    {
+        if ($query->getQuery()->columns === null) {
+            $query->select('categories.*');
+        }
+
+        return $query->selectRaw('('.self::effectiveActiveRawSql().') AS is_effectively_active');
     }
 }
