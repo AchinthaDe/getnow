@@ -27,4 +27,19 @@ final class CategoryRuleViolation extends RuntimeException
     {
         return new self("Parent category [{$parentPublicId}] does not exist.");
     }
+
+    public static function cycleDetected(string $publicId, string $parentPublicId): self
+    {
+        return new self("Cannot move category [{$publicId}] under itself or its descendant [{$parentPublicId}].");
+    }
+
+    public static function hasChildren(string $publicId): self
+    {
+        return new self("Cannot delete category [{$publicId}] because it has child categories.");
+    }
+
+    public static function invalidSiblingOrder(?string $parentPublicId): self
+    {
+        return new self("The ordered list of category IDs does not match the current siblings of parent [{$parentPublicId}].");
+    }
 }
