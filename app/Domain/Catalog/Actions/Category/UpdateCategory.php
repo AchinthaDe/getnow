@@ -37,7 +37,11 @@ final class UpdateCategory
                 }
 
                 if ($siblingQuery->exists()) {
-                    throw CategoryRuleViolation::siblingNameClash($data->name, $categoryModel->parent?->public_id);
+                    $parentPublicId = $categoryModel->parent_id !== null
+                        ? Category::whereKey($categoryModel->parent_id)->value('public_id')
+                        : null;
+
+                    throw CategoryRuleViolation::siblingNameClash($data->name, $parentPublicId);
                 }
 
                 $properties['old_name'] = $categoryModel->name;
@@ -69,7 +73,11 @@ final class UpdateCategory
             try {
                 $categoryModel->save();
             } catch (UniqueConstraintViolationException) {
-                throw CategoryRuleViolation::siblingNameClash($categoryModel->name, $categoryModel->parent?->public_id);
+                $parentPublicId = $categoryModel->parent_id !== null
+                    ? Category::whereKey($categoryModel->parent_id)->value('public_id')
+                    : null;
+
+                throw CategoryRuleViolation::siblingNameClash($categoryModel->name, $parentPublicId);
             }
 
             activity('catalog')

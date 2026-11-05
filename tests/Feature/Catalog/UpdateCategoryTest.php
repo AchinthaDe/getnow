@@ -134,3 +134,15 @@ it('writes no activity log on failed operations', function (): void {
 
     expect(Activity::count())->toBe($initialLogCount);
 });
+
+it('handles sibling name clash on child category under strict mode without lazy loading violation', function (): void {
+    $admin = UserFactory::new()->platformAdmin()->create();
+    $root = CategoryFactory::new()->root()->create(['name' => 'Root Cat']);
+    $childA = CategoryFactory::new()->child($root)->create(['name' => 'Child A']);
+    $childB = CategoryFactory::new()->child($root)->create(['name' => 'Child B']);
+
+    $action = new UpdateCategory;
+
+    expect(fn () => $action($childB, new UpdateCategoryData(name: 'child a'), $admin))
+        ->toThrow(CategoryRuleViolation::class, 'already exists under parent ['.$root->public_id.']');
+});
