@@ -20,8 +20,8 @@ use Illuminate\Support\Carbon;
  * @property int|null $parent_id
  * @property MenuItemKind $kind
  * @property string|null $category_public_id
- * @property string $label
- * @property string $url
+ * @property string|null $label
+ * @property string|null $url
  * @property string|null $icon
  * @property bool $opens_in_new_tab
  * @property bool $is_enabled

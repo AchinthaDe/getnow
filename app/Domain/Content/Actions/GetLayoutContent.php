@@ -12,6 +12,7 @@ use App\Domain\Content\Data\LayoutMenuItemData;
 use App\Domain\Content\Data\LayoutMetaData;
 use App\Domain\Content\Data\LayoutResponseData;
 use App\Domain\Content\Data\LayoutSettingsData;
+use App\Domain\Content\Enums\MenuItemKind;
 use App\Domain\Content\Enums\MenuKey;
 use App\Domain\Content\Enums\Placement;
 use App\Domain\Content\Models\ContentBlock;
@@ -106,18 +107,36 @@ final class GetLayoutContent
             }
 
             $rootItems = $menu->items
-                ->filter(fn (MenuItem $item): bool => $item->parent_id === null && $item->is_enabled === true);
+                ->filter(fn (MenuItem $item): bool => $item->parent_id === null
+                    && $item->is_enabled === true
+                    && $item->kind === MenuItemKind::LINK
+                    && $item->url !== null
+                    && $item->label !== null
+                );
 
             $childrenByParent = $menu->items
-                ->filter(fn (MenuItem $item): bool => $item->parent_id !== null && $item->is_enabled === true)
+                ->filter(fn (MenuItem $item): bool => $item->parent_id !== null
+                    && $item->is_enabled === true
+                    && $item->kind === MenuItemKind::LINK
+                    && $item->url !== null
+                    && $item->label !== null
+                )
                 ->groupBy('parent_id');
 
             $mappedRoots = [];
             foreach ($rootItems as $root) {
+                if ($root->url === null || $root->label === null) {
+                    continue;
+                }
+
                 $childItems = $childrenByParent->get($root->id, collect());
                 $mappedChildren = [];
 
                 foreach ($childItems as $child) {
+                    if ($child->url === null || $child->label === null) {
+                        continue;
+                    }
+
                     $mappedChildren[] = new LayoutMenuItemData(
                         id: $child->public_id,
                         label: $child->label,
