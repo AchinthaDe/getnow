@@ -3,12 +3,15 @@
 declare(strict_types=1);
 
 use App\Domain\Catalog\Models\Category;
+use App\Domain\Content\Models\Menu;
+use App\Domain\Content\Models\MenuItem;
 use App\Filament\Admin\Resources\CategoryResource;
 use App\Filament\Admin\Resources\CategoryResource\Pages\CreateCategory;
 use App\Filament\Admin\Resources\CategoryResource\Pages\EditCategory;
 use App\Filament\Admin\Resources\CategoryResource\Pages\ListCategories;
 use Database\Factories\CategoryFactory;
 use Database\Factories\UserFactory;
+use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 
@@ -297,6 +300,26 @@ it('deletes childless leaf category via DeleteCategory and rejects deleting cate
         ->assertNotified('Delete Failed');
 
     expect(Category::where('id', $rootWithChild->id)->exists())->toBeTrue();
+});
+
+it('surfaces inuse violation as danger notification in Filament CategoryResource', function (): void {
+    $admin = UserFactory::new()->platformAdmin()->create();
+    actingAs($admin);
+
+    $category = CategoryFactory::new()->root()->create(['name' => 'Referenced Category']);
+    $menu = Menu::factory()->create();
+    MenuItem::factory()->forMenu($menu)->category($category->public_id)->create();
+
+    Livewire::test(ListCategories::class)
+        ->callTableAction('delete', record: $category)
+        ->assertNotified(
+            Notification::make()
+                ->danger()
+                ->title('Delete Failed')
+                ->body("Cannot delete category [{$category->public_id}] because it is in use. Deactivate it instead.")
+        );
+
+    expect(Category::whereKey($category->id)->exists())->toBeTrue();
 });
 
 it('ensures zero direct model writes exist in app/Filament', function (): void {

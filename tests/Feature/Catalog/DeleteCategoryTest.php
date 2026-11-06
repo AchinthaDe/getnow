@@ -2,9 +2,12 @@
 
 declare(strict_types=1);
 
+use App\Domain\Catalog\Actions\Category\DeactivateCategory;
 use App\Domain\Catalog\Actions\Category\DeleteCategory;
 use App\Domain\Catalog\Exceptions\CategoryRuleViolation;
 use App\Domain\Catalog\Models\Category;
+use App\Domain\Content\Models\Menu;
+use App\Domain\Content\Models\MenuItem;
 use Database\Factories\CategoryFactory;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -93,4 +96,31 @@ it('throws ModelNotFoundException when target category public_id is unknown with
 
     expect(Category::count())->toBe($countBefore)
         ->and(Activity::count())->toBe(0);
+});
+
+it('refuses deletion of category referenced by menu item and surfaces inuse violation', function (): void {
+    $category = CategoryFactory::new()->root()->create(['name' => 'Referenced Category']);
+    $menu = Menu::factory()->create();
+    $menuItem = MenuItem::factory()->forMenu($menu)->category($category->public_id)->create();
+
+    expect(fn () => (new DeleteCategory)($category->public_id))
+        ->toThrow(CategoryRuleViolation::class, "Cannot delete category [{$category->public_id}] because it is in use. Deactivate it instead.");
+
+    expect(Category::whereKey($category->id)->exists())->toBeTrue()
+        ->and(MenuItem::whereKey($menuItem->id)->exists())->toBeTrue()
+        ->and(Activity::where('event', 'category.deleted')->count())->toBe(0);
+});
+
+it('allows deactivating referenced category and allows deletion once menu item reference is removed', function (): void {
+    $category = CategoryFactory::new()->root()->create(['name' => 'Referenced Category']);
+    $menu = Menu::factory()->create();
+    $menuItem = MenuItem::factory()->forMenu($menu)->category($category->public_id)->create();
+
+    (new DeactivateCategory)($category->public_id);
+    expect($category->fresh()?->is_active)->toBeFalse();
+
+    $menuItem->delete();
+
+    (new DeleteCategory)($category->public_id);
+    expect(Category::whereKey($category->id)->exists())->toBeFalse();
 });

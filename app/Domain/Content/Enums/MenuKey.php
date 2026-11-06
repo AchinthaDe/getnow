@@ -22,4 +22,22 @@ enum MenuKey: string
             self::FOOTER_COLUMN_3 => 'Footer Column 3',
         };
     }
+
+    /**
+     * @return array<int, MenuItemKind>
+     */
+    public function allowedKinds(): array
+    {
+        return match ($this) {
+            self::MAIN_NAV, self::MOBILE_NAV => [
+                MenuItemKind::LINK,
+                MenuItemKind::CATEGORY,
+                MenuItemKind::CATEGORY_TREE,
+            ],
+            self::FOOTER_COLUMN_1, self::FOOTER_COLUMN_2, self::FOOTER_COLUMN_3 => [
+                MenuItemKind::LINK,
+                MenuItemKind::CATEGORY,
+            ],
+        };
+    }
 }
