@@ -38,6 +38,11 @@ final class CategoryRuleViolation extends RuntimeException
         return new self("Cannot delete category [{$publicId}] because it has child categories.");
     }
 
+    public static function inUse(string $publicId): self
+    {
+        return new self("Cannot delete category [{$publicId}] because it is in use. Deactivate it instead.");
+    }
+
     public static function invalidSiblingOrder(?string $parentPublicId): self
     {
         return new self("The ordered list of category IDs does not match the current siblings of parent [{$parentPublicId}].");
