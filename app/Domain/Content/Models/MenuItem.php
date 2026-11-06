@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Content\Models;
 
+use App\Domain\Content\Enums\MenuItemKind;
 use Database\Factories\MenuItemFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -17,6 +18,8 @@ use Illuminate\Support\Carbon;
  * @property string $public_id
  * @property int $menu_id
  * @property int|null $parent_id
+ * @property MenuItemKind $kind
+ * @property string|null $category_public_id
  * @property string $label
  * @property string $url
  * @property string|null $icon
@@ -36,6 +39,7 @@ final class MenuItem extends Model
     protected $guarded = [];
 
     protected $casts = [
+        'kind' => MenuItemKind::class,
         'opens_in_new_tab' => 'boolean',
         'is_enabled' => 'boolean',
         'sort_order' => 'integer',
