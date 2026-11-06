@@ -111,6 +111,46 @@ it('leaves stored rows completely untouched when save is rejected', function ():
         ->and($items[0]->url)->toBe('/original');
 });
 
+it('rejects a null link label before url checks and leaves stored rows untouched', function (): void {
+    $menu = Menu::factory()->create([
+        'key' => MenuKey::MAIN_NAV->value,
+        'title' => 'Original Title',
+    ]);
+    $existingItem = MenuItem::factory()->forMenu($menu)->create([
+        'label' => 'Original Link',
+        'url' => '/original',
+        'kind' => MenuItemKind::LINK,
+        'category_public_id' => null,
+    ]);
+
+    $invalidData = new UpdateMenuData(
+        title: 'Mutated Title',
+        items: [
+            new UpdateMenuItemInputData(
+                public_id: null,
+                label: null,
+                url: '/shop',
+                kind: MenuItemKind::LINK,
+                category_public_id: null,
+            ),
+        ]
+    );
+
+    expect(fn () => (new UpdateMenu)($menu, $invalidData))
+        ->toThrow(InvalidMenuTreeException::class, 'Label must be between 1 and 80 characters.');
+
+    $menu->refresh();
+    expect($menu->title)->toBe('Original Title');
+
+    $items = MenuItem::where('menu_id', $menu->id)->get();
+    expect($items)->toHaveCount(1)
+        ->and($items[0]->public_id)->toBe($existingItem->public_id)
+        ->and($items[0]->label)->toBe('Original Link')
+        ->and($items[0]->url)->toBe('/original')
+        ->and($items[0]->kind)->toBe(MenuItemKind::LINK)
+        ->and($items[0]->category_public_id)->toBeNull();
+});
+
 it('persists category items with reference and optional label while rejecting invalid shapes', function (Closure $dataBuilder, ?string $expectedExceptionMessage): void {
     $menu = Menu::factory()->create(['key' => MenuKey::MAIN_NAV->value]);
     $cat = CategoryFactory::new()->root()->create(['name' => 'Active Cat']);

@@ -102,10 +102,11 @@ final class UpdateMenu
                     }
 
                     if ($item->kind === MenuItemKind::LINK) {
-                        $trimmedLabel = trim((string) $item->label);
-                        if ($trimmedLabel === '' || mb_strlen($trimmedLabel) > self::MAX_LABEL_LENGTH) {
+                        if ($item->label === null || trim($item->label) === '' || mb_strlen(trim($item->label)) > self::MAX_LABEL_LENGTH) {
                             throw InvalidMenuTreeException::labelInvalid('Label must be between 1 and '.self::MAX_LABEL_LENGTH.' characters.');
                         }
+
+                        $trimmedLabel = trim($item->label);
 
                         if ($item->url === null) {
                             throw InvalidMenuTreeException::urlRequiredForLink();
