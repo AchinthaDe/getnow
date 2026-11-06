@@ -45,6 +45,7 @@ The `content-api` area delivers the public layout graph for storefront rendering
 - **Pre-indexed placement queries.** `GetLayoutContent` retrieves all published, enabled, in-window blocks with `ContentBlock::visible()->servingOrder()`, pre-indexing them by placement in memory before applying `ResolveServablePayload` and in-memory placement `maxCount()` slicing.
 - **Revision ETag and HTTP 304.** Responses attach an `ETag` containing the SHA-256 hash of canonical layout data JSON. If the request's `If-None-Match` header matches the current revision or `*`, the controller returns an empty `304 Not Modified` response.
 - **Fail-closed block resolution.** Unservable blocks (unsupported schema versions or invalid payloads) are omitted from layout output without failing sibling blocks or returning an HTTP error (ADR 0002).
+- **Interim suppression of non-link menu items.** `GetLayoutContent` serves only menu items with kind `link` and non-null URLs, omitting `category` and `category_tree` items (and any descendants under them) until storefront resolution is active. Responses remain strictly link-only and byte-identical to the v1 contract.
 
 ## Invariants
 
@@ -54,7 +55,7 @@ The `content-api` area delivers the public layout graph for storefront rendering
 | 2 | **Deterministic revision ETag caching.** Responses carry an ETag matching SHA-256 of canonical data and return 304 on match. | Minimizes network payload transfer when storefront layout has not changed. | `tests/Feature/Api/V1/Content/GetLayoutContentEndpointTest.php` |
 | 3 | **Fail-closed serving health per block.** Unservable blocks are omitted while valid sibling blocks are returned. | Resiliency decision ADR 0002; corrupted blocks must never crash storefront layout. | `tests/Feature/Domain/Content/Actions/GetLayoutContentTest.php` |
 | 4 | **All placements and menus present.** Every defined Placement and MenuKey case is present in the output even when empty. | Contract consistency; storefront layout components must not crash on missing keys. | `tests/Feature/Domain/Content/Actions/GetLayoutContentTest.php` |
-| 5 | **Additive changes only within v1.** Response schema fields cannot be removed or renamed in v1. | Backward compatibility rule K8; breaking contract changes require `/api/v2`. | `Review only` (monitored by `tests/Feature/Api/V1/Content/GetLayoutContentEndpointTest.php`) |
+| 5 | **Additive changes only within v1.** Response schema fields cannot be removed or renamed in v1; typed menu items are suppressed until storefront resolution is active. | Backward compatibility rule K8; breaking contract changes require `/api/v2`. | `Review only` (monitored by `tests/Feature/Api/V1/Content/GetLayoutContentEndpointTest.php`) |
 | 6 | **Per-minute IP rate limiting applies.** Endpoint returns HTTP 429 when requests exceed configured threshold. | Protects the CMS backend against traffic spikes and scraping denial-of-service. | `tests/Feature/Api/V1/Content/GetLayoutContentEndpointTest.php` |
 | 7 | **Thin controller boundary.** Controller performs no validation or queries and only delegates to `GetLayoutContent`. | Architectural rule S2; enforces layer separation and prevents business logic in HTTP. | `tests/Arch/ContentApiArchTest.php` |
 
