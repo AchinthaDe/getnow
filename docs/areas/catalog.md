@@ -58,7 +58,7 @@ The `catalog` area owns all wholesale electronics marketplace taxonomy data, inc
 | 3 | Category slug is globally unique. | Guarantees deterministic URL routing. | `tests/Feature/Catalog/CreateCategoryTest.php` |
 | 4 | Sibling category name is unique ignoring case. | Prevents duplicate category labels under the same parent node. | `tests/Feature/Catalog/CreateCategoryTest.php` |
 | 5 | Actions are the sole write path for catalog mutations. | Centralizes validation, slug generation, advisory locks, and audit trails (S1, C5). | `tests/Arch/FilamentWritesTest.php and tests/Feature/Admin/Category/CategoryResourceTest.php` |
-| 6 | Cross-context isolation and reference integrity: external access via Actions/Data only; referenced categories cannot be deleted. | Enforces boundary isolation (CT5) and prevents dangling foreign key references (CT4). | `tests/Arch/CatalogArchTest.php and tests/Feature/Catalog/DeleteCategoryTest.php` |
+| 6 | Cross-context isolation, and a referenced category cannot be hard-deleted. | External contexts touch Catalog only through Actions and Data (CT5). A referenced category is not hard-deleted (CT4). | `tests/Arch/CatalogArchTest.php` and `tests/Feature/Catalog/DeleteCategoryTest.php` |
 | 7 | `is_active` changes only through ActivateCategory and DeactivateCategory. | Centralizes activation state transitions, timestamps, and audit logging (C4, CT6). | `tests/Feature/Catalog/CategoryStateActionsTest.php` |
 | 8 | Effective-active has one SQL definition used for both filtering and the computed flag. | Guarantees parity between query filters and tree visibility flags across any depth (CT6). | `tests/Feature/Catalog/CategoryEffectiveActiveTest.php` |
 
