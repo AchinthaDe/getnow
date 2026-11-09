@@ -41,7 +41,7 @@ This document is the source of truth for structure and boundaries. If code and t
 - [x] P3-CAT3 (Category resource, CategoryPolicy)
 - [x] P3-NAV1a (typed menu items: migration, kinds, validation, category reference and category_tree source)
 - [x] P3-NAV1b (batched resolution in GetLayoutContent, revision includes taxonomy state, contract doc and fixture)
-- [ ] P3-NAV1c (menu form: kind select, category picker, inactive-target warnings)
+- [x] P3-NAV1c (menu form: kind select, category picker, inactive-target warnings)
 - [ ] P3-TAX1a (value lifecycle and Brand)
 - [ ] P3-TAX1b (Brand resource and proposals queue)
 - [ ] P3-MDL1a (Models brand and category scoped, ListModelOptions with search)
