@@ -61,6 +61,7 @@ The `menus` area manages navigation menu hierarchies for the storefront layout. 
 - **Transactional tree reconciliation.** When saving a menu, the whole desired tree is submitted to `UpdateMenu`. Under a `lockForUpdate()` row lock, items matched by `public_id` update in place, unkeyed items get new ULIDs, and omitted items are deleted, all inside one database transaction.
 - **Tree depth guard.** Menus support a maximum depth of 2 (root item plus direct children). Nesting beyond depth 2 is rejected by `UpdateMenu` with `InvalidMenuTreeException`.
 - **Filtering cascade.** `GetMenuTree` returns enabled root items and their enabled children. If a parent item is disabled, its children are excluded from output.
+- **Filament menu editor.** Administrators curate menu hierarchies through `MenuResource`. The editor creates and edits `link`, `category`, and `category_tree` items within `MenuKey::allowedKinds()` and capped to depth 2. Category options are populated once per form load from `GetCategoryTree(CategoryTreeAudience::Admin)`. Non-blocking inline warnings notify editors when a selected category is inactive or hidden from navigation and will be omitted from the storefront layout. Form submissions explicitly pass `kind` on every item and reconcile whole trees through `UpdateMenu` without reverting typed items to links.
 - **Public API serving.** Stored navigation menus are projected into the layout API at read time by `ProjectMenuLayoutItems`. `category` items derive URLs as `/shop?category={slug}` and fall back to category names when labels are null; level-1 `category_tree` items expand in place into storefront-visible categories. Unresolvable taxonomy targets are omitted. `GetMenuTree` retains the raw stored items for administrative editing.
 
 ## Invariants
@@ -103,7 +104,6 @@ vendor/bin/pest tests/Feature/Domain/Content/Policies/MenuPolicyTest.php tests/F
 
 ## Known limits and open questions
 
-- The admin form still saves link fields only; re-saving a typed item through that form turns the item into a link.
 - **Last-write-wins tree reconciliation.** Menus reconcile whole trees under a row lock on save; concurrent administrative edits commit last-write-wins without conflict exceptions (D9).
 
 ## History
