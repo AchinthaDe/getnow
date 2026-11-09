@@ -588,20 +588,57 @@ it('returns byte-identical JSON and matching revision hash for a link-only fores
     ]);
 
     $response = app(GetLayoutContent::class)();
+
+    $expectedMainNavItems = [
+        [
+            'id' => $root1->public_id,
+            'label' => 'Home',
+            'url' => '/',
+            'icon' => null,
+            'new_tab' => false,
+            'children' => [],
+        ],
+        [
+            'id' => $root2->public_id,
+            'label' => 'Products',
+            'url' => '/products',
+            'icon' => null,
+            'new_tab' => false,
+            'children' => [
+                [
+                    'id' => $child2->public_id,
+                    'label' => 'Phones',
+                    'url' => '/products/phones',
+                    'icon' => null,
+                    'new_tab' => false,
+                    'children' => [],
+                ],
+            ],
+        ],
+    ];
+
+    $expectedMenus = [];
+    foreach (MenuKey::cases() as $menuKey) {
+        $expectedMenus[$menuKey->value] = [
+            'title' => $menuKey === MenuKey::MAIN_NAV ? 'Main Navigation' : null,
+            'items' => $menuKey === MenuKey::MAIN_NAV ? $expectedMainNavItems : [],
+        ];
+    }
+
     $canonicalData = $response->data->toArray();
+    $canonicalData['menus'] = $expectedMenus;
+
     $expectedHash = hash(
         'sha256',
         json_encode($canonicalData, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
     );
 
     expect($response->meta->revision)->toBe($expectedHash);
+
     $mainNavItems = $response->data->menus[MenuKey::MAIN_NAV->value]->items;
     expect($mainNavItems)->toHaveCount(2)
-        ->and($mainNavItems[0]->id)->toBe($root1->public_id)
-        ->and($mainNavItems[0]->label)->toBe('Home')
-        ->and($mainNavItems[1]->id)->toBe($root2->public_id)
-        ->and($mainNavItems[1]->children)->toHaveCount(1)
-        ->and($mainNavItems[1]->children[0]->id)->toBe($child2->public_id);
+        ->and($mainNavItems[0]->toArray())->toBe($expectedMainNavItems[0])
+        ->and($mainNavItems[1]->toArray())->toBe($expectedMainNavItems[1]);
 });
 
 it('issues zero category queries for a link-only menu forest using DB query log', function (): void {
