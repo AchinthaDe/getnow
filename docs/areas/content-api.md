@@ -15,7 +15,7 @@ paths:
 decisions: [D1, D3, D8]
 depends-on: [content-blocks, menus, site-settings]
 tests:
-  - vendor/bin/pest tests/Feature/Api/V1/Content/GetLayoutContentEndpointTest.php tests/Feature/Domain/Content/Actions/GetLayoutContentTest.php tests/Arch/ContentApiArchTest.php
+  - vendor/bin/pest tests/Feature/Api/V1/Content/GetLayoutContentEndpointTest.php tests/Feature/Domain/Content/Actions/GetLayoutContentTest.php tests/Feature/Domain/Content/Actions/ProjectMenuLayoutItemsTest.php tests/Arch/ContentApiArchTest.php
 triggers:
   - paths:
       - routes/api.php
@@ -45,18 +45,20 @@ The `content-api` area delivers the public layout graph for storefront rendering
 - **Pre-indexed placement queries.** `GetLayoutContent` retrieves all published, enabled, in-window blocks with `ContentBlock::visible()->servingOrder()`, pre-indexing them by placement in memory before applying `ResolveServablePayload` and in-memory placement `maxCount()` slicing.
 - **Revision ETag and HTTP 304.** Responses attach an `ETag` containing the SHA-256 hash of canonical layout data JSON. If the request's `If-None-Match` header matches the current revision or `*`, the controller returns an empty `304 Not Modified` response.
 - **Fail-closed block resolution.** Unservable blocks (unsupported schema versions or invalid payloads) are omitted from layout output without failing sibling blocks or returning an HTTP error (ADR 0002).
+- **Read-time navigation category resolution.** `GetLayoutContent` inspects servable menu items and, if any `category` or `category_tree` items are present, executes `GetCategoryTree(CategoryTreeAudience::Storefront)` exactly once. `ProjectMenuLayoutItems` projects stored items and storefront taxonomy nodes into the invariant layout menu item schema, deriving URLs as `/shop?category={slug}`. Items referencing unresolvable taxonomy targets (inactive, non-nav, or non-existent) are omitted along with their descendants.
 
 ## Invariants
 
 | # | Rule | Why | Enforced by |
 |---|---|---|---|
 | 1 | **Public read-only layout endpoint.** `GET /api/v1/content/layout` requires no authentication credentials. | Storefront consumers must retrieve layout data publicly without token negotiation. | `tests/Feature/Api/V1/Content/GetLayoutContentEndpointTest.php` |
-| 2 | **Deterministic revision ETag caching.** Responses carry an ETag matching SHA-256 of canonical data and return 304 on match. | Minimizes network payload transfer when storefront layout has not changed. | `tests/Feature/Api/V1/Content/GetLayoutContentEndpointTest.php` |
+| 2 | **Deterministic revision ETag caching.** Responses carry an ETag matching SHA-256 of canonical data (including projected category menu items) and return 304 on match. | Minimizes network payload transfer when storefront layout has not changed; busts ETag when taxonomy mutations alter served menu JSON. | `tests/Feature/Api/V1/Content/GetLayoutContentEndpointTest.php` and `tests/Feature/Domain/Content/Actions/GetLayoutContentTest.php` |
 | 3 | **Fail-closed serving health per block.** Unservable blocks are omitted while valid sibling blocks are returned. | Resiliency decision ADR 0002; corrupted blocks must never crash storefront layout. | `tests/Feature/Domain/Content/Actions/GetLayoutContentTest.php` |
 | 4 | **All placements and menus present.** Every defined Placement and MenuKey case is present in the output even when empty. | Contract consistency; storefront layout components must not crash on missing keys. | `tests/Feature/Domain/Content/Actions/GetLayoutContentTest.php` |
-| 5 | **Additive changes only within v1.** Response schema fields cannot be removed or renamed in v1. | Backward compatibility rule K8; breaking contract changes require `/api/v2`. | `Review only` (monitored by `tests/Feature/Api/V1/Content/GetLayoutContentEndpointTest.php`) |
+| 5 | **Additive changes only within v1.** Response schema fields cannot be removed or renamed in v1; typed menu items resolve to the invariant layout item schema. | Backward compatibility rule K8; breaking contract changes require `/api/v2`. | `Review only` (monitored by `tests/Feature/Api/V1/Content/GetLayoutContentEndpointTest.php`) |
 | 6 | **Per-minute IP rate limiting applies.** Endpoint returns HTTP 429 when requests exceed configured threshold. | Protects the CMS backend against traffic spikes and scraping denial-of-service. | `tests/Feature/Api/V1/Content/GetLayoutContentEndpointTest.php` |
 | 7 | **Thin controller boundary.** Controller performs no validation or queries and only delegates to `GetLayoutContent`. | Architectural rule S2; enforces layer separation and prevents business logic in HTTP. | `tests/Arch/ContentApiArchTest.php` |
+| 8 | **Fail-closed navigation taxonomy omission.** Menu items referencing unresolvable category targets are omitted from output without failing sibling items or returning an error. | Resiliency rule K7; inactive or non-nav taxonomy nodes must never leak into layout output or crash the layout endpoint. | `tests/Feature/Domain/Content/Actions/ProjectMenuLayoutItemsTest.php` and `tests/Feature/Domain/Content/Actions/GetLayoutContentTest.php` |
 
 ## Changing it
 

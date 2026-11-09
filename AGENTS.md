@@ -148,5 +148,6 @@ Map: ARCHITECTURE.md (phases, stack, structure, decisions), docs/README.md (area
 - Work only from an approved plan identified by step ID and version. No approved plan, no code.
 - If the plan is wrong or incomplete, stop and write a Change Request. Never deviate silently.
 - A step ends with an IMPLEMENTATION REPORT containing raw, unedited command output. Summaries are not evidence.
+- Never output full report bodies, raw verification command dumps, or git patches in chat. Always write and update them directly in the step's report file (`docs/blueprints/<phase>/<step>/report.md`) on disk, and provide only a concise summary and pointer in chat.
 - Do not mark a step done. Only the reviewer accepts it.
 - Step artifacts (brief, plan, reports) are working files, not product docs. Lasting facts go into the owning guide. The step process is in docs/workflow.md.

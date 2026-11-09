@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 use App\Domain\Content\Actions\GetMenuTree;
 use App\Domain\Content\Data\MenuTreeData;
+use App\Domain\Content\Enums\MenuItemKind;
 use App\Domain\Content\Enums\MenuKey;
 use App\Domain\Content\Models\Menu;
 use App\Domain\Content\Models\MenuItem;
+use Database\Factories\CategoryFactory;
 use Illuminate\Support\Facades\DB;
 
 it('returns two-level menu tree ordered by sort_order', function () {
@@ -104,4 +106,21 @@ it('returns all items including disabled items without filtering', function () {
         ->and($tree->items[0]->is_enabled)->toBeFalse()
         ->and($tree->items[0]->children)->toHaveCount(1)
         ->and($tree->items[0]->children[0]->is_enabled)->toBeFalse();
+});
+
+it('returns stored tree with raw category_tree item attributes without expanding taxonomy nodes', function (): void {
+    $category = CategoryFactory::new()->root()->create();
+    $menu = Menu::factory()->forKey(MenuKey::MAIN_NAV)->create();
+
+    MenuItem::factory()->categoryTree($category->public_id, 'Editor Tree Label')->forMenu($menu)->create([
+        'is_enabled' => true,
+    ]);
+
+    $tree = (new GetMenuTree)($menu);
+
+    expect($tree->items)->toHaveCount(1)
+        ->and($tree->items[0]->kind)->toBe(MenuItemKind::CATEGORY_TREE)
+        ->and($tree->items[0]->category_public_id)->toBe($category->public_id)
+        ->and($tree->items[0]->label)->toBe('Editor Tree Label')
+        ->and($tree->items[0]->children)->toBeEmpty();
 });

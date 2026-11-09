@@ -52,6 +52,8 @@ final class GetMenuTree
                     is_enabled: $childItem->is_enabled,
                     sort_order: $childItem->sort_order,
                     children: [],
+                    kind: $childItem->kind,
+                    category_public_id: $childItem->category_public_id,
                 );
             }
 
@@ -64,6 +66,8 @@ final class GetMenuTree
                 is_enabled: $rootItem->is_enabled,
                 sort_order: $rootItem->sort_order,
                 children: $childDataList,
+                kind: $rootItem->kind,
+                category_public_id: $rootItem->category_public_id,
             );
         }
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Content\Data;
 
+use App\Domain\Content\Enums\MenuItemKind;
 use Spatie\LaravelData\Data;
 
 final class MenuItemData extends Data
@@ -13,12 +14,14 @@ final class MenuItemData extends Data
      */
     public function __construct(
         public string $public_id,
-        public string $label,
-        public string $url,
+        public ?string $label,
+        public ?string $url,
         public ?string $icon,
         public bool $opens_in_new_tab,
         public bool $is_enabled,
         public int $sort_order,
         public array $children = [],
+        public MenuItemKind $kind = MenuItemKind::LINK,
+        public ?string $category_public_id = null,
     ) {}
 }

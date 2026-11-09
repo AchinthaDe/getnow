@@ -8,7 +8,7 @@ paths:
   - database/factories/CategoryFactory.php
   - database/migrations/*categories*
   - tests/Feature/Catalog/**
-decisions: [D10, ADR-0010]
+decisions: [D10, ADR-0010, ADR-0011]
 depends-on: [data]
 tests:
   - vendor/bin/pest tests/Feature/Catalog/ tests/Feature/Admin/Category/ tests/Arch/CatalogArchTest.php
@@ -44,7 +44,8 @@ The `catalog` area owns all wholesale electronics marketplace taxonomy data, inc
 - **Structural leaf options.** `ListCategoryOptions` produces a flat, depth-first list of effectively active structural leaf categories (`CategoryOptionData`) formatted with full breadcrumb path labels (`Parent > Child`), ready for product assignment.
 - **Subtree moving.** `MoveCategory` reparents a category subtree under sibling advisory locks, preventing cycles, enforcing the `Category::MAX_DEPTH` constraint against the combined parent chain and subtree height, checking case-insensitive sibling uniqueness, and assigning the next sequential sort order under the destination parent.
 - **Sibling reordering.** `ReorderCategories` serializes sibling sort order permutations under sibling advisory locks, verifying strict bijection against current siblings and updating only rows whose sort order modified.
-- **Child-guarded deletion.** `DeleteCategory` allows hard deletion of childless categories only, protected by sibling advisory locks, target row locks, domain child existence checks, and PostgreSQL `RESTRICT` foreign key translation.
+- **Reference- and child-guarded deletion.** `DeleteCategory` allows hard deletion of childless, unreferenced categories only, protected by sibling advisory locks, target row locks, domain child existence checks, and PostgreSQL foreign key restriction translation to `CategoryRuleViolation::inUse`.
+- **Batch category existence checks.** `GetExistingCategories` takes a list of public IDs and returns existing category public IDs as `CategoryExistenceData` in a single query.
 - **Centralized sibling locking.** Concurrent mutations targeting siblings under any parent (including root) serialize on `CategorySiblingLock::acquire($parentId)`.
 - **Category administration UI.** Categories are administered through Filament `CategoryResource` in the `admin` panel. The resource presents the taxonomy in hierarchical tree order, displays stored activation alongside computed effective-active visibility, and delegates all mutations (create, edit, activate, deactivate, move, reorder, delete) to domain actions without direct model writes. Access is authorized via `CategoryPolicy`.
 
@@ -57,7 +58,7 @@ The `catalog` area owns all wholesale electronics marketplace taxonomy data, inc
 | 3 | Category slug is globally unique. | Guarantees deterministic URL routing. | `tests/Feature/Catalog/CreateCategoryTest.php` |
 | 4 | Sibling category name is unique ignoring case. | Prevents duplicate category labels under the same parent node. | `tests/Feature/Catalog/CreateCategoryTest.php` |
 | 5 | Actions are the sole write path for catalog mutations. | Centralizes validation, slug generation, advisory locks, and audit trails (S1, C5). | `tests/Arch/FilamentWritesTest.php and tests/Feature/Admin/Category/CategoryResourceTest.php` |
-| 6 | Cross-context isolation: no external direct access to Catalog models. | Enforces boundary isolation; external contexts interact only via Actions and Data (CT5). | `tests/Arch/CatalogArchTest.php` |
+| 6 | Cross-context isolation, and a referenced category cannot be hard-deleted. | External contexts touch Catalog only through Actions and Data (CT5). A referenced category is not hard-deleted (CT4). | `tests/Arch/CatalogArchTest.php` and `tests/Feature/Catalog/DeleteCategoryTest.php` |
 | 7 | `is_active` changes only through ActivateCategory and DeactivateCategory. | Centralizes activation state transitions, timestamps, and audit logging (C4, CT6). | `tests/Feature/Catalog/CategoryStateActionsTest.php` |
 | 8 | Effective-active has one SQL definition used for both filtering and the computed flag. | Guarantees parity between query filters and tree visibility flags across any depth (CT6). | `tests/Feature/Catalog/CategoryEffectiveActiveTest.php` |
 
@@ -69,6 +70,7 @@ The `catalog` area owns all wholesale electronics marketplace taxonomy data, inc
 - **Deactivating categories**: Invoke `DeactivateCategory` with a public ID ULID string and an optional causer.
 - **Retrieving category trees**: Invoke `GetCategoryTree` passing `CategoryTreeAudience::Admin` or `CategoryTreeAudience::Storefront`.
 - **Listing product assignable category options**: Invoke `ListCategoryOptions` to retrieve effectively active leaf options.
+- **Checking category existence**: Invoke `GetExistingCategories` with an array of category public ID ULIDs.
 - **Moving categories**: Invoke `MoveCategory` with a public ID ULID string, `MoveCategoryData`, and an optional causer.
 - **Reordering sibling categories**: Invoke `ReorderCategories` with `ReorderCategoriesData` and an optional causer.
 - **Deleting categories**: Invoke `DeleteCategory` with a public ID ULID string and an optional causer.
@@ -86,7 +88,7 @@ vendor/bin/pest tests/Feature/Catalog/ tests/Feature/Admin/Category/ tests/Arch/
 
 ## Known limits and open questions
 
-- DeleteCategory checks child rows only; reference guards do not exist because nothing references categories yet.
+- External foreign key constraints guard against hard deletion of categories in use; categories cannot be deleted while referenced by external records such as navigation menu items (CT4).
 - Category read queries and trees do not support pagination.
 - Category options cover product assignment only.
 - Category records do not yet store images, icons, or extended descriptions.
@@ -94,4 +96,5 @@ vendor/bin/pest tests/Feature/Catalog/ tests/Feature/Admin/Category/ tests/Arch/
 ## History
 
 - ADR 0010: Established Catalog context, taxonomy source of truth, and superseded Decision D4.
+- ADR 0011: Typed menu category references and foreign key delete guard.
 - Initial migration `2026_11_02_000000_create_categories_table.php` provisioned the `categories` table with PostgreSQL check constraints and unique indexes.

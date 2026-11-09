@@ -61,9 +61,14 @@ final class DeleteCategory
             try {
                 $category->delete();
             } catch (\Throwable $e) {
-                if ($e instanceof QueryException && $e->getCode() === '23503') {
-                    throw CategoryRuleViolation::hasChildren($category->public_id);
+                if ($e instanceof QueryException && in_array((string) $e->getCode(), ['23503', '23001'], true)) {
+                    if (str_contains((string) $e->getMessage(), 'categories_parent_id_foreign')) {
+                        throw CategoryRuleViolation::hasChildren($category->public_id);
+                    }
+
+                    throw CategoryRuleViolation::inUse($category->public_id);
                 }
+
                 throw $e;
             }
         });
