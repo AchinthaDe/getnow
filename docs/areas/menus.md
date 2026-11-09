@@ -21,7 +21,7 @@ paths:
 decisions: [D2, D4, D9]
 depends-on: [admin-panel, data]
 tests:
-  - vendor/bin/pest tests/Feature/Domain/Content/Policies/MenuPolicyTest.php tests/Feature/Domain/Content/Actions/UpdateMenuRejectionsTest.php tests/Feature/Support/Rules/SafeLinkTest.php tests/Feature/Domain/Content/Actions/UpdateMenuTest.php tests/Feature/Domain/Content/Actions/GetMenuTreeTest.php tests/Feature/Admin/Menu/MenuFormTest.php tests/Feature/Domain/Content/MenuItemDatabaseConstraintsTest.php tests/Feature/Domain/Content/Actions/UpdateMenuTypedItemsTest.php
+  - vendor/bin/pest tests/Feature/Domain/Content/Policies/MenuPolicyTest.php tests/Feature/Domain/Content/Actions/UpdateMenuRejectionsTest.php tests/Feature/Support/Rules/SafeLinkTest.php tests/Feature/Domain/Content/Actions/UpdateMenuTest.php tests/Feature/Domain/Content/Actions/GetMenuTreeTest.php tests/Feature/Admin/Menu/MenuFormTest.php tests/Feature/Domain/Content/MenuItemDatabaseConstraintsTest.php tests/Feature/Domain/Content/Actions/UpdateMenuTypedItemsTest.php tests/Feature/Domain/Content/Actions/ProjectMenuLayoutItemsTest.php
 triggers:
   - paths:
       - app/Domain/Content/Enums/MenuKey.php
@@ -61,7 +61,7 @@ The `menus` area manages navigation menu hierarchies for the storefront layout. 
 - **Transactional tree reconciliation.** When saving a menu, the whole desired tree is submitted to `UpdateMenu`. Under a `lockForUpdate()` row lock, items matched by `public_id` update in place, unkeyed items get new ULIDs, and omitted items are deleted, all inside one database transaction.
 - **Tree depth guard.** Menus support a maximum depth of 2 (root item plus direct children). Nesting beyond depth 2 is rejected by `UpdateMenu` with `InvalidMenuTreeException`.
 - **Filtering cascade.** `GetMenuTree` returns enabled root items and their enabled children. If a parent item is disabled, its children are excluded from output.
-- **Public API serving.** Typed items (`category`, `category_tree`) are stored and validated under transactional reconcile, but the storefront layout API serves only link items, and the admin menu form cannot create typed items.
+- **Public API serving.** Stored navigation menus are projected into the layout API at read time by `ProjectMenuLayoutItems`. `category` items derive URLs as `/shop?category={slug}` and fall back to category names when labels are null; level-1 `category_tree` items expand in place into storefront-visible categories. Unresolvable taxonomy targets are omitted. `GetMenuTree` retains the raw stored items for administrative editing.
 
 ## Invariants
 
@@ -103,7 +103,7 @@ vendor/bin/pest tests/Feature/Domain/Content/Policies/MenuPolicyTest.php tests/F
 
 ## Known limits and open questions
 
-- **Category references are supported in the domain layer and database schema.** Storefront resolution into URLs and names in GetLayoutContent and admin UI picker controls are not active (ADR 0011 supersedes D4 for categories).
+- The admin form still saves link fields only; re-saving a typed item through that form turns the item into a link.
 - **Last-write-wins tree reconciliation.** Menus reconcile whole trees under a row lock on save; concurrent administrative edits commit last-write-wins without conflict exceptions (D9).
 
 ## History

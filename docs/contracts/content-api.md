@@ -136,6 +136,12 @@ The Blade storefront server and client consumers should leverage HTTP conditiona
 4. **ID Anonymization**: Internal PostgreSQL incremental IDs are never exposed. All entity identifiers are external Crockford ULIDs mapped to the property name `id`.
 5. **Deterministic Revision**: `meta.revision` is computed from the canonical JSON serialization of the `data` object, ensuring identical content produces identical hashes across different request timestamps.
 6. **Placement Cardinality & Unservable Resilience**: Placements respect their configured max counts (`home_hero_carousel` up to 5, `home_service_strip` up to 4, all other 7 placements up to 1). Candidate blocks that are unservable (due to unknown type, unsupported schema version, upgrade failure, or invalid payload) or whose type is not permitted for the placement are skipped silently, falling back to the next eligible candidate in serving order (`sort_order ASC, starts_at DESC NULLS LAST, id DESC`).
+7. **Typed Navigation Menu Resolution**:
+   - Menu items with kind `link` serve stored labels and URLs. A link item with a null URL or null label is omitted from layout output.
+   - Menu items with kind `category` resolve dynamically to `/shop?category={slug}`. When `label` is null, the category's current taxonomy name is served; when `label` is not null (including an empty string `""`), the stored label is preserved. Taxonomy children are not attached.
+   - Menu items with kind `category_tree` at root level expand in place into storefront-visible categories: null category reference expands to all storefront root categories and their subcategories; set category reference expands to direct child categories of that target. Emitted category items have `id` matching the category public ID, `label` matching category name, `url` matching `/shop?category={slug}`, `icon` null, `new_tab` false, and ordered children.
+   - Unresolvable taxonomy targets (categories that are inactive, under inactive ancestors, flagged with `show_in_nav = false`, or missing) are omitted from layout output along with any stored child items without failing sibling items or returning an error.
+   - Emitted menu item JSON structures adhere strictly to the invariant schema (`id`, `label`, `url`, `icon`, `new_tab`, `children`), with `url` always non-null.
 
 ---
 
