@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Api\V1\Content;
 
+use App\Domain\Catalog\Actions\Category\UpdateCategory;
+use App\Domain\Catalog\Data\Category\UpdateCategoryData;
 use App\Domain\Content\Enums\MenuKey;
 use App\Domain\Content\Enums\Placement;
 use App\Domain\Content\Enums\Tone;
@@ -11,6 +13,7 @@ use App\Domain\Content\Models\ContentBlock;
 use App\Domain\Content\Models\Menu;
 use App\Domain\Content\Models\MenuItem;
 use App\Domain\Content\Settings\StorefrontSettings;
+use Database\Factories\CategoryFactory;
 use Illuminate\Support\Facades\RateLimiter;
 use Tests\Support\TestBlocks;
 
@@ -201,4 +204,42 @@ it('matches the canonical contract fixture schema', function (): void {
     };
 
     $assertSchemaMatches($expectedFixture, $actualResponse, 'root');
+});
+
+it('handles conditional GET with If-None-Match returning 200 on old ETag after category rename and 304 on new ETag', function (): void {
+    $category = CategoryFactory::new()->root()->create(['name' => 'Original', 'slug' => 'original']);
+    $menu = Menu::factory()->forKey(MenuKey::MAIN_NAV)->create();
+    MenuItem::factory()->category($category->public_id, null)->forMenu($menu)->create(['is_enabled' => true]);
+
+    $resp1 = getJson('/api/v1/content/layout');
+    $resp1->assertOk();
+    $rev1 = (string) $resp1->json('meta.revision');
+    $etag1 = '"'.$rev1.'"';
+
+    // Verify 304 on initial ETag
+    withHeaders(['If-None-Match' => $etag1])
+        ->get('/api/v1/content/layout')
+        ->assertStatus(304);
+
+    // Mutate category name
+    app(UpdateCategory::class)($category, new UpdateCategoryData(name: 'Renamed'));
+
+    // Request with old ETag -> returns 200 with new ETag
+    $resp2 = withHeaders(['If-None-Match' => $etag1])
+        ->getJson('/api/v1/content/layout');
+    $resp2->assertOk();
+
+    $rev2 = (string) $resp2->json('meta.revision');
+    $etag2 = '"'.$rev2.'"';
+    expect($rev2)->not->toBe($rev1);
+
+    expect($resp2->json('data.menus.'.MenuKey::MAIN_NAV->value.'.items.0.label'))->toBe('Renamed');
+    expect(array_keys($resp2->json('meta')))->toBe(['api_version', 'revision', 'generated_at']);
+
+    // Request with new ETag -> returns 304
+    $resp3 = withHeaders(['If-None-Match' => $etag2])
+        ->get('/api/v1/content/layout');
+    $resp3->assertStatus(304);
+    $resp3->assertHeader('ETag', $etag2);
+    expect($resp3->getContent())->toBe('');
 });

@@ -658,4 +658,3 @@ it('emits the same category twice when reached via both a category item and a ca
     expect($items[1]->id)->toBe('cat_laptops');
     expect($items[1]->label)->toBe('Laptops');
 });
-

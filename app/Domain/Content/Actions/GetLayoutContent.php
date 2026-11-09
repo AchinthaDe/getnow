@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Domain\Content\Actions;
 
+use App\Domain\Catalog\Actions\Category\GetCategoryTree;
+use App\Domain\Catalog\Data\Category\CategoryTreeNodeData;
+use App\Domain\Catalog\Enums\CategoryTreeAudience;
 use App\Domain\Content\Contracts\BlockRegistry;
 use App\Domain\Content\Data\LayoutBlockData;
 use App\Domain\Content\Data\LayoutData;
 use App\Domain\Content\Data\LayoutMenuData;
-use App\Domain\Content\Data\LayoutMenuItemData;
 use App\Domain\Content\Data\LayoutMetaData;
 use App\Domain\Content\Data\LayoutResponseData;
 use App\Domain\Content\Data\LayoutSettingsData;
@@ -17,7 +19,6 @@ use App\Domain\Content\Enums\MenuKey;
 use App\Domain\Content\Enums\Placement;
 use App\Domain\Content\Models\ContentBlock;
 use App\Domain\Content\Models\Menu;
-use App\Domain\Content\Models\MenuItem;
 use App\Domain\Content\Services\ResolveServablePayload;
 use App\Domain\Content\Settings\StorefrontSettings;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -28,6 +29,8 @@ final class GetLayoutContent
         private readonly StorefrontSettings $settings,
         private readonly BlockRegistry $registry,
         private readonly ResolveServablePayload $resolveServablePayload,
+        private readonly GetCategoryTree $getCategoryTree,
+        private readonly ProjectMenuLayoutItems $projectMenuLayoutItems,
     ) {}
 
     public function __invoke(): LayoutResponseData
@@ -89,9 +92,44 @@ final class GetLayoutContent
             $placementsData[$placement->value] = $selectedBlocks;
         }
 
-        $menus = Menu::with(['items' => fn (HasMany $q) => $q->orderBy('sort_order')->orderBy('id')])
+        $menus = Menu::with([
+            'rootItems' => fn (HasMany $q) => $q->orderBy('sort_order')->orderBy('id'),
+            'rootItems.children' => fn (HasMany $q) => $q->orderBy('sort_order')->orderBy('id'),
+        ])
             ->get()
             ->keyBy(fn (Menu $m): string => $m->key->value);
+
+        $hasServableTypedItem = false;
+        foreach ($menus as $menu) {
+            foreach ($menu->rootItems as $rootItem) {
+                if (! $rootItem->is_enabled) {
+                    continue;
+                }
+
+                if ($rootItem->kind === MenuItemKind::CATEGORY || $rootItem->kind === MenuItemKind::CATEGORY_TREE) {
+                    $hasServableTypedItem = true;
+                    break 2;
+                }
+
+                foreach ($rootItem->children as $childItem) {
+                    if (! $childItem->is_enabled) {
+                        continue;
+                    }
+
+                    if ($childItem->kind === MenuItemKind::CATEGORY || $childItem->kind === MenuItemKind::CATEGORY_TREE) {
+                        $hasServableTypedItem = true;
+                        break 2;
+                    }
+                }
+            }
+        }
+
+        $categoryRoots = [];
+        $categoriesByPublicId = [];
+        if ($hasServableTypedItem) {
+            $categoryRoots = ($this->getCategoryTree)(CategoryTreeAudience::Storefront);
+            $categoriesByPublicId = $this->indexCategoriesByPublicId($categoryRoots);
+        }
 
         $menusData = [];
         foreach (MenuKey::cases() as $menuKey) {
@@ -106,60 +144,15 @@ final class GetLayoutContent
                 continue;
             }
 
-            $rootItems = $menu->items
-                ->filter(fn (MenuItem $item): bool => $item->parent_id === null
-                    && $item->is_enabled === true
-                    && $item->kind === MenuItemKind::LINK
-                    && $item->url !== null
-                    && $item->label !== null
-                );
-
-            $childrenByParent = $menu->items
-                ->filter(fn (MenuItem $item): bool => $item->parent_id !== null
-                    && $item->is_enabled === true
-                    && $item->kind === MenuItemKind::LINK
-                    && $item->url !== null
-                    && $item->label !== null
-                )
-                ->groupBy('parent_id');
-
-            $mappedRoots = [];
-            foreach ($rootItems as $root) {
-                if ($root->url === null || $root->label === null) {
-                    continue;
-                }
-
-                $childItems = $childrenByParent->get($root->id, collect());
-                $mappedChildren = [];
-
-                foreach ($childItems as $child) {
-                    if ($child->url === null || $child->label === null) {
-                        continue;
-                    }
-
-                    $mappedChildren[] = new LayoutMenuItemData(
-                        id: $child->public_id,
-                        label: $child->label,
-                        url: $child->url,
-                        icon: $child->icon,
-                        new_tab: (bool) $child->opens_in_new_tab,
-                        children: [],
-                    );
-                }
-
-                $mappedRoots[] = new LayoutMenuItemData(
-                    id: $root->public_id,
-                    label: $root->label,
-                    url: $root->url,
-                    icon: $root->icon,
-                    new_tab: (bool) $root->opens_in_new_tab,
-                    children: $mappedChildren,
-                );
-            }
+            $items = ($this->projectMenuLayoutItems)(
+                $menu->rootItems,
+                $categoryRoots,
+                $categoriesByPublicId,
+            );
 
             $menusData[$menuKey->value] = new LayoutMenuData(
                 title: $menu->title,
-                items: $mappedRoots,
+                items: $items,
             );
         }
 
@@ -188,5 +181,22 @@ final class GetLayoutContent
             data: $layoutData,
             meta: $metaData,
         );
+    }
+
+    /**
+     * @param  array<int, CategoryTreeNodeData>  $nodes
+     * @return array<string, CategoryTreeNodeData>
+     */
+    private function indexCategoriesByPublicId(array $nodes): array
+    {
+        $map = [];
+        foreach ($nodes as $node) {
+            $map[$node->public_id] = $node;
+            if (! empty($node->children)) {
+                $map += $this->indexCategoriesByPublicId($node->children);
+            }
+        }
+
+        return $map;
     }
 }

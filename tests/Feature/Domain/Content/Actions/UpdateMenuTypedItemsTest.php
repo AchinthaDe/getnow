@@ -591,9 +591,10 @@ it('returns typed kind and category reference in GetMenuTree output', function (
         ->and($treeData->items[2]->category_public_id)->toBe($cat->public_id);
 });
 
-it('omits typed category items and their children from layout content api until NAV1b', function (): void {
+it('resolves typed category items and category trees into layout content api', function (): void {
     $menu = Menu::factory()->create(['key' => MenuKey::MAIN_NAV->value]);
-    $cat = CategoryFactory::new()->root()->create(['name' => 'API Cat']);
+    $cat = CategoryFactory::new()->root()->create(['name' => 'API Cat', 'slug' => 'api-cat']);
+    $subCat = CategoryFactory::new()->child($cat)->create(['name' => 'Sub API Cat', 'slug' => 'sub-api-cat']);
 
     // 1. Link root with link child
     $linkRoot = MenuItem::factory()->forMenu($menu)->create([
@@ -613,21 +614,22 @@ it('omits typed category items and their children from layout content api until 
         'url' => '/link-root-2',
         'sort_order' => 1,
     ]);
-    MenuItem::factory()->forMenu($menu)->childOf($linkRoot2)->category($cat->public_id)->create([
+    $catChild = MenuItem::factory()->forMenu($menu)->childOf($linkRoot2)->category($cat->public_id)->create([
         'sort_order' => 0,
+        'label' => null,
     ]);
 
-    // 3. Category root with link child (typed root with link child)
-    $catRoot = MenuItem::factory()->forMenu($menu)->category($cat->public_id, 'Cat Root')->create([
+    // 3. Category root with null label and link child
+    $catRoot = MenuItem::factory()->forMenu($menu)->category($cat->public_id, null)->create([
         'sort_order' => 2,
     ]);
-    MenuItem::factory()->forMenu($menu)->childOf($catRoot)->create([
+    $childUnderCat = MenuItem::factory()->forMenu($menu)->childOf($catRoot)->create([
         'label' => 'Link Under Cat',
         'url' => '/link-under-cat',
         'sort_order' => 0,
     ]);
 
-    // 4. Category tree root
+    // 4. Category tree root referencing $cat (expands to its child $subCat)
     MenuItem::factory()->forMenu($menu)->categoryTree($cat->public_id, 'Tree Root')->create([
         'sort_order' => 3,
     ]);
@@ -635,18 +637,29 @@ it('omits typed category items and their children from layout content api until 
     $response = app(GetLayoutContent::class)();
     $mainNavItems = $response->data->menus[MenuKey::MAIN_NAV->value]->items;
 
-    // Asserts:
-    // Only linkRoot and linkRoot2 appear
-    expect($mainNavItems)->toHaveCount(2)
+    expect($mainNavItems)->toHaveCount(4)
         ->and($mainNavItems[0]->id)->toBe($linkRoot->public_id)
         ->and($mainNavItems[0]->label)->toBe('Link Root')
         ->and($mainNavItems[0]->url)->toBe('/link-root')
         ->and($mainNavItems[0]->children)->toHaveCount(1)
         ->and($mainNavItems[0]->children[0]->label)->toBe('Link Child')
         ->and($mainNavItems[0]->children[0]->url)->toBe('/link-child')
-        // linkRoot2 has 0 children because its category child was filtered out
         ->and($mainNavItems[1]->id)->toBe($linkRoot2->public_id)
         ->and($mainNavItems[1]->label)->toBe('Link Root 2')
         ->and($mainNavItems[1]->url)->toBe('/link-root-2')
-        ->and($mainNavItems[1]->children)->toBeEmpty();
+        ->and($mainNavItems[1]->children)->toHaveCount(1)
+        ->and($mainNavItems[1]->children[0]->id)->toBe($catChild->public_id)
+        ->and($mainNavItems[1]->children[0]->label)->toBe('API Cat')
+        ->and($mainNavItems[1]->children[0]->url)->toBe('/shop?category=api-cat')
+        ->and($mainNavItems[2]->id)->toBe($catRoot->public_id)
+        ->and($mainNavItems[2]->label)->toBe('API Cat')
+        ->and($mainNavItems[2]->url)->toBe('/shop?category=api-cat')
+        ->and($mainNavItems[2]->children)->toHaveCount(1)
+        ->and($mainNavItems[2]->children[0]->id)->toBe($childUnderCat->public_id)
+        ->and($mainNavItems[2]->children[0]->label)->toBe('Link Under Cat')
+        ->and($mainNavItems[2]->children[0]->url)->toBe('/link-under-cat')
+        ->and($mainNavItems[3]->id)->toBe($subCat->public_id)
+        ->and($mainNavItems[3]->label)->toBe('Sub API Cat')
+        ->and($mainNavItems[3]->url)->toBe('/shop?category=sub-api-cat')
+        ->and($mainNavItems[3]->children)->toBeEmpty();
 });
