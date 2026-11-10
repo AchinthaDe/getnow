@@ -24,3 +24,7 @@ arch('catalog actions are final and invokable')
 arch('catalog data objects extend spatie data')
     ->expect('App\Domain\Catalog\Data')
     ->toExtend(Data::class);
+
+arch('brand model is not used outside catalog domain')
+    ->expect('App\Domain\Catalog\Models\Brand')
+    ->toOnlyBeUsedIn(['App\Domain\Catalog', 'Database\Factories']);
