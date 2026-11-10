@@ -67,6 +67,8 @@ it('honors default and maximum limit bounds', function (): void {
 });
 
 it('orders options by lower name ascending then id', function (): void {
+    // Note (CR-1): brands_lower_name_unique guarantees uniqueness of lower(name) in PostgreSQL,
+    // so orderBy('id', 'asc') is a defensive query fallback. This test asserts case-insensitive ordering.
     BrandFactory::new()->create(['name' => 'Zeta Brand', 'slug' => 'zeta-brand']);
     BrandFactory::new()->create(['name' => 'alpha Brand', 'slug' => 'alpha-brand']);
     BrandFactory::new()->create(['name' => 'Beta Brand', 'slug' => 'beta-brand']);
