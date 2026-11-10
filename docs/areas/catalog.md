@@ -2,11 +2,13 @@
 kind: normative
 area: catalog
 status: active
-summary: Shared catalog taxonomy, category hierarchy, deterministic slug generation, depth constraints, and catalog mutation actions.
+summary: Shared catalog taxonomy, category hierarchy, deterministic slug generation, depth constraints, brand aggregate, and catalog mutation actions.
 paths:
   - app/Domain/Catalog/**
   - database/factories/CategoryFactory.php
+  - database/factories/BrandFactory.php
   - database/migrations/*categories*
+  - database/migrations/*brands*
   - tests/Feature/Catalog/**
 decisions: [D10, ADR-0010, ADR-0011]
 depends-on: [data]
@@ -28,7 +30,7 @@ triggers:
 
 # Catalog
 
-The `catalog` area owns all wholesale electronics marketplace taxonomy data, including category trees, deterministic slug generation, and catalog mutation actions.
+The `catalog` area owns all wholesale electronics marketplace taxonomy data, including category trees, brand aggregates, deterministic slug generation, and catalog mutation actions.
 
 ## How it works now
 
@@ -48,18 +50,22 @@ The `catalog` area owns all wholesale electronics marketplace taxonomy data, inc
 - **Batch category existence checks.** `GetExistingCategories` takes a list of public IDs and returns existing category public IDs as `CategoryExistenceData` in a single query.
 - **Centralized sibling locking.** Concurrent mutations targeting siblings under any parent (including root) serialize on `CategorySiblingLock::acquire($parentId)`.
 - **Category administration UI.** Categories are administered through Filament `CategoryResource` in the `admin` panel. The resource presents the taxonomy in hierarchical tree order, displays stored activation alongside computed effective-active visibility, and delegates all mutations (create, edit, activate, deactivate, move, reorder, delete) to domain actions without direct model writes. Access is authorized via `CategoryPolicy`.
+- **Flat brand taxonomy**: Brands are stored as a flat list with unique ULID `public_id`, `name`, immutable cosmetic `slug`, activation toggle `is_active`, and storefront nav readiness flag `show_in_nav`.
+- **Case-insensitive brand uniqueness**: Brand names are unique evaluated case-insensitively, guarded in domain Actions and enforced by PostgreSQL functional unique index `brands_lower_name_unique`.
+- **Brand mutation actions**: Mutations execute strictly through domain Actions (`CreateBrand`, `UpdateBrand`, `ActivateBrand`, `DeactivateBrand`), recording structured audit trails to the `catalog` activity log.
+- **Brand selection options**: `ListBrandOptions` returns active brands with search filtering, literal LIKE metacharacter escaping, clamped limits (default 20, max 50), and deterministic ordering (`lower(name) ASC, id ASC`) in a single query.
 
 ## Invariants
 
 | # | Rule | Why | Enforced by |
 |---|---|---|---|
 | 1 | Depth cap is the single constant `Category::MAX_DEPTH = 2`. | Prevents deep recursive queries and maintains layout predictability. | `tests/Feature/Catalog/CreateCategoryTest.php and tests/Feature/Catalog/MoveCategoryTest.php` |
-| 2 | Category slug is immutable once created. | Prevents link rot across storefront and external consumers (CT3). | `tests/Feature/Catalog/UpdateCategoryTest.php` |
-| 3 | Category slug is globally unique. | Guarantees deterministic URL routing. | `tests/Feature/Catalog/CreateCategoryTest.php` |
-| 4 | Sibling category name is unique ignoring case. | Prevents duplicate category labels under the same parent node. | `tests/Feature/Catalog/CreateCategoryTest.php` |
+| 2 | Taxonomy slug is immutable once created and globally unique. | Prevents link rot and guarantees deterministic URL routing (CT3). | `tests/Feature/Catalog/UpdateCategoryTest.php`, `tests/Feature/Catalog/CreateCategoryTest.php`, and `tests/Feature/Catalog/BrandSchemaTest.php` |
+| 3 | Sibling category name is unique ignoring case. | Prevents duplicate category labels under the same parent node. | `tests/Feature/Catalog/CreateCategoryTest.php` |
+| 4 | Brand name is unique ignoring case and options list active brands only. | Prevents duplicate brand records and guarantees inactive brands never appear in assignment options (SCL9, SCL17). | `tests/Feature/Catalog/CreateBrandTest.php`, `tests/Feature/Catalog/BrandSchemaTest.php`, and `tests/Feature/Catalog/ListBrandOptionsTest.php` |
 | 5 | Actions are the sole write path for catalog mutations. | Centralizes validation, slug generation, advisory locks, and audit trails (S1, C5). | `tests/Arch/FilamentWritesTest.php and tests/Feature/Admin/Category/CategoryResourceTest.php` |
 | 6 | Cross-context isolation, and a referenced category cannot be hard-deleted. | External contexts touch Catalog only through Actions and Data (CT5). A referenced category is not hard-deleted (CT4). | `tests/Arch/CatalogArchTest.php` and `tests/Feature/Catalog/DeleteCategoryTest.php` |
-| 7 | `is_active` changes only through ActivateCategory and DeactivateCategory. | Centralizes activation state transitions, timestamps, and audit logging (C4, CT6). | `tests/Feature/Catalog/CategoryStateActionsTest.php` |
+| 7 | `is_active` changes only through aggregate Activate and Deactivate actions. | Centralizes activation state transitions, timestamps, and audit logging (C4, CT4). | `tests/Feature/Catalog/CategoryStateActionsTest.php` and `tests/Feature/Catalog/BrandStateActionsTest.php` |
 | 8 | Effective-active has one SQL definition used for both filtering and the computed flag. | Guarantees parity between query filters and tree visibility flags across any depth (CT6). | `tests/Feature/Catalog/CategoryEffectiveActiveTest.php` |
 
 ## Changing it
@@ -74,6 +80,11 @@ The `catalog` area owns all wholesale electronics marketplace taxonomy data, inc
 - **Moving categories**: Invoke `MoveCategory` with a public ID ULID string, `MoveCategoryData`, and an optional causer.
 - **Reordering sibling categories**: Invoke `ReorderCategories` with `ReorderCategoriesData` and an optional causer.
 - **Deleting categories**: Invoke `DeleteCategory` with a public ID ULID string and an optional causer.
+- **Creating brands**: Invoke `CreateBrand` with validated `CreateBrandData` and an optional authenticated causer user.
+- **Updating brand details**: Invoke `UpdateBrand` with a `Brand` instance or public ID ULID string, `UpdateBrandData`, and an optional causer.
+- **Activating brands**: Invoke `ActivateBrand` with a public ID ULID string and an optional causer.
+- **Deactivating brands**: Invoke `DeactivateBrand` with a public ID ULID string and an optional causer.
+- **Listing brand options**: Invoke `ListBrandOptions` with optional search string and limit.
 - **Administering categories via Filament**: Access `/admin/categories`. Form inputs create and edit categories via `CreateCategory` and `UpdateCategory`. Sibling movement, reordering, activation transitions, and deletion execute through dedicated table and header actions.
 - **Running tests**: Run `vendor/bin/pest tests/Feature/Catalog/ tests/Feature/Admin/Category/ tests/Arch/CatalogArchTest.php`.
 
@@ -92,9 +103,13 @@ vendor/bin/pest tests/Feature/Catalog/ tests/Feature/Admin/Category/ tests/Arch/
 - Category read queries and trees do not support pagination.
 - Category options cover product assignment only.
 - Category records do not yet store images, icons, or extended descriptions.
+- Brand records do not have a delete action; brands are deactivated rather than removed (OD-1).
+- No request or proposal flow exists for missing brands; superadmins create brands directly.
+- The `show_in_nav` flag is stored and editable, but no navigation consumer reads it yet.
 
 ## History
 
 - ADR 0010: Established Catalog context, taxonomy source of truth, and superseded Decision D4.
 - ADR 0011: Typed menu category references and foreign key delete guard.
-- Initial migration `2026_11_02_000000_create_categories_table.php` provisioned the `categories` table with PostgreSQL check constraints and unique indexes.
+- Migration `2026_11_02_000000_create_categories_table.php` provisioned the `categories` table with PostgreSQL check constraints and unique indexes.
+- Migration `2026_11_10_000000_create_brands_table.php` provisioned the `brands` table with PostgreSQL check constraints and functional unique index.
