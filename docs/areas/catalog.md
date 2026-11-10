@@ -13,7 +13,7 @@ paths:
 decisions: [D10, ADR-0010, ADR-0011]
 depends-on: [data]
 tests:
-  - vendor/bin/pest tests/Feature/Catalog/ tests/Feature/Admin/Category/ tests/Arch/CatalogArchTest.php
+  - vendor/bin/pest tests/Feature/Catalog/ tests/Feature/Admin/Category/ tests/Feature/Admin/Brand/ tests/Arch/CatalogArchTest.php
 triggers:
   - paths:
       - app/Domain/Content/**
@@ -54,6 +54,7 @@ The `catalog` area owns all wholesale electronics marketplace taxonomy data, inc
 - **Case-insensitive brand uniqueness**: Brand names are unique evaluated case-insensitively, guarded in domain Actions and enforced by PostgreSQL functional unique index `brands_lower_name_unique`.
 - **Brand mutation actions**: Mutations execute strictly through domain Actions (`CreateBrand`, `UpdateBrand`, `ActivateBrand`, `DeactivateBrand`), recording structured audit trails to the `catalog` activity log.
 - **Brand selection options**: `ListBrandOptions` returns active brands with search filtering, literal LIKE metacharacter escaping, clamped limits (default 20, max 50), and deterministic ordering (`lower(name) ASC, id ASC`) in a single query.
+- **Brand administration UI**: Brands are administered through Filament `BrandResource` in the `admin` panel (`/admin/brands`). The resource renders active and inactive brands, provides case-insensitive name and slug search, filter toggles for `is_active` and `show_in_nav`, form creation and editing delegating strictly to `CreateBrand` and `UpdateBrand` without editable slugs or status fields, and dedicated row and header actions for `Activate` and `Deactivate`. Delete actions are permanently omitted (CT4). Access is authorized via `BrandPolicy`.
 
 ## Invariants
 
@@ -63,9 +64,9 @@ The `catalog` area owns all wholesale electronics marketplace taxonomy data, inc
 | 2 | Taxonomy slug is immutable once created and globally unique. | Prevents link rot and guarantees deterministic URL routing (CT3). | `tests/Feature/Catalog/UpdateCategoryTest.php`, `tests/Feature/Catalog/CreateCategoryTest.php`, and `tests/Feature/Catalog/BrandSchemaTest.php` |
 | 3 | Sibling category name is unique ignoring case. | Prevents duplicate category labels under the same parent node. | `tests/Feature/Catalog/CreateCategoryTest.php` |
 | 4 | Brand name is unique ignoring case and options list active brands only. | Prevents duplicate brand records and guarantees inactive brands never appear in assignment options (SCL9, SCL17). | `tests/Feature/Catalog/CreateBrandTest.php`, `tests/Feature/Catalog/BrandSchemaTest.php`, and `tests/Feature/Catalog/ListBrandOptionsTest.php` |
-| 5 | Actions are the sole write path for catalog mutations. | Centralizes validation, slug generation, advisory locks, and audit trails (S1, C5). | `tests/Arch/FilamentWritesTest.php and tests/Feature/Admin/Category/CategoryResourceTest.php` |
+| 5 | Actions are the sole write path for catalog mutations. | Centralizes validation, slug generation, advisory locks, and audit trails (S1, C5). | `tests/Arch/FilamentWritesTest.php`, `tests/Feature/Admin/Category/CategoryResourceTest.php`, and `tests/Feature/Admin/Brand/BrandResourceTest.php` |
 | 6 | Cross-context isolation, and a referenced category cannot be hard-deleted. | External contexts touch Catalog only through Actions and Data (CT5). A referenced category is not hard-deleted (CT4). | `tests/Arch/CatalogArchTest.php` and `tests/Feature/Catalog/DeleteCategoryTest.php` |
-| 7 | `is_active` changes only through aggregate Activate and Deactivate actions. | Centralizes activation state transitions, timestamps, and audit logging (C4, CT4). | `tests/Feature/Catalog/CategoryStateActionsTest.php` and `tests/Feature/Catalog/BrandStateActionsTest.php` |
+| 7 | `is_active` changes only through aggregate Activate and Deactivate actions. | Centralizes activation state transitions, timestamps, and audit logging (C4, CT4). | `tests/Feature/Catalog/CategoryStateActionsTest.php`, `tests/Feature/Catalog/BrandStateActionsTest.php`, and `tests/Feature/Admin/Brand/BrandResourceTest.php` |
 | 8 | Effective-active has one SQL definition used for both filtering and the computed flag. | Guarantees parity between query filters and tree visibility flags across any depth (CT6). | `tests/Feature/Catalog/CategoryEffectiveActiveTest.php` |
 
 ## Changing it
@@ -86,7 +87,8 @@ The `catalog` area owns all wholesale electronics marketplace taxonomy data, inc
 - **Deactivating brands**: Invoke `DeactivateBrand` with a public ID ULID string and an optional causer.
 - **Listing brand options**: Invoke `ListBrandOptions` with optional search string and limit.
 - **Administering categories via Filament**: Access `/admin/categories`. Form inputs create and edit categories via `CreateCategory` and `UpdateCategory`. Sibling movement, reordering, activation transitions, and deletion execute through dedicated table and header actions.
-- **Running tests**: Run `vendor/bin/pest tests/Feature/Catalog/ tests/Feature/Admin/Category/ tests/Arch/CatalogArchTest.php`.
+- **Administering brands via Filament**: Access `/admin/brands`. Form inputs create and edit brands via `CreateBrand` and `UpdateBrand`. Activation state transitions execute through dedicated table row and header actions without direct model writes. Access is governed by `BrandPolicy`.
+- **Running tests**: Run `vendor/bin/pest tests/Feature/Catalog/ tests/Feature/Admin/Category/ tests/Feature/Admin/Brand/ tests/Arch/CatalogArchTest.php`.
 
 ## Running and testing
 
@@ -94,7 +96,7 @@ Clear the configuration cache and run the targeted Pest tests:
 
 ```bash
 php artisan config:clear
-vendor/bin/pest tests/Feature/Catalog/ tests/Feature/Admin/Category/ tests/Arch/CatalogArchTest.php
+vendor/bin/pest tests/Feature/Catalog/ tests/Feature/Admin/Category/ tests/Feature/Admin/Brand/ tests/Arch/CatalogArchTest.php
 ```
 
 ## Known limits and open questions
@@ -113,3 +115,4 @@ vendor/bin/pest tests/Feature/Catalog/ tests/Feature/Admin/Category/ tests/Arch/
 - ADR 0011: Typed menu category references and foreign key delete guard.
 - Migration `2026_11_02_000000_create_categories_table.php` provisioned the `categories` table with PostgreSQL check constraints and unique indexes.
 - Migration `2026_11_10_000000_create_brands_table.php` provisioned the `brands` table with PostgreSQL check constraints and functional unique index.
+- Brand administration UI: Introduced `BrandResource` and `BrandPolicy` in the admin panel, delegating brand mutations strictly to domain actions.
