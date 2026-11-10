@@ -33,3 +33,10 @@ arch('brand model is not used outside catalog domain and admin resource')
         'App\Filament\Admin\Resources\BrandResource',
         'App\Providers\AppServiceProvider',
     ]);
+
+arch('product model is not used outside catalog domain and factories')
+    ->expect('App\Domain\Catalog\Models\ProductModel')
+    ->toOnlyBeUsedIn([
+        'App\Domain\Catalog',
+        'Database\Factories',
+    ]);
