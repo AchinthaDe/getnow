@@ -25,6 +25,11 @@ arch('catalog data objects extend spatie data')
     ->expect('App\Domain\Catalog\Data')
     ->toExtend(Data::class);
 
-arch('brand model is not used outside catalog domain')
+arch('brand model is not used outside catalog domain and admin resource')
     ->expect('App\Domain\Catalog\Models\Brand')
-    ->toOnlyBeUsedIn(['App\Domain\Catalog', 'Database\Factories']);
+    ->toOnlyBeUsedIn([
+        'App\Domain\Catalog',
+        'Database\Factories',
+        'App\Filament\Admin\Resources\BrandResource',
+        'App\Providers\AppServiceProvider',
+    ]);

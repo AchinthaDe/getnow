@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Domain\Accounts\Policies\UserPolicy;
+use App\Domain\Catalog\Models\Brand;
 use App\Domain\Catalog\Models\Category;
+use App\Domain\Catalog\Policies\BrandPolicy;
 use App\Domain\Catalog\Policies\CategoryPolicy;
 use App\Models\User;
 use Carbon\CarbonImmutable;
@@ -41,6 +43,7 @@ class AppServiceProvider extends ServiceProvider
 
         Gate::policy(User::class, UserPolicy::class);
         Gate::policy(Category::class, CategoryPolicy::class);
+        Gate::policy(Brand::class, BrandPolicy::class);
     }
 
     /**
