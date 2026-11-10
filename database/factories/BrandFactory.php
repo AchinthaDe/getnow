@@ -23,7 +23,7 @@ final class BrandFactory extends Factory
         $name = fake()->unique()->company();
 
         return [
-            'public_id' => Str::lower((string) Str::ulid()),
+            'public_id' => (string) Str::ulid(),
             'name' => $name,
             'slug' => Str::slug($name),
             'is_active' => true,
