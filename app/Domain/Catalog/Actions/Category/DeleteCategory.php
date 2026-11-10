@@ -6,6 +6,7 @@ namespace App\Domain\Catalog\Actions\Category;
 
 use App\Domain\Catalog\Exceptions\CategoryRuleViolation;
 use App\Domain\Catalog\Models\Category;
+use App\Domain\Catalog\Models\ProductModel;
 use App\Domain\Catalog\Support\CategorySiblingLock;
 use App\Models\User;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -38,6 +39,10 @@ final class DeleteCategory
             // Step 4: Guard against existing child rows
             if (Category::where('parent_id', $category->id)->exists()) {
                 throw CategoryRuleViolation::hasChildren($category->public_id);
+            }
+
+            if (ProductModel::where('category_id', $category->id)->exists()) {
+                throw CategoryRuleViolation::inUse($category->public_id);
             }
 
             $oldParentPublicId = $category->parent_id !== null
