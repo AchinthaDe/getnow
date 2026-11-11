@@ -50,3 +50,15 @@ Sections:
 ## Update Rule
 
 Any pull request modifying files that match an area's `paths:` globs must update that area's guide in the same pull request. When running test suites, always execute `php artisan config:clear` before `vendor/bin/pest <path>` to prevent cached environment configuration from targeting the development database.
+
+## Where each fact lives
+
+| Fact type | Single owner | Who updates it | Mirrored where |
+|---|---|---|---|
+| Step status (done or not) | `ARCHITECTURE.md` progress list | Achintha / Gemini at step closeout | Nowhere else |
+| Step names and scope | Phase brief (`docs/blueprints/<phase>/phase-brief.md`) section 8 | Claude / Achintha at phase planning | `ARCHITECTURE.md` progress mirrors the names only |
+| Rule IDs and text | `docs/blueprints/rule-register.md` | Claude / Achintha / Gemini | `AGENTS.md` carries the identical text (must stay identical) |
+| Decisions | `docs/adr/` | Gemini / Claude / Achintha | Phase brief section 10 records open decisions and cites ADR when resolved |
+| Per-area invariants, action lists, known limits | `docs/areas/<area>.md` | Gemini / Claude in step PRs | Nowhere else; no copies in briefs or plans |
+| API shape | `docs/contracts/content-api.md` plus the fixture | Gemini in API change steps | `tests/Fixtures/contracts/` |
+| Structure and boundaries | `ARCHITECTURE.md` sections 1 to 13 | Claude / Achintha / Gemini for map-level facts | Nowhere else |
