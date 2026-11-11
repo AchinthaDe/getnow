@@ -133,7 +133,9 @@ it('rolls back migration cleanly', function (): void {
     expect(Schema::hasTable('brands'))->toBeTrue();
 
     try {
-        Artisan::call('migrate:rollback', ['--step' => 1, '--no-interaction' => true]);
+        while (Schema::hasTable('brands')) {
+            Artisan::call('migrate:rollback', ['--step' => 1, '--no-interaction' => true]);
+        }
         expect(Schema::hasTable('brands'))->toBeFalse();
     } finally {
         Artisan::call('migrate', ['--no-interaction' => true]);

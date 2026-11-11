@@ -4,9 +4,9 @@ Instructions for AI coding agents working in this repository. Read `ARCHITECTURE
 
 ## Project
 
-Laravel backend for a wholesale mobile and electronics marketplace. It currently contains only the **content management system**: admins edit storefront content in Filament, and storefronts read it from a versioned API. The storefront is a separate repository and is out of scope here.
+Laravel backend for a wholesale mobile and electronics marketplace. It currently contains the **content management system**, **accounts**, and **catalog** contexts: admins edit storefront content and taxonomy in Filament, and storefronts read it from a versioned API. The storefront is a separate repository and is out of scope here.
 
-Active scope: **Phase 0 (bootstrap), Phase 1 (layout CMS), and Phase 3: Accounts, then Catalog and Retail**, as defined in `ARCHITECTURE.md`. Accounts is permitted from P3-ACC1 onward; Catalog and Retail remain forbidden under X4 until their respective implementation steps. Do not build, scaffold or add packages for later phases (sales, payments, chat, React). If a task seems to need them, ask.
+Active scope: **Phase 0 (bootstrap), Phase 1 (layout CMS), and Phase 3: Accounts, then Catalog and Retail**, as defined in `ARCHITECTURE.md`. Contexts follow three explicit states: **shipped** (Content, Accounts, Catalog Category/Brand/ProductModel), **in phase, not started** (Retail until RET1a, attributes until ATT1a, products until PRD1a, and unbuilt Phase 3 aggregates), and **out of phase** (Sales, Negotiation, Procurement, Payments, Disputes). Do not build, scaffold or add packages for out of phase contexts. If a task seems to need them, ask.
 
 ## Environment
 
@@ -50,7 +50,7 @@ Map: ARCHITECTURE.md (phases, stack, structure, decisions), docs/README.md (area
 
 ## Where code goes
 
-- **S1** Business logic placement is scoped per context (ADR 0006). In `Content` (and later `Catalog`, `Retail`), business logic lives in `app/Domain/<Context>/Actions/`, one invokable class per use case (read use cases included). In `Accounts`, business logic lives in Services, Repositories, Tokens, and Contracts under `app/Domain/Accounts/{Services,Repositories,Tokens,Contracts}/`.
+- **S1** Business logic placement is scoped per context (ADR 0006). In `Content` and `Catalog` (and later `Retail`), business logic lives in `app/Domain/<Context>/Actions/`, one invokable class per use case (read use cases included). In `Accounts`, business logic lives in Services, Repositories, Tokens, and Contracts under `app/Domain/Accounts/{Services,Repositories,Tokens,Contracts}/`.
 - **S2** Controllers, Filament resources and pages are thin: validate, authorize, call an Action (or a Service or `TokenIssuer` in `Accounts`), return output.
 - **S3** `app/Domain` must never import from `App\Filament` or `App\Http`.
 - **S4** Filament never calls `Model::create/update/delete` directly. In Content, Catalog, and Retail, it calls Actions; in Accounts, it calls Services (or `TokenIssuer`).
@@ -90,6 +90,7 @@ Map: ARCHITECTURE.md (phases, stack, structure, decisions), docs/README.md (area
 - **CT5** Contexts touch Catalog only through `App\Domain\Catalog\Actions` and `Data`, never its models.
 - **CT6** What a storefront may see is computed at read time by one query definition. Never by writing flags across many rows.
 - **CT7** Hot-write data (stock) lives in its own table, apart from reviewed content.
+- **CT8** An approved product requires at least one image before it can transition to approved review status.
 
 ## Database rules
 
@@ -121,7 +122,7 @@ Map: ARCHITECTURE.md (phases, stack, structure, decisions), docs/README.md (area
 - **G1** Branch from `main`: `feat/<short-desc>`, `fix/...`, `chore/...`.
 - **G2** Conventional Commits: `feat(content): add announcement bar block`.
 - **G3** Never push to `main` directly or bypass git hooks.
-- PR description: what changed, why, how it was tested, and risks (migrations, API contract, security).
+- **G4** PR description: what changed, why, how it was tested, and risks (migrations, API contract, security).
 
 ## Do not
 
@@ -131,7 +132,7 @@ Map: ARCHITECTURE.md (phases, stack, structure, decisions), docs/README.md (area
 - Change deployment or infrastructure configuration as a side effect of a feature.
 - Put business logic in controllers, Filament resources, model boot methods or observers.
 - **X5** Modify the storefront repository or assume its internals. The API contract is the only interface.
-- **X4** Create folders, contexts or tables for phases that are not active, or for Catalog and Retail prior to their designated steps.
+- **X4** Do not create folders, contexts, or tables for a phase that is not active. Inside Phase 3, do not scaffold an aggregate before its step. Retail is forbidden until RET1a.
 - Make destructive file or database operations outside migrations and the local reset command above.
 
 ## Definition of done
@@ -140,7 +141,7 @@ Map: ARCHITECTURE.md (phases, stack, structure, decisions), docs/README.md (area
 - [ ] Tests added or updated, including failure and authorization cases
 - [ ] `tests/Arch` passes
 - [ ] Migrations are backward compatible
-- [ ] **X7** Owning area guide(s) updated and trigger checklists answered; ARCHITECTURE.md only for map-level changes; docs/contracts/content-api.md and .env.example where relevant (DOC1 to DOC4)
+- [ ] **X7** Owning area guide(s) updated and trigger checklists answered; ARCHITECTURE.md only for map-level changes; docs/contracts/content-api.md and .env.example where relevant (DOC1 to DOC4). Docs impact is part of the step: see the Docs close-out gate in docs/workflow.md.
 - [ ] Nothing outside the active phase was added
 
 ## Step protocol

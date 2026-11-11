@@ -1,8 +1,9 @@
-[P3 | PHASE BRIEF v2 | Claude]
+[P3 | PHASE BRIEF v3 | Claude / Achintha / Gemini]
 
 # P3 Catalog: taxonomy, retailer products, review workflow
 
-Status: proposed. Not active until P3-CAT1 passes G0 (section 10, question 1).
+Status: active.
+v3 changes: added ProductModel (MDL1a/b), specification attributes (ATT1a/b, PRD1c), proposal flow clarified as planned (not designed, no ADR yet), rule CT8 (approval needs at least one image, from PRD2a), Accounts context integration (ACC1a–c) completed, and step list synchronized in ARCHITECTURE.md order.
 v2 adds: typed menu items, brands and collections as data, and the scalability review in section 3.
 
 ## 1. Goal
@@ -19,6 +20,8 @@ Anything a product is classified by, filtered by or linked to in the nav is a ro
 | --- | --- | --- | --- |
 | Category | Tree, max depth 2 (one constant, SCL1) | Retailer, on the product (leaf only) | Parent is derived, never stored on the product |
 | Brand | Flat list | Retailer, on the product. Select-only, searchable | No free text. A missing brand is requested from the superadmin |
+| Product Model | Flat list scoped to brand and leaf category | Retailer, on the product. Select-only, searchable | Shipped (MDL1a). Belongs to one brand and one leaf category; fixed at creation. Model names unique per brand. No free text |
+| Specification attributes | Controlled rows / key-value specifications | Retailer, on the product | In phase, not started (planned, ATT1a/b, PRD1c). Stops fragmented spec formatting. Free-text specifications until PRD1c |
 | Collection | Curated group of products (Deals, New arrivals, Featured) | Superadmin | Not chosen by retailers. Many-to-many with products |
 | Variant option values | Controlled rows (colour, storage, RAM) | Retailer, on a variant | Stops "128GB" and "128 GB" splitting filters |
 
@@ -51,6 +54,7 @@ Dependency runs one way: Content reads Catalog through Actions (CT5). Catalog ne
 | CT5 | Contexts touch Catalog only through `App\Domain\Catalog\Actions` and `Data`, never its models | CAT1 (arch test) |
 | CT6 | What a storefront may see is computed at read time by one query definition. Never by writing flags across many rows | PRD1b |
 | CT7 | Hot-write data (stock) lives in its own table, apart from reviewed content | VAR1b |
+| CT8 | An approved product requires at least one image before it can transition to approved review status | PRD2a |
 
 ## 3. Scalability review
 
@@ -125,7 +129,11 @@ Locking the product while pending removes the race where a retailer edits under 
 
 | Item | Step |
 | --- | --- |
+| Accounts module merge (users, roles, Passport tokens) | ACC1a, ACC1b, ACC1c |
 | Brands | BRD1a, BRD1b |
+| Product Models (brand- and category-scoped taxonomy) | MDL1a, MDL1b |
+| Specification attributes (controlled key-values, planned) | ATT1a, ATT1b, PRD1c |
+| Proposal workflow ADR: data model, states, reviewer queue, authorization (ADR deliverable only) | PRP1 |
 | Variants (colour, storage), SKU, price on the variant | VAR1a |
 | Wholesale pricing: MOQ, quantity price breaks, currency, integer minor units (no money package, X1) | VAR1b |
 | Stock per variant | VAR1b |
@@ -139,70 +147,93 @@ Locking the product while pending removes the race where a retailer edits under 
 
 ## 8. Step list and order
 
+Status lives in ARCHITECTURE.md (Phase 3 progress). This table lists scope only.
 Each step is one layer and ends with `composer check` green. Sizes are code and test files only. Docs are extra.
 
 | Step | Layer | Scope | Size |
 | --- | --- | --- | --- |
+| P3-ACC1a | domain | rules, ADR, arch scoping | ~6 |
+| P3-ACC1b | domain | Passport and token stream import | ~10 |
+| P3-ACC1c | domain | users stream import, users reconcile migration, seeders, factory, guide | ~12 |
 | P3-QA1 | quality | Strict models outside production, query-count test helper (SCL12) | ~4 |
-| P3-CAT1 | domain | Catalog context, `categories` table, CreateCategory, UpdateCategory, ADR, rules CT1 to CT7, guide | ~11 |
+| P3-CAT1 | domain | Catalog context, `categories` table, CreateCategory, UpdateCategory, ADR, rules CT1 to CT8, guide | ~11 |
 | P3-CAT2 | domain | Activate, Deactivate, Delete, Move, Reorder, `GetCategoryTree`, `ListCategoryOptions`, subtree and effective-active resolution | ~11 |
 | P3-CAT3 | admin UI | Category resource (tree, reorder), CategoryPolicy | ~8 |
-| P3-NAV1a | domain | Typed menu items: migration, kinds, validation, category reference and `category_tree` source. Handoff: DeleteCategory refuses a category referenced by a menu item, with a test. | ~10 |
+| P3-NAV1a | domain | Typed menu items: migration, kinds, validation, category reference and `category_tree` source | ~10 |
 | P3-NAV1b | API | Batched resolution in `GetLayoutContent`, revision includes taxonomy state, contract doc and fixture | ~8 |
 | P3-NAV1c | admin UI | Menu form: kind select, category picker, inactive-target warnings | ~8 |
 | P3-BRD1a | domain | Brands, `ListBrandOptions` with search, show_in_nav | ~9 |
-| P3-BRD1b | admin UI | Brand resource | ~7 |
+| P3-BRD1b | admin UI | Brand resource, BrandPolicy | ~7 |
+| P3-MDL1a | domain | Models brand and category scoped, ListModelOptions with search | ~9 |
+| P3-MDL1b | admin UI | Model resource | ~8 |
+| P3-ATT1a | domain | Attributes and values | ~10 |
+| P3-ATT1b | admin UI | Attribute resource | ~8 |
 | P3-NAV2 | domain + API | Brand reference and brand source in menus | ~8 |
-| P3-RET1a | domain | Retail context: retailers, membership, status, suspension. Needs question 1 | ~10 |
-| P3-RET1b | UI | Retailer panel shell, superadmin retailer management | ~9 |
-| P3-PRD1a | domain | Product core, create, update, archive, `row_version`, ownership scoping, CT2 guard, indexes. Handoff: DeleteCategory refuses a category referenced by a product, and CreateCategory and MoveCategory refuse a parent that products reference (product-side half of CT2), each with a test. | ~11 |
-| P3-PRD1b | domain | Submit, withdraw, list, unlist, state machine, `VisibleProducts` | ~9 |
-| P3-PRD2a | domain | Review rounds, snapshots, approve, request changes, reject | ~10 |
+| P3-RET1a | domain | Retail context: retailers, membership, CurrentRetailer, status, suspension | ~10 |
+| P3-RET1b | UI | Retailer panel shell, superadmin retailer management, panel access by role | ~9 |
+| P3-PRD1a | domain | Product core with category, brand and model references, create, update, archive, row_version, ownership scoping, CT2 guard, indexes | ~11 |
+| P3-PRD1b | domain | Submit, withdraw, list, unlist, state machine, VisibleProducts | ~9 |
+| P3-PRD1c | domain | Spec attribute values on products | ~8 |
+| P3-PRD2a | domain | Review rounds, snapshots, approve with CT8 gate, request changes, reject | ~10 |
 | P3-PRD2b | domain | Flags, retailer replies, events after commit, queued notifications, database queue | ~10 |
-| P3-RET2 | retailer UI | Product CRUD with cascading category select, flagged-field display, submit | ~10 |
-| P3-ADM1 | admin UI | Review queue, snapshot diff, flag editor, approve, admin create and edit, bulk actions | ~11 |
-| P3-VAR1a | domain | Variants, option vocabulary | ~10 |
-| P3-VAR1b | domain | Price breaks, `variant_stock` | ~9 |
+| P3-PRP1 | domain | Proposal workflow ADR: data model, states, reviewer queue, authorization (ADR deliverable only) | ~3 |
+| P3-RET2 | retailer UI | Product CRUD with cascading category select, Add custom..., flagged-field display, submit | ~10 |
+| P3-ADM1 | admin UI | Review queue, snapshot diff, flag editor, inline proposal resolution, approve, admin create into queue, bulk actions | ~11 |
+| P3-VAR1a | domain | Variants using variant_option attributes | ~10 |
+| P3-VAR1b | domain | Price breaks, variant_stock | ~9 |
 | P3-VAR1c | UI | Variant, price and stock forms in both panels | ~9 |
 | P3-MED1a | domain | Medialibrary ADR, product images, caps, conversions queued | ~8 |
 | P3-MED1b | UI | Image upload in both panels | ~6 |
-| P3-COL1 | domain + UI | Collections, product membership, menu reference | ~11 (split if over) |
-| P3-API1a | HTTP | Public listing and detail, keyset pagination, `VisibleProducts` | ~9 |
-| P3-API1b | HTTP | Filters, brand and category facets, text search | ~9 |
+| P3-COL1 | domain + UI | Collections, product membership, menu reference | ~11 |
+| P3-API1a | HTTP | Public listing and detail, keyset pagination, VisibleProducts | ~9 |
+| P3-API1b | HTTP | Filters, facets, text search | ~9 |
 | P3-CLOSE | review | Exit review | none |
-
-P3-QA1 to P3-NAV1c need neither retailers nor accounts and can start now. Everything from P3-RET1a depends on question 1.
 
 ## 9. Current docs this phase contradicts (resolved by the ADR in P3-CAT1 unless noted)
 
-| Where | Says now | Change |
-| --- | --- | --- |
-| ARCHITECTURE D4 | Category data stays with the catalog source, menus link by URL | Superseded |
-| ARCHITECTURE section 13 | Catalog = brands, models, variants, categories. Retail = offers, inventory | Catalog = taxonomy, products, reviews, variants, media. Retail = retailers, membership. Shared model catalog dropped (question 4) |
-| ARCHITECTURE phases table, AGENTS "Active scope" | Phase 0 and 1 only | Add Phase 3 as active |
-| AGENTS S1 | Actions live in `app/Domain/Content/Actions/` | `app/Domain/<Context>/Actions/`, with per-aggregate subfolders allowed |
-| AGENTS S6, D6 | One panel under `app/Filament/Admin/`, one admin flag | Changed in RET1b, not before |
-| ARCHITECTURE section 6 mapping table | Category dropdown stays driven by the storefront's catalog source | Updated in NAV1b |
-| ARCHITECTURE section 3 stack | Queue not listed, medialibrary planned for phase 2 | Queue in PRD2b, medialibrary in MED1a, each by ADR |
-| menus guide | Menu items are links only | Updated in NAV1a |
-| DB1 | PostgreSQL only | The senior's draft table document is MySQL. Postgres wins. Use it for column ideas only |
+| Where | Says now | Change | Status |
+| --- | --- | --- | --- |
+| ARCHITECTURE D4 | Category data stays with the catalog source, menus link by URL | Superseded | Resolved (superseded by ADR 0010: typed menu references and links) |
+| ARCHITECTURE section 13 | Catalog = brands, models, variants, categories. Retail = offers, inventory | Catalog = taxonomy, products, reviews, variants, media. Retail = retailers, membership. Shared model catalog dropped (question 4) | Resolved (Catalog and Retail updated in ARCHITECTURE section 13) |
+| ARCHITECTURE phases table, AGENTS "Active scope" | Phase 0 and 1 only | Add Phase 3 as active | Resolved (Phase 3 active in ARCHITECTURE and AGENTS) |
+| AGENTS S1 | Actions live in `app/Domain/Content/Actions/` | `app/Domain/<Context>/Actions/`, with per-aggregate subfolders allowed | Resolved (scoped per context, ADR 0006) |
+| AGENTS S6, D6 | One panel under `app/Filament/Admin/`, one admin flag | Changed in RET1b, not before | Pending RET1b |
+| ARCHITECTURE section 6 mapping table | Category dropdown stays driven by the storefront's catalog source | Updated in NAV1b | Resolved (updated in NAV1b to typed items, ADR 0011, ADR 0012) |
+| ARCHITECTURE section 3 stack | Queue not listed, medialibrary planned for phase 2 | Queue in PRD2b, medialibrary in MED1a, each by ADR | Resolved (stack header updated to phases 0 to 3) |
+| menus guide | Menu items are links only | Updated in NAV1a | Resolved (updated in NAV1a-c to typed items) |
+| DB1 | PostgreSQL only | The senior's draft table document is MySQL. Postgres wins. Use it for column ideas only | Resolved (PostgreSQL only; senior MySQL draft discarded) |
 
-## 10. Open decisions for Achintha (Im putting my replies here)
+## 10. Open decisions for Achintha (all resolved)
 
-1. Is Phase 1 formally closed (P1-UI7, P1-DOC1b, P1-CLOSE), or do you waive that so P3 can start (X4)? Separately: merge the auth module before P3-RET1a, or build minimal retailers and membership here and reconcile later? 
-Achintha - Phase 1 is formally closed and yes lets merge the auth module that we made in C:\dev\getnow-auth2 to this. 
+1. Is Phase 1 formally closed (P1-UI7, P1-DOC1b, P1-CLOSE), or do you waive that so P3 can start (X4)? Separately: merge the auth module before P3-RET1a, or build minimal retailers and membership here and reconcile later?
+**Resolved.** Phase 1 is formally closed. Auth module was merged first via steps P3-ACC1a to ACC1c.
 
 2. Paste the categories and products sections of the senior's table draft so CAT1 and PRD1a can match column names where they make sense.
-The senior said we can go ahead the way we want for now and that it isnt set in stone from their side yet.
+**Resolved.** The senior's draft table document is not final and not set in stone; we proceed with our own native PostgreSQL design.
 
 3. Editing an `approved` product: (a) a change to a reviewed field sends it back to `pending_review` and it disappears until re-approved, while price, stock and MOQ apply immediately and are logged; (b) the live version stays up while the edit is reviewed, which needs revisions and conflicts with D7. Recommended: (a). SCL6 keeps (b) open for later.
-4. Products are retailer-owned listings, not rows pointing at a shared model catalog. Recommended: yes.
-5. Specification attributes: variant options are controlled rows from VAR1a. Per-category specification templates are deferred and `specifications` is free text until then. Recommended: confirm.
-6. A product a superadmin creates on a retailer's behalf: starts `approved` (logged with the admin as approver) or goes through the queue. Recommended: starts `approved`.
+**Resolved.** Option (a) selected: editing a reviewed field moves product to `pending_review` and hides it from storefront until re-approval; price, stock, and MOQ apply immediately and are logged. SCL6 keeps option (b) open for later.
+
+4. Products are retailer-owned listings that reference taxonomy rows, including brand and model.
+**Resolved.** Products are retailer-owned listings that reference shared taxonomy rows, including category, brand, and model.
+
+5. Specification attributes: variant options are controlled rows from VAR1a. Per-category specification templates are deferred and `specifications` is free text until then.
+**Resolved, not yet built.** Specification attributes are controlled rows planned in ATT1a/b and PRD1c. Specifications remain free text until PRD1c lands.
+
+6. A product a superadmin creates on a retailer's behalf: starts `approved` (logged with the admin as approver) or goes through the queue.
+**Resolved.** Products created by a superadmin on a retailer's behalf go through the review queue.
+
 7. Phase number: Catalog takes P3 and Phase 2 (pages and media) stays planned.
+**Resolved.** Catalog and Retail are in Phase 3; Phase 2 stays planned.
+
 8. Languages: is Sinhala or Tamil product and category content needed soon? The announcement bar already has locale copy. If yes within this phase, translations move from SCL17 (deferred) into CAT1 and PRD1a. Recommended: English now, additive later.
+**Resolved.** English now; translations remain deferred per SCL17 and will arrive additively later.
+
 9. One retailer per user for now (SCL15). Recommended: yes.
+**Resolved.** One retailer per user for now per SCL15; schema design is kept open for multi-user retailers later.
+
 10. Context split (SCL14): Catalog holds taxonomy and products, Retail holds retailers. Recommended: confirm.
+**Resolved.** Context split confirmed: Catalog holds taxonomy, products, reviews, variants, and media; Retail holds retailers, membership, and suspension.
 
 ## 11. Risks
 
@@ -225,4 +256,4 @@ The senior said we can go ahead the way we want for now and that it isnt set in 
 - Every transition and review is in the activity log
 - `catalog-api.md`, its fixture and the real API response agree
 - `php artisan migrate:fresh --seed` reproduces a demo catalog
-- CT1 to CT7 are each enforced by a named test or marked Review only in the guides
+- CT1 to CT8 are each enforced by a named test or marked Review only in the guides

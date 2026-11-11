@@ -7,6 +7,7 @@ namespace App\Domain\Catalog\Actions\Category;
 use App\Domain\Catalog\Data\Category\CreateCategoryData;
 use App\Domain\Catalog\Exceptions\CategoryRuleViolation;
 use App\Domain\Catalog\Models\Category;
+use App\Domain\Catalog\Models\ProductModel;
 use App\Domain\Catalog\Support\CategorySiblingLock;
 use App\Models\User;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -29,6 +30,10 @@ final class CreateCategory
                 }
 
                 CategorySiblingLock::acquire($parent->id);
+
+                if (ProductModel::where('category_id', $parent->id)->exists()) {
+                    throw CategoryRuleViolation::parentHasModels($parent->public_id);
+                }
 
                 if ($parent->parent_id !== null) {
                     throw CategoryRuleViolation::maxDepthExceeded(Category::MAX_DEPTH);

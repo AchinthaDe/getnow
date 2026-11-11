@@ -47,4 +47,14 @@ final class CategoryRuleViolation extends RuntimeException
     {
         return new self("The ordered list of category IDs does not match the current siblings of parent [{$parentPublicId}].");
     }
+
+    public static function parentHasModels(string $parentPublicId): self
+    {
+        return new self("Cannot create child category under parent [{$parentPublicId}] because it has product models assigned.");
+    }
+
+    public static function newParentHasModels(string $parentPublicId): self
+    {
+        return new self("Cannot move category under parent [{$parentPublicId}] because it has product models assigned.");
+    }
 }

@@ -18,7 +18,7 @@ paths:
   - tests/Feature/Domain/Content/Actions/*Menu*.php
   - tests/Feature/Domain/Content/Menu*.php
   - tests/Feature/Domain/Content/Policies/MenuPolicyTest.php
-decisions: [D2, D4, D9]
+decisions: [D2, ADR-0010, ADR-0011, ADR-0012, D9]
 depends-on: [admin-panel, data]
 tests:
   - vendor/bin/pest tests/Feature/Domain/Content/Policies/MenuPolicyTest.php tests/Feature/Domain/Content/Actions/UpdateMenuRejectionsTest.php tests/Feature/Support/Rules/SafeLinkTest.php tests/Feature/Domain/Content/Actions/UpdateMenuTest.php tests/Feature/Domain/Content/Actions/GetMenuTreeTest.php tests/Feature/Admin/Menu/MenuFormTest.php tests/Feature/Domain/Content/MenuItemDatabaseConstraintsTest.php tests/Feature/Domain/Content/Actions/UpdateMenuTypedItemsTest.php tests/Feature/Domain/Content/Actions/ProjectMenuLayoutItemsTest.php
@@ -38,7 +38,7 @@ triggers:
       Menu mutation updates require verifying three things:
       (1) Tree depth is guarded to a maximum depth of 2.
       (2) Items matched by public_id update in place to preserve stable identifiers.
-      (3) Do items reference categories by category_public_id (ADR 0011)? Another reference kind needs its own ADR.
+      (3) Do items reference categories by category_public_id (ADR 0011) and resolve at read time (ADR 0012), adhering to ADR 0010 taxonomy separation? Another reference kind needs its own ADR.
   - paths:
       - app/Filament/Admin/Resources/MenuResource/**
     reconsider: >-
@@ -55,14 +55,14 @@ The `menus` area manages navigation menu hierarchies for the storefront layout. 
 ## How it works now
 
 - **Code-owned keys.** Five menu keys exist in the `MenuKey` enum (`main_nav`, `mobile_nav`, `footer_column_1`, `footer_column_2`, `footer_column_3`). Admins cannot create or delete menus (`MenuPolicy::create` and `MenuPolicy::delete` return `false`).
-- **Typed menu items.** Menu items carry a code-defined `kind` (`link`, `category`, `category_tree`) backed by `MenuItemKind`. Allowed kinds per menu are enforced via `MenuKey::allowedKinds()`.
-- **Category references.** `category_public_id` references `categories.public_id` with `ON DELETE RESTRICT`. Content stores no category names, slugs, or URLs. Category existence is validated in one batched Catalog query using `GetExistingCategories`.
-- **Category tree source.** `category_tree` items are restricted to level 1 and cannot define children.
+- **Typed menu items.** Menu items carry a code-defined `kind` (`link`, `category`, `category_tree`) backed by `MenuItemKind` (ADR 0010, ADR 0011). Allowed kinds per menu are enforced via `MenuKey::allowedKinds()`.
+- **Category references.** `category_public_id` references `categories.public_id` with `ON DELETE RESTRICT` (ADR 0011). Content stores no category names, slugs, or URLs. Category existence is validated in one batched Catalog query using `GetExistingCategories`.
+- **Category tree source.** `category_tree` items are restricted to level 1 and cannot define children (ADR 0011).
 - **Transactional tree reconciliation.** When saving a menu, the whole desired tree is submitted to `UpdateMenu`. Under a `lockForUpdate()` row lock, items matched by `public_id` update in place, unkeyed items get new ULIDs, and omitted items are deleted, all inside one database transaction.
 - **Tree depth guard.** Menus support a maximum depth of 2 (root item plus direct children). Nesting beyond depth 2 is rejected by `UpdateMenu` with `InvalidMenuTreeException`.
 - **Filtering cascade.** `GetMenuTree` returns enabled root items and their enabled children. If a parent item is disabled, its children are excluded from output.
 - **Filament menu editor.** Administrators curate menu hierarchies through `MenuResource`. The editor creates and edits `link`, `category`, and `category_tree` items within `MenuKey::allowedKinds()` and capped to depth 2. Category options are populated once per form load from `GetCategoryTree(CategoryTreeAudience::Admin)`. Non-blocking inline warnings notify editors when a selected category is inactive or hidden from navigation and will be omitted from the storefront layout. Form submissions explicitly pass `kind` on every item and reconcile whole trees through `UpdateMenu` without reverting typed items to links.
-- **Public API serving.** Stored navigation menus are projected into the layout API at read time by `ProjectMenuLayoutItems`. `category` items derive URLs as `/shop?category={slug}` and fall back to category names when labels are null; level-1 `category_tree` items expand in place into storefront-visible categories. Unresolvable taxonomy targets are omitted. `GetMenuTree` retains the raw stored items for administrative editing.
+- **Public API serving.** Stored navigation menus are projected into the layout API at read time by `ProjectMenuLayoutItems` (ADR 0012). `category` items derive URLs as `/shop?category={slug}` and fall back to category names when labels are null; level-1 `category_tree` items expand in place into storefront-visible categories. Unresolvable taxonomy targets are omitted. `GetMenuTree` retains the raw stored items for administrative editing.
 
 ## Invariants
 
@@ -105,10 +105,13 @@ vendor/bin/pest tests/Feature/Domain/Content/Policies/MenuPolicyTest.php tests/F
 ## Known limits and open questions
 
 - **Last-write-wins tree reconciliation.** Menus reconcile whole trees under a row lock on save; concurrent administrative edits commit last-write-wins without conflict exceptions (D9).
+- **Taxonomy references.** Menu category references use typed items pointing to Catalog via `category_public_id` rather than hardcoded URLs; URL-based category navigation (D4) is superseded by ADR 0010, with typed references governed by ADR 0011 and read-time layout projection by ADR 0012.
 
 ## History
 
 - Migration [2026_10_14_000000_create_menus_and_menu_items_tables.php](../../database/migrations/2026_10_14_000000_create_menus_and_menu_items_tables.php): initial schema for menus and menu items tables.
 - Migration [2026_11_05_000000_add_kind_and_category_reference_to_menu_items_table.php](../../database/migrations/2026_11_05_000000_add_kind_and_category_reference_to_menu_items_table.php): added kind and category_public_id columns, RESTRICT foreign key, and CHECK constraints.
-- [ARCHITECTURE.md §12 Decisions](../../ARCHITECTURE.md#12-decisions): D2 (code-owned keys), D4 (links by URL until catalog context exists), D9 (atomic tree reconciliation under row lock).
-- [ADR 0011](../adr/0011-typed-menu-category-references-and-delete-guard.md): typed menu category references and foreign key delete guard (supersedes D4 for categories).
+- [ARCHITECTURE.md §12 Decisions](../../ARCHITECTURE.md#12-decisions): D2 (code-owned keys), D4 (superseded by ADR 0010), D9 (atomic tree reconciliation under row lock).
+- [ADR 0010](../adr/0010-catalog-context-and-taxonomy-source-of-truth.md): catalog context and taxonomy source of truth (supersedes D4).
+- [ADR 0011](../adr/0011-typed-menu-category-references-and-delete-guard.md): typed menu category references and foreign key delete guard (builds on ADR 0010).
+- [ADR 0012](../adr/0012-read-time-navigation-category-resolution-and-revision-invalidation.md): read-time navigation category resolution and revision invalidation.

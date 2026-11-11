@@ -44,7 +44,7 @@ This document is the source of truth for structure and boundaries. If code and t
 - [x] P3-NAV1c (menu form: kind select, category picker, inactive-target warnings)
 - [x] P3-BRD1a (Brands, ListBrandOptions with search, show_in_nav)
 - [x] P3-BRD1b (Brand resource, BrandPolicy)
-- [ ] P3-MDL1a (Models brand and category scoped, ListModelOptions with search)
+- [x] P3-MDL1a (Models brand and category scoped, ListModelOptions with search)
 - [ ] P3-MDL1b (Model resource)
 - [ ] P3-ATT1a (Attributes and values)
 - [ ] P3-ATT1b (Attribute resource)
@@ -56,6 +56,7 @@ This document is the source of truth for structure and boundaries. If code and t
 - [ ] P3-PRD1c (Spec attribute values on products)
 - [ ] P3-PRD2a (Review rounds, snapshots, approve with CT8 gate, request changes, reject)
 - [ ] P3-PRD2b (Flags, retailer replies, events after commit, queued notifications, database queue)
+- [ ] P3-PRP1 (Proposal workflow ADR: data model, states, reviewer queue, authorization; ADR deliverable only)
 - [ ] P3-RET2 (Product CRUD with cascading selects, Add custom..., flagged-field display, submit)
 - [ ] P3-ADM1 (Review queue, snapshot diff, flag editor, inline proposal resolution, approve, admin create into queue, bulk actions)
 - [ ] P3-VAR1a (Variants using variant_option attributes)
@@ -74,10 +75,10 @@ Rule: do not scaffold folders, models or packages for a phase that is not active
 
 - Admins change storefront content without a deploy.
 - Consumers (Blade storefront now, React later) must not break when content changes or is missing.
-- Modular monolith. Two contexts (`Content` and `Accounts`) in Phase 3, with `Catalog` and `Retail` joining in subsequent steps.
+- Modular monolith. Contexts follow three explicit states: **shipped** (Content, Accounts, and Catalog aggregates Category, Brand, ProductModel), **in phase, not started** (Retail until RET1a, attributes until ATT1a, products until PRD1a, and unbuilt Phase 3 aggregates), and **out of phase** (Sales, Negotiation, Procurement, Payments, Disputes).
 - `main` is always working and tested. Quality gates run locally (`composer check`) and via a minimal GitHub Actions check workflow. No CD pipelines, no Docker for local development.
 
-## 3. Stack (phases 0 to 2)
+## 3. Stack (phases 0 to 3)
 
 | Concern | Choice |
 |---|---|
@@ -180,7 +181,7 @@ Placements, menu keys and block types are defined in code because the storefront
 | Head: site name, default description | Site setting | favicon and logo deferred |
 | Announcement bar | Block in placement `announcement_bar` | The free-delivery figure comes from storefront config. Text is free-form, the threshold is not computed here. |
 | Header main (logo, search, account, wishlist, bag) | Leave in code | Search placeholder is a site setting |
-| Desktop nav, mobile menu | Menus `main_nav`, `mobile_nav` | Category dropdown stays driven by the storefront's catalog source |
+| Desktop nav, mobile menu | Menus `main_nav`, `mobile_nav` | Menus use typed items (link, category reference, category_tree source) resolved in batch by GetLayoutContent (NAV1a–NAV1c, ADR 0011, ADR 0012) |
 | Footer brand text | Site setting | |
 | Footer link columns | Menus `footer_column_1..3` (menu `title` is the column heading) | |
 | Flash messages | Leave in code | |
@@ -334,6 +335,10 @@ Open decisions (record as ADRs in `docs/adr/` when settled):
 - Production hosting and deployment method.
 - API authentication for storefronts if the API stops being public.
 
-## 13. Later phases (sketch only, do not build)
+## 13. System contexts and phases
 
-Catalog (taxonomy, products, reviews, variants, media), Retail (retailers, membership), Sales (cart, orders), Negotiation (chat, quotes), Procurement (purchase orders), Payments (ledger, escrow, commission, payouts), Disputes. When a phase starts, add its section here and its context under `app/Domain/`.
+Contexts in the codebase are governed by three explicit states:
+
+- **shipped** — checkbox `[x]` in the Phase 3 progress list: Content, Accounts, and Catalog aggregates (`Category`, `Brand`, `ProductModel`).
+- **in phase, not started** — Retail until RET1a, attributes until ATT1a, products until PRD1a, and the rest of the unchecked Phase 3 rows (proposal workflow ADR PRP1, review queue PRD2a/b, variants VAR1a–c, media MED1a/b, collections COL1, public API API1a/b). Do not scaffold an aggregate before its designated step.
+- **out of phase** — Sales (cart, orders), Negotiation (chat, quotes), Procurement (purchase orders), Payments (ledger, escrow, commission, payouts), Disputes. Do not build, scaffold, or add packages for out of phase contexts. When a phase starts, add its section here and its context under `app/Domain/`.

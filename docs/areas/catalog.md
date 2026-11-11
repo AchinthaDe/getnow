@@ -7,8 +7,10 @@ paths:
   - app/Domain/Catalog/**
   - database/factories/CategoryFactory.php
   - database/factories/BrandFactory.php
+  - database/factories/ProductModelFactory.php
   - database/migrations/*categories*
   - database/migrations/*brands*
+  - database/migrations/*product_models*
   - tests/Feature/Catalog/**
 decisions: [D10, ADR-0010, ADR-0011]
 depends-on: [data]
@@ -55,19 +57,24 @@ The `catalog` area owns all wholesale electronics marketplace taxonomy data, inc
 - **Brand mutation actions**: Mutations execute strictly through domain Actions (`CreateBrand`, `UpdateBrand`, `ActivateBrand`, `DeactivateBrand`), recording structured audit trails to the `catalog` activity log.
 - **Brand selection options**: `ListBrandOptions` returns active brands with search filtering, literal LIKE metacharacter escaping, clamped limits (default 20, max 50), and deterministic ordering (`lower(name) ASC, id ASC`) in a single query.
 - **Brand administration UI**: Brands are administered through Filament `BrandResource` in the `admin` panel (`/admin/brands`). The resource renders active and inactive brands, provides case-insensitive name and slug search, filter toggles for `is_active` and `show_in_nav`, form creation and editing delegating strictly to `CreateBrand` and `UpdateBrand` without editable slugs or status fields, and dedicated row and header actions for `Activate` and `Deactivate`. Delete actions are permanently omitted (CT4). Access is authorized via `BrandPolicy`.
+- **Product model aggregate**: Product models are stored with unique ULID `public_id`, `brand_id`, `category_id`, `name`, immutable cosmetic `slug`, and `is_active` toggle. Each model belongs to exactly one brand and one leaf category, both fixed at creation.
+- **Case-insensitive model uniqueness**: Model names are unique per brand evaluated case-insensitively, guarded in domain Actions and enforced by PostgreSQL functional unique index `product_models_brand_lower_name_unique`. The same model name under different brands is permitted.
+- **Model mutation actions**: Mutations execute strictly through domain Actions (`CreateProductModel`, `UpdateProductModel`, `ActivateProductModel`, `DeactivateProductModel`), recording structured audit trails to the `catalog` activity log.
+- **Model selection options**: `ListModelOptions` returns active models for a specified active brand and effectively active leaf category with search filtering, literal LIKE metacharacter escaping, clamped limits (default 20, max 50), and deterministic ordering (`lower(name) ASC, id ASC`) in a single database query.
+- **Category model reference guards**: Categories referenced by product models cannot be deleted (`DeleteCategory` throws `CategoryRuleViolation::inUse`), cannot gain child categories (`CreateCategory` throws `CategoryRuleViolation::parentHasModels`), and cannot become destination parents for moved categories (`MoveCategory` throws `CategoryRuleViolation::newParentHasModels`).
 
 ## Invariants
 
 | # | Rule | Why | Enforced by |
 |---|---|---|---|
 | 1 | Depth cap is the single constant `Category::MAX_DEPTH = 2`. | Prevents deep recursive queries and maintains layout predictability. | `tests/Feature/Catalog/CreateCategoryTest.php and tests/Feature/Catalog/MoveCategoryTest.php` |
-| 2 | Taxonomy slug is immutable once created and globally unique. | Prevents link rot and guarantees deterministic URL routing (CT3). | `tests/Feature/Catalog/UpdateCategoryTest.php`, `tests/Feature/Catalog/CreateCategoryTest.php`, and `tests/Feature/Catalog/BrandSchemaTest.php` |
+| 2 | Taxonomy slug is immutable once created and globally unique. | Prevents link rot and guarantees deterministic URL routing (CT3). | `tests/Feature/Catalog/UpdateCategoryTest.php`, `tests/Feature/Catalog/CreateCategoryTest.php`, `tests/Feature/Catalog/BrandSchemaTest.php`, `tests/Feature/Catalog/ProductModelSchemaTest.php`, `tests/Feature/Catalog/CreateProductModelTest.php`, and `tests/Feature/Catalog/UpdateProductModelTest.php` |
 | 3 | Sibling category name is unique ignoring case. | Prevents duplicate category labels under the same parent node. | `tests/Feature/Catalog/CreateCategoryTest.php` |
-| 4 | Brand name is unique ignoring case and options list active brands only. | Prevents duplicate brand records and guarantees inactive brands never appear in assignment options (SCL9, SCL17). | `tests/Feature/Catalog/CreateBrandTest.php`, `tests/Feature/Catalog/BrandSchemaTest.php`, and `tests/Feature/Catalog/ListBrandOptionsTest.php` |
+| 4 | Brand and model names are unique within scope ignoring case; options list active records only. | Prevents duplicate taxonomy labels and guarantees inactive records never appear in options. | `tests/Feature/Catalog/CreateBrandTest.php`, `tests/Feature/Catalog/BrandSchemaTest.php`, `tests/Feature/Catalog/ListBrandOptionsTest.php`, `tests/Feature/Catalog/CreateProductModelTest.php`, `tests/Feature/Catalog/ProductModelSchemaTest.php`, and `tests/Feature/Catalog/ListModelOptionsTest.php` |
 | 5 | Actions are the sole write path for catalog mutations. | Centralizes validation, slug generation, advisory locks, and audit trails (S1, C5). | `tests/Arch/FilamentWritesTest.php`, `tests/Feature/Admin/Category/CategoryResourceTest.php`, and `tests/Feature/Admin/Brand/BrandResourceTest.php` |
-| 6 | Cross-context isolation, and a referenced category cannot be hard-deleted. | External contexts touch Catalog only through Actions and Data (CT5). A referenced category is not hard-deleted (CT4). | `tests/Arch/CatalogArchTest.php` and `tests/Feature/Catalog/DeleteCategoryTest.php` |
-| 7 | `is_active` changes only through aggregate Activate and Deactivate actions. | Centralizes activation state transitions, timestamps, and audit logging (C4, CT4). | `tests/Feature/Catalog/CategoryStateActionsTest.php`, `tests/Feature/Catalog/BrandStateActionsTest.php`, and `tests/Feature/Admin/Brand/BrandResourceTest.php` |
-| 8 | Effective-active has one SQL definition used for both filtering and the computed flag. | Guarantees parity between query filters and tree visibility flags across any depth (CT6). | `tests/Feature/Catalog/CategoryEffectiveActiveTest.php` |
+| 6 | Cross-context isolation, and a referenced category cannot be hard-deleted or gain children. | External contexts touch Catalog only through Actions and Data (CT5). A referenced category is not hard-deleted and cannot receive child categories (CT2, CT4). | `tests/Arch/CatalogArchTest.php`, `tests/Feature/Catalog/DeleteCategoryTest.php`, and `tests/Feature/Catalog/CategoryModelGuardsTest.php` |
+| 7 | `is_active` changes only through aggregate Activate and Deactivate actions. | Centralizes activation state transitions, timestamps, and audit logging (C4, CT4). | `tests/Feature/Catalog/CategoryStateActionsTest.php`, `tests/Feature/Catalog/BrandStateActionsTest.php`, `tests/Feature/Admin/Brand/BrandResourceTest.php`, and `tests/Feature/Catalog/ProductModelStateActionsTest.php` |
+| 8 | Effective-active has one SQL definition used for both filtering and the computed flag. | Guarantees parity between query filters and tree visibility flags across any depth (CT6). | `tests/Feature/Catalog/CategoryEffectiveActiveTest.php` and `tests/Feature/Catalog/ListModelOptionsTest.php` |
 
 ## Changing it
 
@@ -86,6 +93,11 @@ The `catalog` area owns all wholesale electronics marketplace taxonomy data, inc
 - **Activating brands**: Invoke `ActivateBrand` with a public ID ULID string and an optional causer.
 - **Deactivating brands**: Invoke `DeactivateBrand` with a public ID ULID string and an optional causer.
 - **Listing brand options**: Invoke `ListBrandOptions` with optional search string and limit.
+- **Creating product models**: Invoke `CreateProductModel` with validated `CreateProductModelData` and an optional causer.
+- **Updating product model details**: Invoke `UpdateProductModel` with a `ProductModel` instance or public ID ULID string, `UpdateProductModelData`, and an optional causer.
+- **Activating product models**: Invoke `ActivateProductModel` with a public ID ULID string and an optional causer.
+- **Deactivating product models**: Invoke `DeactivateProductModel` with a public ID ULID string and an optional causer.
+- **Listing product model options**: Invoke `ListModelOptions` with brand public ID, category public ID, optional search string, and limit.
 - **Administering categories via Filament**: Access `/admin/categories`. Form inputs create and edit categories via `CreateCategory` and `UpdateCategory`. Sibling movement, reordering, activation transitions, and deletion execute through dedicated table and header actions.
 - **Administering brands via Filament**: Access `/admin/brands`. Form inputs create and edit brands via `CreateBrand` and `UpdateBrand`. Activation state transitions execute through dedicated table row and header actions without direct model writes. Access is governed by `BrandPolicy`.
 - **Running tests**: Run `vendor/bin/pest tests/Feature/Catalog/ tests/Feature/Admin/Category/ tests/Feature/Admin/Brand/ tests/Arch/CatalogArchTest.php`.
@@ -108,6 +120,10 @@ vendor/bin/pest tests/Feature/Catalog/ tests/Feature/Admin/Category/ tests/Featu
 - Brand records do not have a delete action; brands are deactivated rather than removed (OD-1).
 - No request or proposal flow exists for missing brands; superadmins create brands directly.
 - The `show_in_nav` flag is stored and editable, but no navigation consumer reads it yet.
+- Product models are fixed to their brand and leaf category at creation; models cannot be moved to another brand or category.
+- Product models do not have a delete action; models are deactivated rather than removed (CT4).
+- No proposal or custom model request flow exists; superadmins create models directly.
+- No products reference product models yet.
 
 ## History
 
@@ -115,4 +131,5 @@ vendor/bin/pest tests/Feature/Catalog/ tests/Feature/Admin/Category/ tests/Featu
 - ADR 0011: Typed menu category references and foreign key delete guard.
 - Migration `2026_11_02_000000_create_categories_table.php` provisioned the `categories` table with PostgreSQL check constraints and unique indexes.
 - Migration `2026_11_10_000000_create_brands_table.php` provisioned the `brands` table with PostgreSQL check constraints and functional unique index.
+- Migration `2026_11_10_000001_create_product_models_table.php` provisioned the `product_models` table with foreign keys, PostgreSQL check constraints, and functional unique index.
 - Brand administration UI: Introduced `BrandResource` and `BrandPolicy` in the admin panel, delegating brand mutations strictly to domain actions.

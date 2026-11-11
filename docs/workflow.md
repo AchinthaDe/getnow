@@ -40,7 +40,7 @@ Every message carries a tag so nothing gets mixed up across chats: `[P1-UI3a | P
 | G1 Plan | Brief | Claude verdict APPROVED, plan version frozen. Cap of 3 review rounds, then Claude lists what is still blocking and Achintha decides |
 | G2 Build | Frozen plan | IMPL-REPORT delivered. Any deviation stops work and raises a CR |
 | G3 Verify | IMPL-REPORT, raw outputs, diff | No open Blocker or Major findings. Cap of 3 rounds, then re-plan the failing part |
-| G4 Close | Verified | Closeout note written, ARCHITECTURE.md checkbox ticked, PR opened |
+| G4 Close | Verified (docs audit clean) | Docs close-out gate satisfied, closeout note written, ARCHITECTURE.md checkbox ticked (as last commit), PR opened with Docs impact table |
 
 Keep step artifacts in docs/blueprints/ (already used for step\_2b.md): `P1-UI3a/brief.md`, `plan.v3.md`, `report.md`, `verify.md`.
 
@@ -57,6 +57,8 @@ Depends on:           accepted steps, and the exact classes/files from them this
 In scope:             explicit list
 Out of scope:         explicit list, including later-phase things Gemini might add
 Read first:           ARCHITECTURE.md sections, AGENTS.md sections, docs/README.md, owning area guides, existing files (paths)
+Docs impact:          table of expected doc edits (mandatory; default rows: ARCHITECTURE progress tick; area guide invariants/actions/limits; rules; contract doc & fixture; ADR; phase brief sections 9 and 10; README index; N/A allowed only with reason):
+                      | Doc | Change | Reason |
 Guides to update:     guide files and what changes, or None
 Decisions made:       Gemini must not re-decide these
 Open decisions:       Achintha answers before G1
@@ -121,7 +123,7 @@ Change log (v2 onward): finding ID > section changed
    Arch tests added or changed.
 
 11. Docs and contract updates
-   Exact edits: each owning guide (section and new text); trigger checklists answered for every matching `triggers:` entry; ARCHITECTURE.md only for map-level changes; content-api.md, fixture, .env.example, ADRs; or None with reason.
+   Tasks for every row from the brief's Docs impact table. Exact edits: each owning guide (section and new text); trigger checklists answered for every matching `triggers:` entry; ARCHITECTURE.md only for map-level changes; content-api.md, fixture, .env.example, ADRs; phase brief updates; or None/NA with reason. A plan missing docs tasks fails plan review.
 
 12. Implementation order
    Numbered commits. Each: Conventional Commit message, files, and the state after it
@@ -148,7 +150,7 @@ Checklist applied every round:
 5. Rule matrix: spot-check Y and N rows, wrong N/A flagged
 6. Failure paths: authorization, validation, concurrency, empty data, old payload versions
 7. Tests: each AC has a test that would fail if the behavior broke, failure and authorization cases exist, factories used
-8. Docs and contract updates listed: owning guides identified, exact guide edits listed, trigger checklists answered, no step IDs or plan prose destined for a guide
+8. Docs and contract updates listed: tasks map to every row in the brief's Docs impact table, owning guides identified, exact guide edits listed (reject plan section 11 if it merely says 'mapped to manifest' or lacks exact replacement text), trigger checklists answered, no step IDs or plan prose destined for a guide
 9. Commit order: each commit green on its own
 10. Scope creep and later-phase leakage (X4)
 
@@ -196,7 +198,9 @@ Recommendation:
 4. Deviations: CR IDs and what changed. 'None' stated explicitly.
 5. Raw unedited output: composer check (full), php artisan migrate (if any), git status
 6. Rule self-audit: output of the section 10A commands
-7. Docs diffs: each owning guide, ARCHITECTURE.md (map-level only), content-api.md, fixture, .env.example, ADRs; raw output of every edited guide's tests: commands; trigger checklist answers
+7. Docs delivered: table mapping each row from the brief's Docs impact table:
+   | Doc | Commit SHA | What changed |
+   diffs for each owning guide, ARCHITECTURE.md (map-level only), content-api.md, fixture, .env.example, ADRs, phase brief; raw output of every edited guide's tests: commands; trigger checklist answers
 8. Gaps: anything unfinished, skipped, flaky or suspicious. 'None' stated explicitly.
 ```
 
@@ -232,6 +236,7 @@ Achintha pastes `git diff main...HEAD`, or the changed files in manifest order. 
 - test quality: assertions that prove behavior (not only a 200 status), failure, authorization and boundary cases, factories used
 - docs and contract edits match plan section 11
 - guides changed in the diff are reviewed as deliverables: statements checked against code, Enforced by names a test or Review only, no plan prose, D numbers and rule IDs resolve
+- docs audit: Claude checks that each docs claim matches the code (class names, rule IDs, paths, test names, behavior), not just that the file changed. A step cannot be ACCEPTED while the docs audit has an open FAIL finding
 
 Mutation spot-check, required for steps touching visibility, status transitions, authorization or the API: Claude names 2 or 3 behaviors, Gemini breaks each one temporarily, shows the specific test that fails, then restores it and shows a clean `git diff`.
 
@@ -244,24 +249,46 @@ Run the manual UI script from the brief. Mark pass or fail per line and paste th
 ```text
 [<STEP ID> | VERIFY r<N> | Claude]
 Verdict: ACCEPTED | FIXES REQUIRED
+Progress: - [x] P3-.... (the line the final closeout commit will write; the file may still say [ ] during verify)
 Layer A: pass or fail per command
 Layer B: what was reviewed, what was not pasted
 Findings:
-  F1 | Blocker, Major or Minor | AC or rule ID | file:line | problem | required fix | evidence required
+  F1 | Blocker, Major, Minor, or Docs FAIL | AC or rule ID | file:line | problem | required fix | evidence required
 Not verified: anything Claude could not check from what was pasted
 ```
 
 ### Fix loop
 
-Gemini fixes only the listed findings, one commit per group, and sends a FIX-REPORT mapping finding ID to commit SHA to diff to test or output. Anything beyond the findings is a CR. ACCEPTED requires zero open Blockers and Majors, clean Layer A, all Layer C lines passing, and the AGENTS.md Definition of Done ticked.
+Gemini fixes only the listed findings, one commit per group, and sends a FIX-REPORT mapping finding ID to commit SHA to diff to test or output. Anything beyond the findings is a CR. ACCEPTED requires zero open Blockers, Majors, or Docs FAIL findings, clean Layer A, all Layer C lines passing, and the AGENTS.md Definition of Done ticked.
 
-## 11. Closeout and phase exit
+## 11. Docs close-out gate
+
+To prevent documentation from drifting from code and architectural decisions, every step must deliver its documentation, and verification must audit it.
+
+1. **Mandatory Docs impact table in Step Brief**: Claude includes a table of expected doc edits (`doc | change | reason`). Default rows that must be accounted for:
+   - `ARCHITECTURE.md` progress checkbox tick and any section the step makes untrue.
+   - Owning area guide (`docs/areas/<area>.md`): invariants, how it works, actions, known limits.
+   - Rule register and AGENTS.md (`docs/blueprints/rule-register.md` and `AGENTS.md` updated in lockstep).
+   - API contract and fixture (`docs/contracts/content-api.md` and `tests/Fixtures/contracts/`) if HTTP shapes change.
+   - ADR (`docs/adr/`) if a significant design decision was made.
+   - Phase brief (`docs/blueprints/<phase>/phase-brief.md`) sections 9 and 10 if affected.
+   - Documentation index (`docs/README.md`) if an area guide is added or scope expands.
+   - *Note*: An entry of `N/A` is permitted only when accompanied by an explicit one-line reason.
+2. **Implementation Plan must include docs tasks**: Plan section 11 must include specific, actionable tasks for every row in the brief's Docs impact table. A plan without them fails plan review.
+3. **Implementation Report must list docs delivered**: The IMPL-REPORT must contain a "Docs delivered" section: one line per row with `file | commit hash | what changed`.
+4. **Verification docs audit**: In Layer B diff review, the reviewer performs a docs audit checking that each docs claim matches the code (class names, rule IDs, paths, test names, behavior), not merely that the file changed. A step cannot be ACCEPTED while the docs audit has an open FAIL finding.
+5. **Checkbox tick is the final commit**: The `ARCHITECTURE.md` phase progress checkbox is ticked in the final commit of the step, strictly after VERIFY accepts. (Repair ticks for steps already merged belong to the sync PR, not this rule.)
+6. **PR description includes Docs impact**: The pull request description (G4) must include the completed Docs impact table.
+7. **Automation roadmap**: Until the automated docs check exists (planned step P3-DOC1), the audit is manual. After P3-DOC1 lands, `composer check` will include the docs verification check and a red result will block acceptance.
+
+## 12. Closeout and phase exit
 
 Step closeout:
 
-- tick the checkbox in ARCHITECTURE.md Phase 1 progress
+- Docs close-out gate satisfied: all docs delivered, verified against code, and docs audit passes with zero open FAIL findings.
+- tick the checkbox in ARCHITECTURE.md Phase progress list as the final commit of the step, made after VERIFY accepts.
 - closeout note, 5 lines: what shipped, deviations accepted, debt and follow-ups, what the next step depends on, ADRs added
-- PR description: what changed, why, how tested, risks (migrations, API contract, security)
+- PR description: what changed, why, how tested, risks (migrations, API contract, security), and the Docs impact table
 - guides updated in the step's PR (DOC2); lasting facts from the closeout note go into the guide's Known limits or History
 
 Phase start: a Phase Brief with scope, step list, order, risks and exit criteria.
@@ -276,7 +303,7 @@ Phase exit review (P1-CLOSE):
 - ARCHITECTURE.md phase status updated, open decisions recorded as ADRs
 - no later-phase scaffolding anywhere (X4)
 
-## 12. Prompts to paste to Gemini
+## 13. Prompts to paste to Gemini
 
 Plan request:
 
@@ -293,7 +320,7 @@ Revise the plan per the review below. Resend the whole plan as v<N+1> with a cha
 Implementation:
 
 ```text
-Implement plan <STEP ID> v<N> exactly. Follow the section 12 commit order. One PowerShell command at a time, no &&. No refactors, extra files, dependencies or improvements. Update the guides named in plan section 11 in the same PR. If the plan is wrong or incomplete, stop and send a CR; do not work around it. When finished, run composer check, then fill the IMPL-REPORT template with raw unedited outputs. A summary in place of raw output is a failed report.
+Implement plan <STEP ID> v<N> exactly. Follow the section 12 commit order. One PowerShell command at a time, no &&. No refactors, extra files, dependencies or improvements. Update the guides named in plan section 11 and deliver all docs listed in the Docs impact table in the same PR. The implementation plan must contain exact replacement text for every doc edit. If the plan is wrong or incomplete, stop and send a CR; do not work around it. When finished, run composer check, then fill the IMPL-REPORT template with raw unedited outputs. A summary in place of raw output is a failed report.
 ```
 
 Fixes:

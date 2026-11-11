@@ -7,6 +7,7 @@ namespace App\Domain\Catalog\Actions\Category;
 use App\Domain\Catalog\Data\Category\MoveCategoryData;
 use App\Domain\Catalog\Exceptions\CategoryRuleViolation;
 use App\Domain\Catalog\Models\Category;
+use App\Domain\Catalog\Models\ProductModel;
 use App\Domain\Catalog\Support\CategorySiblingLock;
 use App\Models\User;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -32,6 +33,10 @@ final class MoveCategory
                 $newParentId = $newParent->id;
                 $newParentPublicId = $newParent->public_id;
                 CategorySiblingLock::acquire($newParentId);
+
+                if (ProductModel::where('category_id', $newParentId)->exists()) {
+                    throw CategoryRuleViolation::newParentHasModels($newParentPublicId);
+                }
             } else {
                 CategorySiblingLock::acquire(null);
             }

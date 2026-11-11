@@ -11,7 +11,7 @@ Normative area guides capture architectural rules, invariants, change workflows,
 | site-settings | active | [site-settings.md](areas/site-settings.md) | Storefront global scalar settings, Spatie settings repository, and Filament page. |
 | content-api | active | [content-api.md](areas/content-api.md) | Public layout HTTP endpoint, rate limiting, and revision ETag caching. |
 | accounts | active | [accounts.md](areas/accounts.md) | User identity, role hierarchy, credential authentication, and user administration. |
-| catalog | active | [catalog.md](areas/catalog.md) | Shared catalog taxonomy, category hierarchy, deterministic slugs, and catalog actions. |
+| catalog | active | [catalog.md](areas/catalog.md) | Shared catalog taxonomy, category hierarchy, brands, product models, deterministic slugs, and catalog actions. |
 | admin-panel | planned (P1-DOC1b) | planned | Filament panel configuration, user authentication, and admin access control. |
 | auth-scaffold | planned (P1-DOC1b) | planned | Temporary Phase 0 starter-kit authentication scaffolding and views. |
 | data | planned (P1-DOC1b) | planned | PostgreSQL schema, database migrations, constraints, seeders, and conventions. |
@@ -50,3 +50,15 @@ Sections:
 ## Update Rule
 
 Any pull request modifying files that match an area's `paths:` globs must update that area's guide in the same pull request. When running test suites, always execute `php artisan config:clear` before `vendor/bin/pest <path>` to prevent cached environment configuration from targeting the development database.
+
+## Where each fact lives
+
+| Fact | Only writer | Everyone else |
+|---|---|---|
+| Step done | `ARCHITECTURE.md` progress checkbox | No `[x]` anywhere else |
+| Step ID and order | `ARCHITECTURE.md` progress list | Phase brief section 8 copies IDs only |
+| Rule sentence | `AGENTS.md` | Register is a mirror |
+| Decision | The ADR (`docs/adr/`) | Decision table is `ID + see ADR N` |
+| Area behavior | `docs/areas/<area>.md` | README is one line of scope |
+| What may be built | Active-scope line and X4 | Sections 2 and 13 use shipped / in phase, not started / out of phase |
+| Process | `docs/workflow.md` | X7 is one pointer |
