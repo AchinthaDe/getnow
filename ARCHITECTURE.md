@@ -74,10 +74,10 @@ Rule: do not scaffold folders, models or packages for a phase that is not active
 
 - Admins change storefront content without a deploy.
 - Consumers (Blade storefront now, React later) must not break when content changes or is missing.
-- Modular monolith. Two contexts (`Content` and `Accounts`) in Phase 3, with `Catalog` and `Retail` joining in subsequent steps.
+- Modular monolith. Three active contexts (`Content`, `Accounts`, and `Catalog`) in Phase 3, with `Retail` joining in step RET1a.
 - `main` is always working and tested. Quality gates run locally (`composer check`) and via a minimal GitHub Actions check workflow. No CD pipelines, no Docker for local development.
 
-## 3. Stack (phases 0 to 2)
+## 3. Stack (phases 0 to 3)
 
 | Concern | Choice |
 |---|---|
@@ -180,7 +180,7 @@ Placements, menu keys and block types are defined in code because the storefront
 | Head: site name, default description | Site setting | favicon and logo deferred |
 | Announcement bar | Block in placement `announcement_bar` | The free-delivery figure comes from storefront config. Text is free-form, the threshold is not computed here. |
 | Header main (logo, search, account, wishlist, bag) | Leave in code | Search placeholder is a site setting |
-| Desktop nav, mobile menu | Menus `main_nav`, `mobile_nav` | Category dropdown stays driven by the storefront's catalog source |
+| Desktop nav, mobile menu | Menus `main_nav`, `mobile_nav` | Menus use typed items (link, category reference, category_tree source) resolved in batch by GetLayoutContent (NAV1a–NAV1c, ADR 0011, ADR 0012) |
 | Footer brand text | Site setting | |
 | Footer link columns | Menus `footer_column_1..3` (menu `title` is the column heading) | |
 | Flash messages | Leave in code | |
@@ -336,4 +336,6 @@ Open decisions (record as ADRs in `docs/adr/` when settled):
 
 ## 13. Later phases (sketch only, do not build)
 
-Catalog (taxonomy, products, reviews, variants, media), Retail (retailers, membership), Sales (cart, orders), Negotiation (chat, quotes), Procurement (purchase orders), Payments (ledger, escrow, commission, payouts), Disputes. When a phase starts, add its section here and its context under `app/Domain/`.
+Active Phase 3 contexts: Catalog (taxonomy including brands, models, attributes and collections, products, reviews, variants, media) and Retail (retailers and membership).
+
+Later phases (not started, do not build): Sales (cart, orders), Negotiation (chat, quotes), Procurement (purchase orders), Payments (ledger, escrow, commission, payouts), Disputes. When a phase starts, add its section here and its context under `app/Domain/`.
