@@ -110,5 +110,5 @@ vendor/bin/pest tests/Feature/Domain/Content/Policies/MenuPolicyTest.php tests/F
 
 - Migration [2026_10_14_000000_create_menus_and_menu_items_tables.php](../../database/migrations/2026_10_14_000000_create_menus_and_menu_items_tables.php): initial schema for menus and menu items tables.
 - Migration [2026_11_05_000000_add_kind_and_category_reference_to_menu_items_table.php](../../database/migrations/2026_11_05_000000_add_kind_and_category_reference_to_menu_items_table.php): added kind and category_public_id columns, RESTRICT foreign key, and CHECK constraints.
-- [ARCHITECTURE.md §12 Decisions](../../ARCHITECTURE.md#12-decisions): D2 (code-owned keys), D4 (links by URL until catalog context exists), D9 (atomic tree reconciliation under row lock).
+- [ARCHITECTURE.md §12 Decisions](../../ARCHITECTURE.md#12-decisions): D2 (code-owned keys), D4 (superseded by ADR 0010: category data owned by Catalog context; menus link via typed references or links), D9 (atomic tree reconciliation under row lock).
 - [ADR 0011](../adr/0011-typed-menu-category-references-and-delete-guard.md): typed menu category references and foreign key delete guard (supersedes D4 for categories).
