@@ -189,8 +189,6 @@ Each step is one layer and ends with `composer check` green. Sizes are code and 
 | P3-API1b | HTTP | Filters, facets, text search | ~9 |
 | P3-CLOSE | review | Exit review | none |
 
-Steps P3-ACC1a through P3-MDL1a are completed. Everything from P3-RET1a onward builds on Accounts and Retail context.
-
 ## 9. Current docs this phase contradicts (resolved by the ADR in P3-CAT1 unless noted)
 
 | Where | Says now | Change | Status |
