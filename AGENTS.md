@@ -4,7 +4,7 @@ Instructions for AI coding agents working in this repository. Read `ARCHITECTURE
 
 ## Project
 
-Laravel backend for a wholesale mobile and electronics marketplace. It currently contains only the **content management system**: admins edit storefront content in Filament, and storefronts read it from a versioned API. The storefront is a separate repository and is out of scope here.
+Laravel backend for a wholesale mobile and electronics marketplace. It currently contains the **content management system**, **accounts**, and **catalog** contexts: admins edit storefront content and taxonomy in Filament, and storefronts read it from a versioned API. The storefront is a separate repository and is out of scope here.
 
 Active scope: **Phase 0 (bootstrap), Phase 1 (layout CMS), and Phase 3: Accounts, then Catalog and Retail**, as defined in `ARCHITECTURE.md`. Contexts follow three explicit states: **shipped** (Content, Accounts, Catalog Category/Brand/ProductModel), **in phase, not started** (Retail until RET1a, attributes until ATT1a, products until PRD1a, and unbuilt Phase 3 aggregates), and **out of phase** (Sales, Negotiation, Procurement, Payments, Disputes). Do not build, scaffold or add packages for out of phase contexts. If a task seems to need them, ask.
 
