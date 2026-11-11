@@ -1,6 +1,6 @@
 # Rule Register
 
-Source of truth for rule IDs and text across blueprints, plans, and reviews.
+Mirror of `AGENTS.md` for rule IDs and text across blueprints, plans, and reviews. `AGENTS.md` is the single source of truth; this register must mirror it exactly.
 
 ## Environment
 - **E1**: Developer machine is Windows, shell is PowerShell. Run commands one at a time. Do not use bash-only syntax and do not chain with `&&`.

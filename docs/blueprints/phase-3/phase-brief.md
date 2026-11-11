@@ -133,7 +133,7 @@ Locking the product while pending removes the race where a retailer edits under 
 | Brands | BRD1a, BRD1b |
 | Product Models (brand- and category-scoped taxonomy) | MDL1a, MDL1b |
 | Specification attributes (controlled key-values, planned) | ATT1a, ATT1b, PRD1c |
-| Proposal workflow ADR (data model, states, reviewer queue, authorization) | PRP1 |
+| Proposal workflow ADR: data model, states, reviewer queue, authorization (ADR deliverable only) | PRP1 |
 | Variants (colour, storage), SKU, price on the variant | VAR1a |
 | Wholesale pricing: MOQ, quantity price breaks, currency, integer minor units (no money package, X1) | VAR1b |
 | Stock per variant | VAR1b |
@@ -176,7 +176,7 @@ Each step is one layer and ends with `composer check` green. Sizes are code and 
 | P3-PRD1c | domain | Spec attribute values on products | ~8 |
 | P3-PRD2a | domain | Review rounds, snapshots, approve with CT8 gate, request changes, reject | ~10 |
 | P3-PRD2b | domain | Flags, retailer replies, events after commit, queued notifications, database queue | ~10 |
-| P3-PRP1 | domain | Proposal workflow ADR: data model, states, reviewer queue, authorization | ~3 |
+| P3-PRP1 | domain | Proposal workflow ADR: data model, states, reviewer queue, authorization (ADR deliverable only) | ~3 |
 | P3-RET2 | retailer UI | Product CRUD with cascading category select, Add custom..., flagged-field display, submit | ~10 |
 | P3-ADM1 | admin UI | Review queue, snapshot diff, flag editor, inline proposal resolution, approve, admin create into queue, bulk actions | ~11 |
 | P3-VAR1a | domain | Variants using variant_option attributes | ~10 |

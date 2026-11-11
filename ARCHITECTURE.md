@@ -56,7 +56,7 @@ This document is the source of truth for structure and boundaries. If code and t
 - [ ] P3-PRD1c (Spec attribute values on products)
 - [ ] P3-PRD2a (Review rounds, snapshots, approve with CT8 gate, request changes, reject)
 - [ ] P3-PRD2b (Flags, retailer replies, events after commit, queued notifications, database queue)
-- [ ] P3-PRP1 (Proposal workflow ADR: data model, states, reviewer queue, authorization)
+- [ ] P3-PRP1 (Proposal workflow ADR: data model, states, reviewer queue, authorization; ADR deliverable only)
 - [ ] P3-RET2 (Product CRUD with cascading selects, Add custom..., flagged-field display, submit)
 - [ ] P3-ADM1 (Review queue, snapshot diff, flag editor, inline proposal resolution, approve, admin create into queue, bulk actions)
 - [ ] P3-VAR1a (Variants using variant_option attributes)

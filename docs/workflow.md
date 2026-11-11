@@ -249,7 +249,7 @@ Run the manual UI script from the brief. Mark pass or fail per line and paste th
 ```text
 [<STEP ID> | VERIFY r<N> | Claude]
 Verdict: ACCEPTED | FIXES REQUIRED
-Progress: - [x] P3-.... (pasted from ARCHITECTURE.md, required for ACCEPTED)
+Progress: - [x] P3-.... (the line the final closeout commit will write; the file may still say [ ] during verify)
 Layer A: pass or fail per command
 Layer B: what was reviewed, what was not pasted
 Findings:
@@ -277,7 +277,7 @@ To prevent documentation from drifting from code and architectural decisions, ev
 2. **Implementation Plan must include docs tasks**: Plan section 11 must include specific, actionable tasks for every row in the brief's Docs impact table. A plan without them fails plan review.
 3. **Implementation Report must list docs delivered**: The IMPL-REPORT must contain a "Docs delivered" section: one line per row with `file | commit hash | what changed`.
 4. **Verification docs audit**: In Layer B diff review, the reviewer performs a docs audit checking that each docs claim matches the code (class names, rule IDs, paths, test names, behavior), not merely that the file changed. A step cannot be ACCEPTED while the docs audit has an open FAIL finding.
-5. **Checkbox tick is the final commit**: The `ARCHITECTURE.md` phase progress checkbox is ticked in the final commit of the step, strictly after VERIFY accepts.
+5. **Checkbox tick is the final commit**: The `ARCHITECTURE.md` phase progress checkbox is ticked in the final commit of the step, strictly after VERIFY accepts. (Repair ticks for steps already merged belong to the sync PR, not this rule.)
 6. **PR description includes Docs impact**: The pull request description (G4) must include the completed Docs impact table.
 7. **Automation roadmap**: Until the automated docs check exists (planned step P3-DOC1), the audit is manual. After P3-DOC1 lands, `composer check` will include the docs verification check and a red result will block acceptance.
 
