@@ -44,7 +44,7 @@ This document is the source of truth for structure and boundaries. If code and t
 - [x] P3-NAV1c (menu form: kind select, category picker, inactive-target warnings)
 - [x] P3-BRD1a (Brands, ListBrandOptions with search, show_in_nav)
 - [x] P3-BRD1b (Brand resource, BrandPolicy)
-- [ ] P3-MDL1a (Models brand and category scoped, ListModelOptions with search)
+- [x] P3-MDL1a (Models brand and category scoped, ListModelOptions with search)
 - [ ] P3-MDL1b (Model resource)
 - [ ] P3-ATT1a (Attributes and values)
 - [ ] P3-ATT1b (Attribute resource)
