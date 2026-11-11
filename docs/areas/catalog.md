@@ -122,8 +122,8 @@ vendor/bin/pest tests/Feature/Catalog/ tests/Feature/Admin/Category/ tests/Featu
 - The `show_in_nav` flag is stored and editable, but no navigation consumer reads it yet.
 - Product models are fixed to their brand and leaf category at creation; models cannot be moved to another brand or category.
 - Product models do not have a delete action; models are deactivated rather than removed (CT4).
-- No proposal or custom model request flow exists; superadmins create models directly (OD 3).
-- No products currently reference product models (deferred to PRD1a).
+- No proposal or custom model request flow exists; superadmins create models directly.
+- No products currently reference product models yet.
 
 ## History
 
