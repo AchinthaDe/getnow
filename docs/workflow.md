@@ -150,7 +150,7 @@ Checklist applied every round:
 5. Rule matrix: spot-check Y and N rows, wrong N/A flagged
 6. Failure paths: authorization, validation, concurrency, empty data, old payload versions
 7. Tests: each AC has a test that would fail if the behavior broke, failure and authorization cases exist, factories used
-8. Docs and contract updates listed: tasks map to every row in the brief's Docs impact table, owning guides identified, exact guide edits listed, trigger checklists answered, no step IDs or plan prose destined for a guide
+8. Docs and contract updates listed: tasks map to every row in the brief's Docs impact table, owning guides identified, exact guide edits listed (reject plan section 11 if it merely says 'mapped to manifest' or lacks exact replacement text), trigger checklists answered, no step IDs or plan prose destined for a guide
 9. Commit order: each commit green on its own
 10. Scope creep and later-phase leakage (X4)
 
@@ -249,6 +249,7 @@ Run the manual UI script from the brief. Mark pass or fail per line and paste th
 ```text
 [<STEP ID> | VERIFY r<N> | Claude]
 Verdict: ACCEPTED | FIXES REQUIRED
+Progress: - [x] P3-.... (pasted from ARCHITECTURE.md, required for ACCEPTED)
 Layer A: pass or fail per command
 Layer B: what was reviewed, what was not pasted
 Findings:
@@ -319,7 +320,7 @@ Revise the plan per the review below. Resend the whole plan as v<N+1> with a cha
 Implementation:
 
 ```text
-Implement plan <STEP ID> v<N> exactly. Follow the section 12 commit order. One PowerShell command at a time, no &&. No refactors, extra files, dependencies or improvements. Update the guides named in plan section 11 in the same PR. If the plan is wrong or incomplete, stop and send a CR; do not work around it. When finished, run composer check, then fill the IMPL-REPORT template with raw unedited outputs. A summary in place of raw output is a failed report.
+Implement plan <STEP ID> v<N> exactly. Follow the section 12 commit order. One PowerShell command at a time, no &&. No refactors, extra files, dependencies or improvements. Update the guides named in plan section 11 and deliver all docs listed in the Docs impact table in the same PR. The implementation plan must contain exact replacement text for every doc edit. If the plan is wrong or incomplete, stop and send a CR; do not work around it. When finished, run composer check, then fill the IMPL-REPORT template with raw unedited outputs. A summary in place of raw output is a failed report.
 ```
 
 Fixes:

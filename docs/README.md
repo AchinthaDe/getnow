@@ -53,12 +53,12 @@ Any pull request modifying files that match an area's `paths:` globs must update
 
 ## Where each fact lives
 
-| Fact type | Single owner | Who updates it | Mirrored where |
-|---|---|---|---|
-| Step status (done or not) | `ARCHITECTURE.md` progress list | Achintha / Gemini at step closeout | Nowhere else |
-| Step names and scope | Phase brief (`docs/blueprints/<phase>/phase-brief.md`) section 8 | Claude / Achintha at phase planning | `ARCHITECTURE.md` progress mirrors the names only |
-| Rule IDs and text | `docs/blueprints/rule-register.md` | Claude / Achintha / Gemini | `AGENTS.md` carries the identical text (must stay identical) |
-| Decisions | `docs/adr/` | Gemini / Claude / Achintha | Phase brief section 10 records open decisions and cites ADR when resolved |
-| Per-area invariants, action lists, known limits | `docs/areas/<area>.md` | Gemini / Claude in step PRs | Nowhere else; no copies in briefs or plans |
-| API shape | `docs/contracts/content-api.md` plus the fixture | Gemini in API change steps | `tests/Fixtures/contracts/` |
-| Structure and boundaries | `ARCHITECTURE.md` sections 1 to 13 | Claude / Achintha / Gemini for map-level facts | Nowhere else |
+| Fact | Only writer | Everyone else |
+|---|---|---|
+| Step done | `ARCHITECTURE.md` progress checkbox | No `[x]` anywhere else |
+| Step ID and order | `ARCHITECTURE.md` progress list | Phase brief section 8 copies IDs only |
+| Rule sentence | `AGENTS.md` | Register is a mirror |
+| Decision | The ADR (`docs/adr/`) | Decision table is `ID + see ADR N` |
+| Area behavior | `docs/areas/<area>.md` | README is one line of scope |
+| What may be built | Active-scope line and X4 | Sections 2 and 13 use shipped / in phase, not started / out of phase |
+| Process | `docs/workflow.md` | X7 is one pointer |

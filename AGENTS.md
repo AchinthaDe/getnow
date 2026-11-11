@@ -6,7 +6,7 @@ Instructions for AI coding agents working in this repository. Read `ARCHITECTURE
 
 Laravel backend for a wholesale mobile and electronics marketplace. It currently contains only the **content management system**: admins edit storefront content in Filament, and storefronts read it from a versioned API. The storefront is a separate repository and is out of scope here.
 
-Active scope: **Phase 0 (bootstrap), Phase 1 (layout CMS), and Phase 3: Accounts, then Catalog and Retail**, as defined in `ARCHITECTURE.md`. Accounts and Catalog are permitted now; Retail remains forbidden under X4 until step RET1a. Do not build, scaffold or add packages for later phases (sales, payments, chat, React). If a task seems to need them, ask.
+Active scope: **Phase 0 (bootstrap), Phase 1 (layout CMS), and Phase 3: Accounts, then Catalog and Retail**, as defined in `ARCHITECTURE.md`. Contexts follow three explicit states: **shipped** (Content, Accounts, Catalog Category/Brand/ProductModel), **in phase, not started** (Retail until RET1a, attributes until ATT1a, products until PRD1a, and unbuilt Phase 3 aggregates), and **out of phase** (Sales, Negotiation, Procurement, Payments, Disputes). Do not build, scaffold or add packages for out of phase contexts. If a task seems to need them, ask.
 
 ## Environment
 
@@ -122,7 +122,7 @@ Map: ARCHITECTURE.md (phases, stack, structure, decisions), docs/README.md (area
 - **G1** Branch from `main`: `feat/<short-desc>`, `fix/...`, `chore/...`.
 - **G2** Conventional Commits: `feat(content): add announcement bar block`.
 - **G3** Never push to `main` directly or bypass git hooks.
-- PR description: what changed, why, how it was tested, and risks (migrations, API contract, security).
+- **G4** PR description: what changed, why, how it was tested, and risks (migrations, API contract, security).
 
 ## Do not
 
@@ -132,7 +132,7 @@ Map: ARCHITECTURE.md (phases, stack, structure, decisions), docs/README.md (area
 - Change deployment or infrastructure configuration as a side effect of a feature.
 - Put business logic in controllers, Filament resources, model boot methods or observers.
 - **X5** Modify the storefront repository or assume its internals. The API contract is the only interface.
-- **X4** Create folders, contexts or tables for phases that are not active, or for Retail prior to step RET1a.
+- **X4** Do not create folders, contexts, or tables for a phase that is not active. Inside Phase 3, do not scaffold an aggregate before its step. Retail is forbidden until RET1a.
 - Make destructive file or database operations outside migrations and the local reset command above.
 
 ## Definition of done

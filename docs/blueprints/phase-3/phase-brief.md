@@ -20,8 +20,8 @@ Anything a product is classified by, filtered by or linked to in the nav is a ro
 | --- | --- | --- | --- |
 | Category | Tree, max depth 2 (one constant, SCL1) | Retailer, on the product (leaf only) | Parent is derived, never stored on the product |
 | Brand | Flat list | Retailer, on the product. Select-only, searchable | No free text. A missing brand is requested from the superadmin |
-| Product Model | Flat list scoped to brand and leaf category | Retailer, on the product. Select-only, searchable | Belongs to one brand and one leaf category; fixed at creation. Model names unique per brand. No free text |
-| Specification attributes | Controlled rows / key-value specifications | Retailer, on the product (planned, ATT1a/b, PRD1c) | Stops fragmented spec formatting. Free-text specifications until PRD1c |
+| Product Model | Flat list scoped to brand and leaf category | Retailer, on the product. Select-only, searchable | Shipped (MDL1a). Belongs to one brand and one leaf category; fixed at creation. Model names unique per brand. No free text |
+| Specification attributes | Controlled rows / key-value specifications | Retailer, on the product | In phase, not started (planned, ATT1a/b, PRD1c). Stops fragmented spec formatting. Free-text specifications until PRD1c |
 | Collection | Curated group of products (Deals, New arrivals, Featured) | Superadmin | Not chosen by retailers. Many-to-many with products |
 | Variant option values | Controlled rows (colour, storage, RAM) | Retailer, on a variant | Stops "128GB" and "128 GB" splitting filters |
 
@@ -133,6 +133,7 @@ Locking the product while pending removes the race where a retailer edits under 
 | Brands | BRD1a, BRD1b |
 | Product Models (brand- and category-scoped taxonomy) | MDL1a, MDL1b |
 | Specification attributes (controlled key-values, planned) | ATT1a, ATT1b, PRD1c |
+| Proposal workflow ADR (data model, states, reviewer queue, authorization) | PRP1 |
 | Variants (colour, storage), SKU, price on the variant | VAR1a |
 | Wholesale pricing: MOQ, quantity price breaks, currency, integer minor units (no money package, X1) | VAR1b |
 | Stock per variant | VAR1b |
@@ -175,6 +176,7 @@ Each step is one layer and ends with `composer check` green. Sizes are code and 
 | P3-PRD1c | domain | Spec attribute values on products | ~8 |
 | P3-PRD2a | domain | Review rounds, snapshots, approve with CT8 gate, request changes, reject | ~10 |
 | P3-PRD2b | domain | Flags, retailer replies, events after commit, queued notifications, database queue | ~10 |
+| P3-PRP1 | domain | Proposal workflow ADR: data model, states, reviewer queue, authorization | ~3 |
 | P3-RET2 | retailer UI | Product CRUD with cascading category select, Add custom..., flagged-field display, submit | ~10 |
 | P3-ADM1 | admin UI | Review queue, snapshot diff, flag editor, inline proposal resolution, approve, admin create into queue, bulk actions | ~11 |
 | P3-VAR1a | domain | Variants using variant_option attributes | ~10 |
